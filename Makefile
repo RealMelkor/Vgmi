@@ -11,6 +11,7 @@ LIBS = -ltls
 #INCLUDES = -I/usr/local/include
 
 vgmi: main.c gemini.c
+	mkdir -p obj
 	${CC} -c ${CFLAGS} *.c ${INCLUDES}
 	mv *.o obj/
 	${CC} $(wildcard obj/*.o) ${LIBSPATH} ${LIBS} -o $@
