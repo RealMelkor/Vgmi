@@ -10,11 +10,8 @@ LIBS = -ltls
 #LIBSPATH = -L/usr/local/lib
 #INCLUDES = -I/usr/local/include
 
-vgmi: main.c gemini.c
-	mkdir -p obj
-	${CC} -c ${CFLAGS} *.c ${INCLUDES}
-	mv *.o obj/
-	${CC} $(wildcard obj/*.o) ${LIBSPATH} ${LIBS} -o $@
+vgmi: src
+	${CC} $(wildcard src/*.c) ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
 
 install:
 	cp vgmi ${PREFIX}/bin
