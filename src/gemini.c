@@ -1,4 +1,5 @@
 #include "gemini.h"
+#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@ int gmi_code = 0;
 int gmi_goto(int id) {
 	id--;
 	if (id < 0 || id >= gmi_links_count) {
-		snprintf(gmi_error, sizeof(gmi_error), "Invalid link number");
+		snprintf(gmi_error, sizeof(gmi_error), "Invalid link number, %d/%ld", id, gmi_links_count);
 		return -1;
 	}
 	if (gmi_links[id][0] == '/') {
@@ -48,8 +49,12 @@ int gmi_goto(int id) {
 		if (ret < 1) return ret;
 		gmi_load(gmi_data, ret);
 		return ret;
+	} else {
+		int ret = gmi_request(gmi_links[id]);
+		if (ret < 1) return ret;
+		gmi_load(gmi_data, ret);
+		return ret;
 	}
-	return 0;
 }
 
 void gmi_load(char* data, size_t len) {
@@ -72,10 +77,15 @@ void gmi_load(char* data, size_t len) {
 					gmi_links = realloc(gmi_links, sizeof(char*) * gmi_links_len);
 				else
 					gmi_links = malloc(sizeof(char*) * gmi_links_len);
-				bzero(&gmi_links[gmi_links_len-1024], 1024);
+				bzero(&gmi_links[gmi_links_len-1024], 1024 * sizeof(char*));
 			}
 			if (gmi_links[gmi_links_count]) free(gmi_links[gmi_links_count]);
-			gmi_links[gmi_links_count] = malloc(strlen(url));
+			if (strlen(url) == 0) {
+				gmi_links[gmi_links_count] = NULL;
+				data[c] = ' ';
+				continue;
+			}
+			gmi_links[gmi_links_count] = malloc(strlen(url)+1);
 			strcpy(gmi_links[gmi_links_count], url);
 			gmi_links_count++;
 			data[c] = ' ';
@@ -108,7 +118,7 @@ int gmi_render(char* data, size_t len, int y) {
 			color = TB_ITALIC|TB_MAGENTA;
 		}
 		if (x == 0 && data[c] == '=' && data[c+1] == '>') {
-			if (line-1>=y) {
+			if (line-1>=(y>=0?y:0) && (line-y <= tb_height()-2)) {
 				char buf[32];
 				snprintf(buf, sizeof(buf), "[%d]", links+1);
 				tb_print(x+2, line-1-y, TB_BLUE, TB_DEFAULT, buf);
@@ -117,6 +127,11 @@ int gmi_render(char* data, size_t len, int y) {
 			c += 2;
 			for (; data[c]==' '; c++) ;
 			for (; data[c]!=' '; c++) ;
+			for (; data[c]==' '; c++) ;
+			x+=3;
+			if ((links+1)/10) x--;
+			if ((links+1)/100) x--;
+			if ((links+1)/1000) x--;
 			links++;
 		}
 		if (data[c] == '\n' || data[c] == ' ' || x+4 >= tb_width()) {
@@ -148,6 +163,7 @@ int gmi_render(char* data, size_t len, int y) {
 }
 
 struct tls_config* config;
+#include <time.h>
 int gmi_init() {
 	if (tls_init()) {
 		printf("Failed to initialize TLS\n");
@@ -162,6 +178,10 @@ int gmi_init() {
 	ctx = NULL;
 	bzero(gmi_error, sizeof(gmi_error));
 	bzero(gmi_history, sizeof(gmi_history));
+	gmi_data = NULL;
+	gmi_links = NULL;
+	gmi_links_count = 0;
+	gmi_links_len = 0;
 	
 	return 0;
 }
@@ -254,26 +274,106 @@ int gmi_request(const char* url) {
 		snprintf(gmi_error, sizeof(gmi_error), "Failed to configure TLS");
 		return -1;
 	}
-	if (tls_connect(ctx, gmi_host, "1965")) {
+
+	// Manually create socket to set a timeout
+	
+	struct addrinfo hints, *result;
+	memset (&hints, 0, sizeof (hints));
+	hints.ai_family = PF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags |= AI_CANONNAME;
+	if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
+		snprintf(gmi_error, sizeof(gmi_error), "Unknown domain name: %s", gmi_host);
+		return -1;
+	}
+
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	struct timeval tv;
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+	int value = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+	struct sockaddr* addr;
+	if (result->ai_family == AF_INET) {
+		addr4.sin_addr = ((struct sockaddr_in*) result->ai_addr)->sin_addr;
+		addr4.sin_family = AF_INET;
+		addr4.sin_port = htons(1965);
+		addr = (struct sockaddr*)&addr4;
+	}
+	else if (result->ai_family == AF_INET6) {
+		addr6.sin6_addr = ((struct sockaddr_in6*) result->ai_addr)->sin6_addr;
+		addr6.sin6_family = AF_INET6;
+		addr6.sin6_port = htons(1965);
+		addr = (struct sockaddr*)&addr6;
+	}
+	freeaddrinfo(result);
+	
+	if (connect(sockfd, addr, (result->ai_family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
+		snprintf(gmi_error, sizeof(gmi_error), "Connection to %s timed out", gmi_host);
+		return -1;
+	}
+	// ---------
+
+	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
+	//if (tls_connect(ctx, gmi_host, "1965")) {
 		snprintf(gmi_error, sizeof(gmi_error), "Unable to connect to: %s", gmi_host);
+		return -1;
+	}
+	if (tls_handshake(ctx)) {
+		snprintf(gmi_error, sizeof(gmi_error), "Failed to handshake: %s", gmi_host);
 		return -1;
 	}
 	char urlbuf[MAX_URL];
 	strncpy(urlbuf, gmi_url, MAX_URL);
-	strncat(urlbuf, "\r\n", MAX_URL-1);
+	size_t len = strnlen(urlbuf, MAX_URL)+2;
+	strncat(urlbuf, "\r\n", MAX_URL-len);
+	char* ptr = urlbuf;
+	while (len) {
+		size_t ret;
+
+		ret = tls_write(ctx, ptr, len);
+		if (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT)
+			continue;
+		if (ret == -1) {
+			snprintf(gmi_error, sizeof(gmi_error), "Failed to send request: %s", gmi_host);
+			return -1;
+		}
+		ptr += ret;
+		len -= ret;	
+	}
+	/*
 	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
 		snprintf(gmi_error, sizeof(gmi_error), "Failed to send data to: %s", gmi_host);
 		return -2;
-	}
+	}*/
 	char buf[1024];
-	int recv = -2;
-	while (recv==-2)
+	int recv = -2;//-2;
+	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT) // -2
 		recv = tls_read(ctx, buf, sizeof(buf));
+	/*
+	len = 16;//sizeof(buf);
+	ptr = buf;
+	while (len > 0) {
+		printf("testing2\n");
+		recv = tls_read(ctx, ptr, len);
+		printf("testing\n");
+		if (recv == TLS_WANT_POLLIN || recv == TLS_WANT_POLLOUT)
+			continue;
+		if (recv == -1) {
+			snprintf(gmi_error, sizeof(gmi_error), "Failed to receive request: %s", gmi_host);
+			return -1;
+		}
+		ptr += recv ;
+		len -= recv;
+	}*/
 	if (recv < 2) {
 		snprintf(gmi_error, sizeof(gmi_error), "[%d] Invalid data to from: %s", recv, gmi_host);
 		return -1;
 	}
-	char* ptr = strchr(buf, ' ');
+	ptr = strchr(buf, ' ');
 	if (!ptr) {
 		snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
 		return -1;
@@ -286,6 +386,8 @@ int gmi_request(const char* url) {
 		ptr++;
 		strncpy(gmi_input, ptr, sizeof(gmi_input));
 		ptr = strchr(gmi_input, '\n');
+		if (ptr) *ptr = '\0';
+		ptr = strchr(gmi_input, '\r');
 		if (ptr) *ptr = '\0';
 	case 20:
 		break;
@@ -344,6 +446,8 @@ int gmi_request(const char* url) {
 	strncpy(gmi_data, buf, recv);
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
+		if (recv == TLS_WANT_POLLIN || recv == TLS_WANT_POLLOUT)
+			continue;
 		if (bytes == -1) {
 			snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
 			return -1;
@@ -352,6 +456,12 @@ int gmi_request(const char* url) {
 		strncpy(&gmi_data[recv], buf, bytes);
 		recv += bytes;
 		if (bytes == 0) break;
+	}
+	if (ctx) {
+		close(sockfd);
+		tls_close(ctx);
+		tls_free(ctx);
+		ctx = NULL;
 	}
 	return recv;
 }

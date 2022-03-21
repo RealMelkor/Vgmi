@@ -27,6 +27,7 @@ int main(int argc, char* argv[]) {
 		printf("error %s\n", gmi_error);
 		return 0;
 	}
+	//printf("%s\n", gmi_data);
 	gmi_load(gmi_data, r);
 	tb_init();
 	struct tb_event ev;
@@ -35,12 +36,9 @@ int main(int argc, char* argv[]) {
 	int ret = 0;
 	int posy = -1;
 	// vim
-	int vim_shift = 0;
 	int vim_g = 0;
 	char vim_counter[8];
 	bzero(vim_counter, sizeof(vim_counter));
-	//int vim_counter = 0;
-	//int vim_power = 0;
 
 	goto display;
 	while ((ret = tb_poll_event(&ev)) == TB_OK || ret == -14) {
@@ -50,9 +48,6 @@ int main(int argc, char* argv[]) {
 		if (ev.type == TB_EVENT_RESIZE) goto display;
 		if (ev.type != TB_EVENT_KEY) continue;
 
-		/*if (!input_mode && ev.key == TB_) {
-			bzero(vim_counter, sizeof(vim_counter));
-		}*/
 		if (!input_mode && ev.key == TB_KEY_ESC) {
 			bzero(vim_counter, sizeof(vim_counter));
 			vim_g = 0;
@@ -68,7 +63,13 @@ int main(int argc, char* argv[]) {
 			if (i>((gmi_code==10||gmi_code==11)?0:1)) input[i-1] = '\0';
 		}
 		if (!input_mode && ev.key == TB_KEY_ENTER) {
-			if (posy+tb_height()-2<gmi_lines) posy++;
+			int counter = atoi(vim_counter);
+			if (!counter) counter++;
+			posy += counter;
+			bzero(vim_counter, sizeof(vim_counter));
+			if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+			vim_g = 0;
+			goto display;
 		}
 		if (input_mode && ev.key == TB_KEY_ENTER) {
 			input_mode = 0;
@@ -80,11 +81,31 @@ int main(int argc, char* argv[]) {
 				else {
 					r = bytes;
 					posy = -1;
+					gmi_load(gmi_data, bytes);
 				}
 				input[0] = '\0';
 				goto display;
 			}
 			if (input[1] == 'q' && input[2] == '\0') break;
+			if (input[1] == 'o' && input[2] == ' ') {
+				char urlbuf[MAX_URL];
+				strncpy(urlbuf, &input[3], sizeof(urlbuf));
+				input[0] = '\0';
+				int bytes = gmi_request(urlbuf);
+				if (bytes < 1) {
+					input_error = 1;
+					input_mode = 0;
+				}
+				else {
+					r = bytes;
+					posy = -1;
+					gmi_load(gmi_data, bytes);
+				}
+				if (gmi_code == 11 || gmi_code == 10) {
+					input_mode = 1;
+				}
+				goto display;
+			}
 			else if (input[1] == '\0') input[0] = '\0';
 			else if (atoi(&input[1]) || (input[1] == '0' && input[2] == '\0')) {
 				int bytes = gmi_goto(atoi(&input[1]));
@@ -107,11 +128,33 @@ int main(int argc, char* argv[]) {
 			goto display;
 		}
 
+		if (ev.key == TB_KEY_PGUP) {
+			int counter = atoi(vim_counter);
+			if (!counter) counter++;
+			posy -= counter * tb_height();
+			bzero(vim_counter, sizeof(vim_counter));
+			if (posy < -1) posy = -1;
+			vim_g = 0;
+			goto display;
+		}
+		if (ev.key == TB_KEY_PGDN) {
+			int counter = atoi(vim_counter);
+			if (!counter) counter++;
+			posy += counter * tb_height();
+			bzero(vim_counter, sizeof(vim_counter));
+			if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+			vim_g = 0;
+			goto display;
+		}	
 		switch (ev.ch) {
 		case ':':
 			input_mode = 1;
 			input[0] = ':';
 			input[1] = '\0';
+			break;
+		case 'r': // Reload
+			r = gmi_request(gmi_url);
+			gmi_load(gmi_data, r);
 			break;
 		case 'b': // Back
 			break;
@@ -161,14 +204,17 @@ int main(int argc, char* argv[]) {
 display:
 		tb_clear();
 
-		if (ev.type == TB_EVENT_RESIZE) {
-			int lines = gmi_render(gmi_data, r, posy);
-			posy -= gmi_lines - lines;
-			tb_clear();
+		if (gmi_code == 20) {
+			if (ev.type == TB_EVENT_RESIZE) {
+				int lines = gmi_render(gmi_data, r, posy);
+				posy -= gmi_lines - lines;
+				tb_clear();
+			}
+			gmi_lines = gmi_render(gmi_data, r, posy);
+		} else if (gmi_error[0] != '\0') {
+			tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", gmi_error);
 		}
-		gmi_lines = gmi_render(gmi_data, r, posy);
-		//tb_printf(tb_width()-3, 0, TB_DEFAULT, TB_DEFAULT, "%d", gmi_code); 
-		//tb_printf(0, 0, TB_DEFAULT, TB_DEFAULT, "%s", gmi_data); 
+		//tb_print(0, 0, TB_DEFAULT, TB_DEFAULT, gmi_data);
 
 		// current url
 		tb_colorline(0, tb_height()-2, TB_WHITE);
@@ -188,6 +234,7 @@ display:
 			for (; input[i] && i < sizeof(input); i++) input_buf[i] = '*';
 			input_buf[i] = '\0';
 			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", gmi_input, input_buf);
+			//tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", gmi_input);
 		}
 		else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", input);
 
