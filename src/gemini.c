@@ -1,5 +1,4 @@
 #include "gemini.h"
-#include <asm-generic/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -8,8 +7,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <tls.h>
 #include <poll.h>
 #include <fcntl.h>
@@ -30,7 +27,7 @@ char* gmi_data = NULL;
 int gmi_lines = 0;
 char gmi_error[256];
 char gmi_input[256];
-char* gmi_history[1024]; // linked list
+struct gmi_link* gmi_history = NULL;
 int gmi_code = 0;
 
 int gmi_goto(int id) {
@@ -39,18 +36,40 @@ int gmi_goto(int id) {
 		snprintf(gmi_error, sizeof(gmi_error), "Invalid link number, %d/%ld", id, gmi_links_count);
 		return -1;
 	}
-	if (gmi_links[id][0] == '/') {
+	return gmi_nextlink(gmi_url, sizeof(gmi_url), gmi_links[id], sizeof(gmi_links[id]));
+}
+
+int gmi_nextlink(char* url, size_t url_len, char* link, size_t link_len) {
+	if (gmi_history && gmi_history->next)
+		gmi_cleanforward();
+	if (link[0] == '/' && link[1] == '/') {
+		int ret = gmi_request(&link[2]);
+		if (ret < 1) return ret;
+		gmi_load(gmi_data, ret);
+		return ret;
+	} else if (link[0] == '/') {
 		char* ptr = strchr(&gmi_url[GMI], '/');
 		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
 		strncpy(urlbuf, gmi_url, sizeof(urlbuf));
-		strncat(urlbuf, gmi_links[id], sizeof(urlbuf)-strlen(gmi_links[id])-1);
+		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
 		int ret = gmi_request(urlbuf);
 		if (ret < 1) return ret;
 		gmi_load(gmi_data, ret);
 		return ret;
+	} else if (strstr(link, "gemini://")) {
+		int ret = gmi_request(link);
+		if (ret < 1) return ret;
+		gmi_load(gmi_data, ret);
+		return ret;
 	} else {
-		int ret = gmi_request(gmi_links[id]);
+		char* ptr = strchr(&gmi_url[GMI], '/');
+		if (ptr) *ptr = '\0';
+		char urlbuf[MAX_URL];
+		strncpy(urlbuf, gmi_url, sizeof(urlbuf));
+		strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
+		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
+		int ret = gmi_request(urlbuf);
 		if (ret < 1) return ret;
 		gmi_load(gmi_data, ret);
 		return ret;
@@ -68,7 +87,7 @@ void gmi_load(char* data, size_t len) {
 		if (data[c] == '=' && data[c+1] == '>') {
 			c += 2;
 			for (; data[c]==' '; c++) ;
-			char* url = &data[c];
+			char* url = (char*)&data[c];
 			for (; data[c]!=' '; c++) ;
 			data[c] = '\0';
 			if (gmi_links_count >= gmi_links_len) {
@@ -99,7 +118,6 @@ int gmi_render(char* data, size_t len, int y) {
 	int links = 0;
 	uintattr_t color = TB_DEFAULT;
 	for (int c = 0; c < len; c++) {
-		if (x == 0 && data[c] == ' ' && c+1 < len) c++;
 		if (data[c] == '\t') {
 			x+=4;
 			continue;
@@ -155,11 +173,36 @@ int gmi_render(char* data, size_t len, int y) {
 				continue;
 			}
 		}
+		uint32_t ch = 0;
+		c += tb_utf8_char_to_unicode(&ch, &data[c])-1;
+
 		if (line-1>=(y>=0?y:0) && (line-y <= tb_height()-2)) 
-			tb_set_cell(x+2, line-1-y, data[c], color, TB_DEFAULT);
+			tb_set_cell(x+2, line-1-y, ch, color, TB_DEFAULT);
 		x++;
 	}
 	return line;
+}
+
+void gmi_cleanforward() {
+	struct gmi_link* ptr = gmi_history;
+	while (ptr && ptr->next) {
+		struct gmi_link* next = ptr->next;
+		if (gmi_history != ptr)
+			free(ptr);
+		if (!next) break;
+		ptr = next;
+	}
+	gmi_history->next = NULL;
+}
+
+void gmi_freehistory() {
+	struct gmi_link* ptr = gmi_history->prev;
+	free(gmi_history);
+	while ((ptr = ptr->prev)) {
+		gmi_history = ptr;
+		ptr = ptr->prev;
+		free(gmi_history);
+	}
 }
 
 struct tls_config* config;
@@ -174,10 +217,14 @@ int gmi_init() {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
+	if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
+		printf("Failed to load keypair\n");
+		return -1;
+	}
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
 	bzero(gmi_error, sizeof(gmi_error));
-	bzero(gmi_history, sizeof(gmi_history));
+	gmi_history = NULL;
 	gmi_data = NULL;
 	gmi_links = NULL;
 	gmi_links_count = 0;
@@ -229,7 +276,6 @@ skip_proto:;
 		host[ptr-proto_ptr] = *ptr;
 	}
 	host[ptr-proto_ptr] = '\0';
-//skip_url:;
 	if (url_len < 16) return -1; // buffer too small
 	switch (proto) {
 	case PROTO_GEMINI:
@@ -250,13 +296,12 @@ skip_proto:;
 	strncat(urlbuf, host, url_len);
 	if (host_ptr)
 		strncat(urlbuf, host_ptr, url_len);
-	if (urlbuf[strnlen(urlbuf, url_len) - 1] == '/')
-		urlbuf[strnlen(urlbuf, url_len) - 1] = '\0';
 	return proto;
 }
 
 int gmi_request(const char* url) {
-	
+	int recv = TLS_WANT_POLLIN;
+	int sockfd = -1;
 	if (gmi_parseurl(url, gmi_host, sizeof(gmi_host), gmi_url, sizeof(gmi_url)) < 0) {
 		snprintf(gmi_error, sizeof(gmi_error), "Invalid url: %s", url);
 		return -1;
@@ -276,7 +321,6 @@ int gmi_request(const char* url) {
 	}
 
 	// Manually create socket to set a timeout
-	
 	struct addrinfo hints, *result;
 	memset (&hints, 0, sizeof (hints));
 	hints.ai_family = PF_UNSPEC;
@@ -289,9 +333,9 @@ int gmi_request(const char* url) {
 
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	struct timeval tv;
-	tv.tv_sec = 2;
+	tv.tv_sec = 3;
 	tv.tv_usec = 0;
 	int value = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
@@ -313,18 +357,17 @@ int gmi_request(const char* url) {
 	
 	if (connect(sockfd, addr, (result->ai_family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 		snprintf(gmi_error, sizeof(gmi_error), "Connection to %s timed out", gmi_host);
+		close(sockfd);
 		return -1;
 	}
-	// ---------
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
-	//if (tls_connect(ctx, gmi_host, "1965")) {
 		snprintf(gmi_error, sizeof(gmi_error), "Unable to connect to: %s", gmi_host);
-		return -1;
+		goto request_error;
 	}
 	if (tls_handshake(ctx)) {
 		snprintf(gmi_error, sizeof(gmi_error), "Failed to handshake: %s", gmi_host);
-		return -1;
+		goto request_error;
 	}
 	char urlbuf[MAX_URL];
 	strncpy(urlbuf, gmi_url, MAX_URL);
@@ -339,44 +382,26 @@ int gmi_request(const char* url) {
 			continue;
 		if (ret == -1) {
 			snprintf(gmi_error, sizeof(gmi_error), "Failed to send request: %s", gmi_host);
-			return -1;
+			goto request_error;
 		}
 		ptr += ret;
 		len -= ret;	
 	}
-	/*
 	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
 		snprintf(gmi_error, sizeof(gmi_error), "Failed to send data to: %s", gmi_host);
-		return -2;
-	}*/
+		goto request_error;
+	}
 	char buf[1024];
-	int recv = -2;//-2;
-	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT) // -2
+	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT)
 		recv = tls_read(ctx, buf, sizeof(buf));
-	/*
-	len = 16;//sizeof(buf);
-	ptr = buf;
-	while (len > 0) {
-		printf("testing2\n");
-		recv = tls_read(ctx, ptr, len);
-		printf("testing\n");
-		if (recv == TLS_WANT_POLLIN || recv == TLS_WANT_POLLOUT)
-			continue;
-		if (recv == -1) {
-			snprintf(gmi_error, sizeof(gmi_error), "Failed to receive request: %s", gmi_host);
-			return -1;
-		}
-		ptr += recv ;
-		len -= recv;
-	}*/
-	if (recv < 2) {
-		snprintf(gmi_error, sizeof(gmi_error), "[%d] Invalid data to from: %s", recv, gmi_host);
-		return -1;
+	if (recv <= 0) {
+		snprintf(gmi_error, sizeof(gmi_error), "[%d] Invalid data from: %s", recv, gmi_host);
+		goto request_error;
 	}
 	ptr = strchr(buf, ' ');
 	if (!ptr) {
 		snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
-		return -1;
+		goto request_error;
 	}
 	*ptr = '\0';
 	gmi_code = atoi(buf);
@@ -389,79 +414,110 @@ int gmi_request(const char* url) {
 		if (ptr) *ptr = '\0';
 		ptr = strchr(gmi_input, '\r');
 		if (ptr) *ptr = '\0';
+		goto exit;
 	case 20:
 		break;
 	case 30:
 		snprintf(gmi_error, sizeof(gmi_error), "Redirect temporary");
-		return -1;
+
+		break;
 	case 31:
 		snprintf(gmi_error, sizeof(gmi_error), "Redirect permanent");
-		return -1;
+		break;
 	case 40:
 		snprintf(gmi_error, sizeof(gmi_error), "Temporary failure");
-		return -1;
+		goto request_error;
 	case 41:
 		snprintf(gmi_error, sizeof(gmi_error), "Server unavailable");
-		return -1;
+		goto request_error;
 	case 42:
 		snprintf(gmi_error, sizeof(gmi_error), "CGI error");
-		return -1;
+		goto request_error;
 	case 43:
 		snprintf(gmi_error, sizeof(gmi_error), "Proxy error");
-		return -1;
+		goto request_error;
 	case 44:
 		snprintf(gmi_error, sizeof(gmi_error), "Slow down: server above rate limit");
-		return -1;
+		goto request_error;
 	case 50:
 		snprintf(gmi_error, sizeof(gmi_error), "Permanent failure");
-		return -1;
+		goto request_error;
 	case 51:
 		snprintf(gmi_error, sizeof(gmi_error), "Not found");
-		return -1;
+		goto request_error;
 	case 52:
 		snprintf(gmi_error, sizeof(gmi_error), "Resource gone");
-		return -1;
+		goto request_error;
 	case 53:
 		snprintf(gmi_error, sizeof(gmi_error), "Proxy request refused");
-		return -1;
+		goto request_error;
 	case 59:
 		snprintf(gmi_error, sizeof(gmi_error), "Bad request");
-		return -1;
+		goto request_error;
 	case 60:
 		snprintf(gmi_error, sizeof(gmi_error), "Client certificate required");
-		return -1;
+		goto request_error;
 	case 61:
 		snprintf(gmi_error, sizeof(gmi_error), "Client not authorised");
-		return -1;
+		goto request_error;
 	case 62:
 		snprintf(gmi_error, sizeof(gmi_error), "Client certificate not valid");
-		return -1;
+		goto request_error;
 	default:
 		snprintf(gmi_error, sizeof(gmi_error), "Unknown status code: %d", gmi_code);
-		return -1;
+		goto request_error;
 	}
 	*ptr = ' ';
 	if (!gmi_data) free(gmi_data);
-	gmi_data = malloc(recv);
-	strncpy(gmi_data, buf, recv);
+	gmi_data = malloc(recv+1);
+	memcpy(gmi_data, buf, recv);
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
+		if (bytes == 0) break;
 		if (recv == TLS_WANT_POLLIN || recv == TLS_WANT_POLLOUT)
 			continue;
 		if (bytes == -1) {
 			snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
-			return -1;
+			goto request_error;
 		}
-		gmi_data = realloc(gmi_data, recv+bytes);
-		strncpy(&gmi_data[recv], buf, bytes);
+		gmi_data = realloc(gmi_data, recv+bytes+1);
+		memcpy(&gmi_data[recv], buf, bytes);
 		recv += bytes;
-		if (bytes == 0) break;
 	}
-	if (ctx) {
+exit:
+	if (!gmi_history || (gmi_history && !gmi_history->next)) {
+		struct gmi_link* link = malloc(sizeof(struct gmi_link));
+		link->next = NULL;
+		link->prev = gmi_history;
+		strncpy(link->url, gmi_url, sizeof(link->url));
+		gmi_history = link;
+		if (link->prev)
+			link->prev->next = gmi_history;
+	}
+	if (0) {
+request_error:
+		recv = -1;
+	}
+	if (sockfd != -1)
 		close(sockfd);
+	if (ctx) {
 		tls_close(ctx);
 		tls_free(ctx);
 		ctx = NULL;
+	}
+	if (gmi_code == 11 || gmi_code == 10) {
+		return gmi_data?strlen(gmi_data):0;
+	}
+	if (gmi_code == 31 || gmi_code == 30) {
+		char* ptr = strchr(gmi_data, ' ');
+		if (!ptr) return -1;
+		char* ln = strchr(ptr+1, ' ');
+		if (ln) *ln = '\0';
+		ln = strchr(ptr, '\n');
+		if (ln) *ln = '\0';
+		ln = strchr(ptr, '\r');
+		if (ln) *ln = '\0';
+		return gmi_nextlink(gmi_url, sizeof(gmi_url), ptr+1, strlen(ptr+1));//gmi_request(urlbuf);
 	}
 	return recv;
 }
