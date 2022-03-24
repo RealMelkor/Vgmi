@@ -1,15 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <unistd.h>
+#include "gemini.h"
 #define TB_IMPL
 #include <termbox.h>
-#include <stdarg.h>
-#include <math.h>
-#include "gemini.h"
 
 int input_mode = 0;
+int input_cursor = 0;
 int input_error = 0;
 void tb_colorline(int x, int y, uintattr_t color) {
 	for (int i=x; i<tb_width(); i++)
@@ -21,13 +15,31 @@ int main(int argc, char* argv[]) {
 	int r = 0;
 	if (argc < 2)
 		r = gmi_request("gemini://gemini.rmf-dev.com");
-	else
+	else if (argv[1][0] == '/' || (argv[1][0] == '.' && argv[1][1] == '/')) {
+		FILE* f = fopen(argv[1], "rb");
+		if (!f) {
+			printf("Failed to open %s\n", argv[1]);
+			return -1;
+		}
+		fseek(f, 0, SEEK_END);
+		r = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		gmi_data = malloc(r);
+		if (r != fread(gmi_data, 1, r, f)) {
+			fclose(f);
+			free(gmi_data);
+			return -1;
+		}
+		fclose(f);
+		gmi_code = 20;
+		snprintf(gmi_url, sizeof(gmi_url), "file://%s/", argv[1]);
+	} else
 		r = gmi_request(argv[1]);
-	if (r<1) {
+	if (r<0) {
 		printf("error %s\n", gmi_error);
-		return 0;
+		return -1;
 	}
-	//printf("%s\n", gmi_data);
+
 	gmi_load(gmi_data, r);
 	tb_init();
 	struct tb_event ev;
@@ -43,6 +55,7 @@ int main(int argc, char* argv[]) {
 	goto display;
 	while ((ret = tb_poll_event(&ev)) == TB_OK || ret == -14) {
 		if (gmi_code == 11 || gmi_code == 10) {
+			if (!input_mode) input_cursor = 0;
 			input_mode = 1;
 		}
 		if (ev.type == TB_EVENT_RESIZE) goto display;
@@ -54,13 +67,24 @@ int main(int argc, char* argv[]) {
 		}
 		if (input_mode && ev.key == TB_KEY_ESC) {
 			input_mode = 0;
-			if (gmi_code == 11 || gmi_code == 10)
+			input_cursor = 0;
+			if (gmi_code == 11 || gmi_code == 10) {
 				gmi_code = 0;
+				if (gmi_history->prev) {
+					gmi_history = gmi_history->prev;
+					r = gmi_request(gmi_history->url);
+					if (r < 0) gmi_load(gmi_data, r);
+				}
+			}
 			input[0] = '\0';
 		}
 		if (input_mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
-			int i = strnlen(input, sizeof(input));
-			if (i>((gmi_code==10||gmi_code==11)?0:1)) input[i-1] = '\0';
+			int i = input_cursor;
+			if (i>((gmi_code==10||gmi_code==11)?0:1)) {
+				strncpy(&input[i-1], &input[i], sizeof(input)-i);
+				input_cursor--;
+			}
+			goto display;
 		}
 		if (!input_mode && ev.key == TB_KEY_ENTER) {
 			int counter = atoi(vim_counter);
@@ -73,9 +97,13 @@ int main(int argc, char* argv[]) {
 		}
 		if (input_mode && ev.key == TB_KEY_ENTER) {
 			input_mode = 0;
+			tb_hide_cursor();
 			if (gmi_code == 10 || gmi_code == 11) {
 				char urlbuf[MAX_URL];
-				snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", gmi_url, input);
+				if (gmi_url[strnlen(gmi_url, sizeof(gmi_url)-1)-1] == '/')
+					snprintf(urlbuf, sizeof(urlbuf), "%s?%s", gmi_url, input);
+				else
+					snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", gmi_url, input);
 				int bytes = gmi_request(urlbuf);
 				if (bytes < 1) input_error = 1;
 				else {
@@ -91,6 +119,7 @@ int main(int argc, char* argv[]) {
 				char urlbuf[MAX_URL];
 				strncpy(urlbuf, &input[3], sizeof(urlbuf));
 				input[0] = '\0';
+				gmi_cleanforward();
 				int bytes = gmi_request(urlbuf);
 				if (bytes < 1) {
 					input_error = 1;
@@ -121,12 +150,24 @@ int main(int argc, char* argv[]) {
 				snprintf(gmi_error, sizeof(gmi_error), "Unknown input: %s", &input[1]);
 			}
 		}
-		if (input_mode) {
-			int i = strnlen(input, sizeof(input));
-			input[i] = ev.ch;
-			input[i+1] = '\0';
+		if (input_mode && ev.key == TB_KEY_ARROW_LEFT) {
+			if (input_cursor>1)
+				input_cursor--;	
 			goto display;
 		}
+		if (input_mode && ev.key == TB_KEY_ARROW_RIGHT) {
+			if (input[input_cursor])
+				input_cursor++;	
+			goto display;
+		}
+		if (input_mode && ev.ch) {
+			int i = input_cursor;
+			strncpy(&input[i+1], &input[i], sizeof(input) - i -1);
+			input[i] = ev.ch;
+			input_cursor = i + 1;
+			goto display;
+		} else
+			tb_hide_cursor();
 
 		if (ev.key == TB_KEY_PGUP) {
 			int counter = atoi(vim_counter);
@@ -145,20 +186,34 @@ int main(int argc, char* argv[]) {
 			if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
 			vim_g = 0;
 			goto display;
-		}	
+		}
 		switch (ev.ch) {
 		case ':':
 			input_mode = 1;
+			input_cursor = 1;
 			input[0] = ':';
 			input[1] = '\0';
 			break;
 		case 'r': // Reload
-			r = gmi_request(gmi_url);
+			r = gmi_request(gmi_history->url);
 			gmi_load(gmi_data, r);
 			break;
-		case 'b': // Back
+		case 'h': // Back
+			if (gmi_code == 20 || gmi_code == 10 || gmi_code == 11) {
+				if (!gmi_history->prev) break;
+				gmi_history = gmi_history->prev;
+			} else 
+				if (!gmi_history) break;
+			r = gmi_request(gmi_history->url);
+			if (r < 0) break;
+			gmi_load(gmi_data, r);
 			break;
-		case 'e': // Forward
+		case 'l': // Forward
+			if (!gmi_history->next) break;
+			r = gmi_request(gmi_history->next->url);
+			if (r < 0) break;
+			gmi_history = gmi_history->next;
+			gmi_load(gmi_data, r);
 			break;
 		case 'k': // UP
 			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
@@ -177,10 +232,6 @@ int main(int argc, char* argv[]) {
 			}
 			else if (posy+tb_height()-2<gmi_lines) posy++;
 			vim_g = 0;
-			break;
-		case 'h': // LEFT
-			break;
-		case 'l': // RIGHT
 			break;
 		case 'g': // Start of file
 			if (vim_g) {
@@ -203,18 +254,24 @@ int main(int argc, char* argv[]) {
 		}
 display:
 		tb_clear();
+		if (input_mode) {
+			if (gmi_code == 11 || gmi_code == 10)
+				tb_set_cursor(input_cursor+strnlen(gmi_input, sizeof(gmi_input))+2, tb_height()-1);
+			else
+				tb_set_cursor(input_cursor, tb_height()-1);
+		}
 
-		if (gmi_code == 20) {
+		if (gmi_code == 20 || gmi_code == 10 || gmi_code == 11) {
 			if (ev.type == TB_EVENT_RESIZE) {
 				int lines = gmi_render(gmi_data, r, posy);
 				posy -= gmi_lines - lines;
 				tb_clear();
 			}
+			tb_clear();
 			gmi_lines = gmi_render(gmi_data, r, posy);
 		} else if (gmi_error[0] != '\0') {
 			tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", gmi_error);
 		}
-		//tb_print(0, 0, TB_DEFAULT, TB_DEFAULT, gmi_data);
 
 		// current url
 		tb_colorline(0, tb_height()-2, TB_WHITE);
@@ -222,6 +279,7 @@ display:
 
 		// input
 		if (input_error) {
+			tb_hide_cursor();
 			tb_colorline(0, tb_height()-1, TB_RED);
 			tb_printf(0, tb_height()-1, TB_WHITE, TB_RED, gmi_error);
 			input[0] = '\0';
@@ -234,7 +292,6 @@ display:
 			for (; input[i] && i < sizeof(input); i++) input_buf[i] = '*';
 			input_buf[i] = '\0';
 			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", gmi_input, input_buf);
-			//tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", gmi_input);
 		}
 		else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", input);
 
