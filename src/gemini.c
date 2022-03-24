@@ -353,9 +353,10 @@ int gmi_request(const char* url) {
 		addr6.sin6_port = htons(1965);
 		addr = (struct sockaddr*)&addr6;
 	}
+	int family = result->ai_family;
 	freeaddrinfo(result);
 	
-	if (connect(sockfd, addr, (result->ai_family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
+	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 		snprintf(gmi_error, sizeof(gmi_error), "Connection to %s timed out", gmi_host);
 		close(sockfd);
 		return -1;
@@ -392,7 +393,7 @@ int gmi_request(const char* url) {
 		goto request_error;
 	}
 	char buf[1024];
-	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT)
+	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT || recv == 0)
 		recv = tls_read(ctx, buf, sizeof(buf));
 	if (recv <= 0) {
 		snprintf(gmi_error, sizeof(gmi_error), "[%d] Invalid data from: %s", recv, gmi_host);
