@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	int r = 0;
 	if (argc < 2)
 		r = gmi_request("gemini://gemini.rmf-dev.com");
-	else if (argv[1][0] == '/' || (argv[1][0] == '.' && argv[1][1] == '/')) {
+	else if (argv[1][0] == '/' || argv[1][0] == '.') {
 		FILE* f = fopen(argv[1], "rb");
 		if (!f) {
 			printf("Failed to open %s\n", argv[1]);
@@ -197,6 +197,10 @@ int main(int argc, char* argv[]) {
 		case 'r': // Reload
 			r = gmi_request(gmi_history->url);
 			gmi_load(gmi_data, r);
+			struct gmi_link* prev = gmi_history->prev;
+			prev->next = NULL;
+			free(gmi_history);
+			gmi_history = prev;
 			break;
 		case 'h': // Back
 			if (gmi_code == 20 || gmi_code == 10 || gmi_code == 11) {
