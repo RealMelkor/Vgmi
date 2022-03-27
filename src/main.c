@@ -1,4 +1,7 @@
+/* See LICENSE file for copyright and license details. */
 #include "gemini.h"
+#include <stdio.h>
+#include <string.h>
 #define TB_IMPL
 #include <termbox.h>
 
@@ -43,6 +46,9 @@ int main(int argc, char* argv[]) {
 	gmi_load(gmi_data, r);
 	tb_init();
 	struct tb_event ev;
+	char link_url[1024];
+	bzero(link_url, sizeof(link_url));
+	int link_id = 0;
 	char input[1024];
 	bzero(input, sizeof(input));
 	int ret = 0;
@@ -86,12 +92,30 @@ int main(int argc, char* argv[]) {
 			}
 			goto display;
 		}
+		if (!input_mode && ev.key == TB_KEY_TAB) {
+			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
+				link_id = atoi(vim_counter);
+				bzero(vim_counter, sizeof(vim_counter));
+				if (link_id > gmi_links_count) {
+					snprintf(gmi_error, sizeof(gmi_error), "Invalid link number");
+					input_error = 1;
+				}
+				else strncpy(link_url, gmi_links[link_id - 1], sizeof(link_url));
+			}
+			else if (link_id) {
+				gmi_goto(link_id);
+				link_id = 0;
+			}
+			vim_g = 0;
+			goto display;
+		}
 		if (!input_mode && ev.key == TB_KEY_ENTER) {
-			int counter = atoi(vim_counter);
-			if (!counter) counter++;
-			posy += counter;
-			bzero(vim_counter, sizeof(vim_counter));
-			if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
+				posy += atoi(vim_counter);
+				bzero(vim_counter, sizeof(vim_counter));
+				if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+			}
+			else if (posy+tb_height()-2<gmi_lines) posy++;
 			vim_g = 0;
 			goto display;
 		}
@@ -99,11 +123,13 @@ int main(int argc, char* argv[]) {
 			input_mode = 0;
 			tb_hide_cursor();
 			if (gmi_code == 10 || gmi_code == 11) {
+				// --------------------------------
 				char urlbuf[MAX_URL];
-				if (gmi_url[strnlen(gmi_url, sizeof(gmi_url)-1)-1] == '/')
-					snprintf(urlbuf, sizeof(urlbuf), "%s?%s", gmi_url, input);
-				else
+				char* start = strstr(gmi_url, "gemini://");
+				if (!(start?strchr(&start[GMI], '/'):strchr(gmi_url, '/')))
 					snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", gmi_url, input);
+				else
+					snprintf(urlbuf, sizeof(urlbuf), "%s?%s", gmi_url, input);
 				int bytes = gmi_request(urlbuf);
 				if (bytes < 1) input_error = 1;
 				else {
@@ -112,6 +138,7 @@ int main(int argc, char* argv[]) {
 					gmi_load(gmi_data, bytes);
 				}
 				input[0] = '\0';
+				// --------------------------------
 				goto display;
 			}
 			if (input[1] == 'q' && input[2] == '\0') break;
@@ -124,6 +151,7 @@ int main(int argc, char* argv[]) {
 				if (bytes < 1) {
 					input_error = 1;
 					input_mode = 0;
+					strncpy(gmi_url, gmi_history->url, sizeof(gmi_url));
 				}
 				else {
 					r = bytes;
@@ -133,6 +161,7 @@ int main(int argc, char* argv[]) {
 				if (gmi_code == 11 || gmi_code == 10) {
 					input_mode = 1;
 				}
+				link_id = 0;
 				goto display;
 			}
 			else if (input[1] == '\0') input[0] = '\0';
@@ -144,6 +173,7 @@ int main(int argc, char* argv[]) {
 					posy = -1;
 				}
 				input[0] = '\0';
+				link_id = 0;
 			}
 			else {
 				input_error = -1;
@@ -160,11 +190,17 @@ int main(int argc, char* argv[]) {
 				input_cursor++;	
 			goto display;
 		}
-		if (input_mode && ev.ch) {
-			int i = input_cursor;
-			strncpy(&input[i+1], &input[i], sizeof(input) - i -1);
-			input[i] = ev.ch;
-			input_cursor = i + 1;
+		int l = strnlen(input, sizeof(input));
+		if (input_mode && ev.ch && l < sizeof(input)) {
+			char c1, c2;
+                        c1 = input[l];
+                        for (int i = l-1; i > input_cursor; i--) {
+                                input[i+1] = input[i];
+                        }
+                        input[input_cursor] = ev.ch;
+                        input_cursor++;
+                        l++;
+                        input[l] = '\0';
 			goto display;
 		} else
 			tb_hide_cursor();
@@ -188,6 +224,11 @@ int main(int argc, char* argv[]) {
 			goto display;
 		}
 		switch (ev.ch) {
+		case 'u':
+			input_mode = 1;
+			snprintf(input, sizeof(input), ":o %s", gmi_url);
+			input_cursor = strnlen(input, sizeof(input));
+			break;
 		case ':':
 			input_mode = 1;
 			input_cursor = 1;
@@ -279,7 +320,33 @@ display:
 
 		// current url
 		tb_colorline(0, tb_height()-2, TB_WHITE);
-		tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s", gmi_url);
+		char urlbuf[MAX_URL];
+		int hide = 0;
+		int posx = 0;
+		for (int i=0; gmi_url[i]; i++) {
+			if (hide && (gmi_url[i] == '/')) {
+				hide = 0;
+			}
+			if (!hide) {
+				urlbuf[posx] = gmi_url[i];
+				posx++;
+			}
+			if (gmi_url[i] == '?') {
+				hide = 1;
+				urlbuf[posx] = '<';
+				urlbuf[posx+1] = '*';
+				urlbuf[posx+2] = '>';
+				posx+=3;
+			}
+		}
+		urlbuf[posx] = '\0';
+		tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s", urlbuf);
+
+		// Show selected link url
+		if (link_id != 0) {
+			int llen = strnlen(link_url, sizeof(link_url));
+			tb_printf(tb_width()-llen-1, tb_height()-2, TB_BLACK, TB_WHITE, "%s", link_url);
+		}
 
 		// input
 		if (input_error) {
