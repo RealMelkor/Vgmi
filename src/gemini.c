@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #include "gemini.h"
 #include <netinet/in.h>
 #include <stdint.h>
@@ -17,7 +18,6 @@
 struct tls_config* config;
 struct tls* ctx;
 
-#define GMI 9
 char** gmi_links = NULL;
 size_t gmi_links_count = 0;
 size_t gmi_links_len = 0;
@@ -475,9 +475,9 @@ int gmi_request(const char* url) {
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
 		if (bytes == 0) break;
-		if (recv == TLS_WANT_POLLIN || recv == TLS_WANT_POLLOUT)
+		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT)
 			continue;
-		if (bytes == -1) {
+		if (bytes < 1) {
 			snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
 			goto request_error;
 		}

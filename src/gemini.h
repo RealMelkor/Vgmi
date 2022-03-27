@@ -1,10 +1,14 @@
+/* See LICENSE file for copyright and license details. */
 #ifndef _GEMINI_H_
 #define _GEMINI_H_
 
 #include <unistd.h>
 #include <stddef.h>
 
+#define GMI 9
 #define MAX_URL 1024
+extern char** gmi_links;
+extern size_t gmi_links_count;
 extern char gmi_url[1024];
 extern char gmi_error[256];
 extern char* gmi_data;
