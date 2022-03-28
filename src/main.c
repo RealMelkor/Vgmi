@@ -48,14 +48,13 @@ int main(int argc, char* argv[]) {
 	struct tb_event ev;
 	char link_url[1024];
 	bzero(link_url, sizeof(link_url));
-	int link_id = 0;
 	char input[1024];
 	bzero(input, sizeof(input));
 	int ret = 0;
 	int posy = -1;
 	// vim
 	int vim_g = 0;
-	char vim_counter[8];
+	char vim_counter[6];
 	bzero(vim_counter, sizeof(vim_counter));
 
 	goto display;
@@ -94,17 +93,19 @@ int main(int argc, char* argv[]) {
 		}
 		if (!input_mode && ev.key == TB_KEY_TAB) {
 			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
-				link_id = atoi(vim_counter);
+				gmi_selected = atoi(vim_counter);
 				bzero(vim_counter, sizeof(vim_counter));
-				if (link_id > gmi_links_count) {
+				if (gmi_selected > gmi_links_count) {
 					snprintf(gmi_error, sizeof(gmi_error), "Invalid link number");
+					gmi_selected = 0;
 					input_error = 1;
 				}
-				else strncpy(link_url, gmi_links[link_id - 1], sizeof(link_url));
+				else strncpy(link_url, gmi_links[gmi_selected - 1], sizeof(link_url));
 			}
-			else if (link_id) {
-				gmi_goto(link_id);
-				link_id = 0;
+			else if (gmi_selected) {
+				int ret = gmi_goto(gmi_selected);
+				if (ret > 0) r = ret;
+				gmi_selected = 0;
 			}
 			vim_g = 0;
 			goto display;
@@ -161,7 +162,7 @@ int main(int argc, char* argv[]) {
 				if (gmi_code == 11 || gmi_code == 10) {
 					input_mode = 1;
 				}
-				link_id = 0;
+				gmi_selected = 0;
 				goto display;
 			}
 			else if (input[1] == '\0') input[0] = '\0';
@@ -173,7 +174,7 @@ int main(int argc, char* argv[]) {
 					posy = -1;
 				}
 				input[0] = '\0';
-				link_id = 0;
+				gmi_selected = 0;
 			}
 			else {
 				input_error = -1;
@@ -343,9 +344,14 @@ display:
 		tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s", urlbuf);
 
 		// Show selected link url
-		if (link_id != 0) {
+		if (gmi_selected != 0) {
 			int llen = strnlen(link_url, sizeof(link_url));
-			tb_printf(tb_width()-llen-1, tb_height()-2, TB_BLACK, TB_WHITE, "%s", link_url);
+			tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE, " => %s ", link_url);
+		}
+
+		int count = atoi(vim_counter);
+		if (count) {
+			tb_printf(tb_width() - 8, tb_height() - 1, TB_DEFAULT, TB_DEFAULT, "%d", count);
 		}
 
 		// input
