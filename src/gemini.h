@@ -9,6 +9,7 @@
 #define MAX_URL 1024
 extern char** gmi_links;
 extern size_t gmi_links_count;
+extern int gmi_selected;
 extern char gmi_url[1024];
 extern char gmi_error[256];
 extern char* gmi_data;

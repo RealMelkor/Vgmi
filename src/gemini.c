@@ -21,6 +21,7 @@ struct tls* ctx;
 char** gmi_links = NULL;
 size_t gmi_links_count = 0;
 size_t gmi_links_len = 0;
+int gmi_selected = 0;
 char gmi_url[MAX_URL];
 char gmi_host[256];
 char* gmi_data = NULL;
@@ -139,7 +140,7 @@ int gmi_render(char* data, size_t len, int y) {
 			if (line-1>=(y>=0?y:0) && (line-y <= tb_height()-2)) {
 				char buf[32];
 				snprintf(buf, sizeof(buf), "[%d]", links+1);
-				tb_print(x+2, line-1-y, TB_BLUE, TB_DEFAULT, buf);
+				tb_print(x+2, line-1-y, links+1 == gmi_selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
 				x += strlen(buf);
 			}
 			c += 2;
@@ -217,10 +218,13 @@ int gmi_init() {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
-	if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
+	/*
+	if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
+	//if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
 		printf("Failed to load keypair\n");
 		return -1;
 	}
+	*/
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
 	bzero(gmi_error, sizeof(gmi_error));
@@ -300,6 +304,7 @@ skip_proto:;
 }
 
 int gmi_request(const char* url) {
+	gmi_selected = 0;
 	int recv = TLS_WANT_POLLIN;
 	int sockfd = -1;
 	if (gmi_parseurl(url, gmi_host, sizeof(gmi_host), gmi_url, sizeof(gmi_url)) < 0) {
