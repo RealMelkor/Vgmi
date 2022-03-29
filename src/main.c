@@ -2,206 +2,242 @@
 #include "gemini.h"
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #define TB_IMPL
 #include <termbox.h>
 
-int input_mode = 0;
-int input_cursor = 0;
-int input_error = 0;
 void tb_colorline(int x, int y, uintattr_t color) {
 	for (int i=x; i<tb_width(); i++)
 		tb_set_cell(i, y, ' ', color, color);
 }
 
+void show_history() {
+	int ret = 0;
+	struct tb_event ev;
+	bzero(&ev, sizeof(ev));
+	do {
+		struct gmi_tab* tab = &client.tabs[client.tab];
+		if (ev.key == TB_KEY_ESC) break;
+
+		tb_clear();
+
+		int y = 0;
+		for (struct gmi_link* link = tab->history->next; link; link = link->next) {
+			tb_printf(0, y, TB_DEFAULT, TB_RED, "%s", link->url); 
+			y++;
+		}
+
+		tb_printf(0, y, TB_DEFAULT, TB_DEFAULT, "-> %s", tab->history->url); 
+		y++;
+
+		for (struct gmi_link* link = tab->history->prev; link; link = link->prev) {
+			tb_printf(0, y, TB_DEFAULT, TB_BLUE, "%s", link->url); 
+			y++;
+		}
+
+		tb_present();
+
+	} while(0); //while ((ret = tb_poll_event(&ev)) == TB_OK || ret == -14);
+	ret = tb_poll_event(&ev);
+}
+
 int main(int argc, char* argv[]) {
 	if (gmi_init()) return 0;
-	int r = 0;
+	gmi_newtab();
 	if (argc < 2)
-		r = gmi_request("gemini://gemini.rmf-dev.com");
+		//gmi_request("gemini://gemini.rmf-dev.com");
+		gmi_request("file://./tests/output.txt");
 	else if (argv[1][0] == '/' || argv[1][0] == '.') {
+		struct gmi_tab* tab = &client.tabs[client.tab];
 		FILE* f = fopen(argv[1], "rb");
 		if (!f) {
 			printf("Failed to open %s\n", argv[1]);
 			return -1;
 		}
 		fseek(f, 0, SEEK_END);
-		r = ftell(f);
+		int len = ftell(f);
 		fseek(f, 0, SEEK_SET);
-		gmi_data = malloc(r);
-		if (r != fread(gmi_data, 1, r, f)) {
+		char* data = malloc(len);
+		if (len != fread(data, 1, len, f)) {
 			fclose(f);
-			free(gmi_data);
+			free(data);
 			return -1;
 		}
 		fclose(f);
-		gmi_code = 20;
-		snprintf(gmi_url, sizeof(gmi_url), "file://%s/", argv[1]);
+		tab->page.code = 20;
+		tab->page.data_len = len;
+		tab->page.data = data;
+		snprintf(tab->url, sizeof(tab->url), "file://%s/", argv[1]);
 	} else
-		r = gmi_request(argv[1]);
-	if (r<0) {
+		gmi_request(argv[1]);
+	/*
+	if (<0) {
 		printf("error %s\n", gmi_error);
 		return -1;
-	}
+	}*/
 
-	gmi_load(gmi_data, r);
 	tb_init();
 	struct tb_event ev;
-	char link_url[1024];
-	bzero(link_url, sizeof(link_url));
-	char input[1024];
-	bzero(input, sizeof(input));
 	int ret = 0;
-	int posy = -1;
+	client.tabs[client.tab].scroll = -1;
 	// vim
 	int vim_g = 0;
 	char vim_counter[6];
 	bzero(vim_counter, sizeof(vim_counter));
 
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	struct gmi_page* page = &tab->page;
 	goto display;
 	while ((ret = tb_poll_event(&ev)) == TB_OK || ret == -14) {
-		if (gmi_code == 11 || gmi_code == 10) {
-			if (!input_mode) input_cursor = 0;
-			input_mode = 1;
+		tab = &client.tabs[client.tab];
+		page = &tab->page;
+		if (page->code == 11 || page->code == 10) {
+			if (!client.input.mode) client.input.cursor = 0;
+			client.input.mode = 1;
 		}
 		if (ev.type == TB_EVENT_RESIZE) goto display;
 		if (ev.type != TB_EVENT_KEY) continue;
 
-		if (!input_mode && ev.key == TB_KEY_ESC) {
+		if (!client.input.mode && ev.key == TB_KEY_ESC) {
 			bzero(vim_counter, sizeof(vim_counter));
 			vim_g = 0;
 		}
-		if (input_mode && ev.key == TB_KEY_ESC) {
-			input_mode = 0;
-			input_cursor = 0;
-			if (gmi_code == 11 || gmi_code == 10) {
-				gmi_code = 0;
-				if (gmi_history->prev) {
-					gmi_history = gmi_history->prev;
-					r = gmi_request(gmi_history->url);
-					if (r < 0) gmi_load(gmi_data, r);
+		if (client.input.mode && ev.key == TB_KEY_ESC) {
+			client.input.mode = 0;
+			client.input.cursor = 0;
+			if (page->code == 11 || page->code == 10) {
+				page->code = 0;
+				if (tab->history->prev) {
+					tab->history = tab->history->prev;
+					gmi_request(tab->history->url);
 				}
 			}
-			input[0] = '\0';
+			client.input.field[0] = '\0';
 		}
-		if (input_mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
-			int i = input_cursor;
-			if (i>((gmi_code==10||gmi_code==11)?0:1)) {
-				strncpy(&input[i-1], &input[i], sizeof(input)-i);
-				input_cursor--;
+		if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
+			int i = client.input.cursor;
+			if (i>((page->code==10||page->code==11)?0:1)) {
+				strncpy(&client.input.field[i-1], &client.input.field[i], sizeof(client.input.field)-i);
+				client.input.cursor--;
 			}
 			goto display;
 		}
-		if (!input_mode && ev.key == TB_KEY_TAB) {
-			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
-				gmi_selected = atoi(vim_counter);
-				bzero(vim_counter, sizeof(vim_counter));
-				if (gmi_selected > gmi_links_count) {
-					snprintf(gmi_error, sizeof(gmi_error), "Invalid link number");
-					gmi_selected = 0;
-					input_error = 1;
-				}
-				else strncpy(link_url, gmi_links[gmi_selected - 1], sizeof(link_url));
+		if (ev.key == TB_KEY_BACK_TAB) {
+			if (tab->selected && tab->selected > 0 && tab->selected < page->links_count) {
+				char linkbuf[1024];
+				char urlbuf[1024];
+				strncpy(linkbuf, page->links[tab->selected - 1], sizeof(linkbuf));
+				strncpy(urlbuf, tab->url, sizeof(urlbuf));
+				gmi_newtab();
+				client.tab++;
+				tab = &client.tabs[client.tab];
+				page = &client.tabs[client.tab].page;
+				strncpy(tab->url, urlbuf, sizeof(tab->url));
+				strcpy(tab->url, "helloworld");
+				gmi_request(linkbuf);
+				tab->selected = 0;
 			}
-			else if (gmi_selected) {
-				int ret = gmi_goto(gmi_selected);
-				if (ret > 0) r = ret;
-				gmi_selected = 0;
+			goto display;
+		}
+		if (!client.input.mode && ev.key == TB_KEY_TAB) {
+			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
+				tab->selected = atoi(vim_counter);
+				bzero(vim_counter, sizeof(vim_counter));
+				if (tab->selected > page->links_count) {
+					snprintf(client.error, sizeof(client.error), "Invalid link number");
+					tab->selected = 0;
+					client.input.error = 1;
+				}
+				else strncpy(tab->selected_url, page->links[tab->selected - 1], sizeof(tab->selected_url));
+			}
+			else if (tab->selected) {
+				gmi_goto(tab->selected);
+				tab->selected = 0;
 			}
 			vim_g = 0;
 			goto display;
 		}
-		if (!input_mode && ev.key == TB_KEY_ENTER) {
+		if (!client.input.mode && ev.key == TB_KEY_ENTER) {
 			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
-				posy += atoi(vim_counter);
+				tab->scroll += atoi(vim_counter);
 				bzero(vim_counter, sizeof(vim_counter));
-				if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+				if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
 			}
-			else if (posy+tb_height()-2<gmi_lines) posy++;
+			else if (tab->scroll+tb_height()-2<page->lines) tab->scroll++;
 			vim_g = 0;
 			goto display;
 		}
-		if (input_mode && ev.key == TB_KEY_ENTER) {
-			input_mode = 0;
+		if (client.input.mode && ev.key == TB_KEY_ENTER) {
+			client.input.mode = 0;
 			tb_hide_cursor();
-			if (gmi_code == 10 || gmi_code == 11) {
-				// --------------------------------
+			if (page->code == 10 || page->code == 11) {
 				char urlbuf[MAX_URL];
-				char* start = strstr(gmi_url, "gemini://");
-				if (!(start?strchr(&start[GMI], '/'):strchr(gmi_url, '/')))
-					snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", gmi_url, input);
+				char* start = strstr(tab->url, "gemini://");
+				if (!(start?strchr(&start[GMI], '/'):strchr(tab->url, '/')))
+					snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", tab->url, client.input.field);
 				else
-					snprintf(urlbuf, sizeof(urlbuf), "%s?%s", gmi_url, input);
+					snprintf(urlbuf, sizeof(urlbuf), "%s?%s", tab->url, client.input.field);
 				int bytes = gmi_request(urlbuf);
-				if (bytes < 1) input_error = 1;
-				else {
-					r = bytes;
-					posy = -1;
-					gmi_load(gmi_data, bytes);
+				if (bytes>0) {
+					tab = &client.tabs[client.tab];
+					page = &tab->page;
+					tab->scroll = -1;
 				}
-				input[0] = '\0';
-				// --------------------------------
+				client.input.field[0] = '\0';
 				goto display;
 			}
-			if (input[1] == 'q' && input[2] == '\0') break;
-			if (input[1] == 'o' && input[2] == ' ') {
+			if (client.input.field[1] == 'q' && client.input.field[2] == '\0') break;
+			if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
 				char urlbuf[MAX_URL];
-				strncpy(urlbuf, &input[3], sizeof(urlbuf));
-				input[0] = '\0';
-				gmi_cleanforward();
+				strncpy(urlbuf, &client.input.field[3], sizeof(urlbuf));
+				client.input.field[0] = '\0';
+				gmi_cleanforward(tab);
+					//client.input.mode = 0;
 				int bytes = gmi_request(urlbuf);
-				if (bytes < 1) {
-					input_error = 1;
-					input_mode = 0;
-					strncpy(gmi_url, gmi_history->url, sizeof(gmi_url));
+				if (bytes > 0) {
+					tab->scroll = -1;
 				}
-				else {
-					r = bytes;
-					posy = -1;
-					gmi_load(gmi_data, bytes);
+				if (page->code == 11 || page->code == 10) {
+					client.input.mode = 1;
 				}
-				if (gmi_code == 11 || gmi_code == 10) {
-					input_mode = 1;
-				}
-				gmi_selected = 0;
+				tab->selected = 0;
 				goto display;
 			}
-			else if (input[1] == '\0') input[0] = '\0';
-			else if (atoi(&input[1]) || (input[1] == '0' && input[2] == '\0')) {
-				int bytes = gmi_goto(atoi(&input[1]));
-				if (bytes < 1) input_error = 1;
-				else {
-					r = bytes;
-					posy = -1;
+			else if (client.input.field[1] == '\0') client.input.field[0] = '\0';
+			else if (atoi(&client.input.field[1]) || (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
+				int bytes = gmi_goto(atoi(&client.input.field[1]));
+				if (bytes > 0) {
+					tab->scroll = -1;
 				}
-				input[0] = '\0';
-				gmi_selected = 0;
+				client.input.field[0] = '\0';
+				tab->selected = 0;
 			}
 			else {
-				input_error = -1;
-				snprintf(gmi_error, sizeof(gmi_error), "Unknown input: %s", &input[1]);
+				client.input.error = -1;
+				snprintf(client.error, sizeof(client.error), "Unknown input: %s", &client.input.field[1]);
 			}
 		}
-		if (input_mode && ev.key == TB_KEY_ARROW_LEFT) {
-			if (input_cursor>1)
-				input_cursor--;	
+		if (client.input.mode && ev.key == TB_KEY_ARROW_LEFT) {
+			if (client.input.cursor>1)
+				client.input.cursor--;	
 			goto display;
 		}
-		if (input_mode && ev.key == TB_KEY_ARROW_RIGHT) {
-			if (input[input_cursor])
-				input_cursor++;	
+		if (client.input.mode && ev.key == TB_KEY_ARROW_RIGHT) {
+			if (client.input.field[client.input.cursor])
+				client.input.cursor++;	
 			goto display;
 		}
-		int l = strnlen(input, sizeof(input));
-		if (input_mode && ev.ch && l < sizeof(input)) {
+		int l = strnlen(client.input.field, sizeof(client.input.field));
+		if (client.input.mode && ev.ch && l < sizeof(client.input.field)) {
 			char c1, c2;
-                        c1 = input[l];
-                        for (int i = l-1; i > input_cursor; i--) {
-                                input[i+1] = input[i];
+                        c1 = client.input.field[l];
+                        for (int i = l-1; i > client.input.cursor; i--) {
+                                client.input.field[i+1] = client.input.field[i];
                         }
-                        input[input_cursor] = ev.ch;
-                        input_cursor++;
+                        client.input.field[client.input.cursor] = ev.ch;
+                        client.input.cursor++;
                         l++;
-                        input[l] = '\0';
+                        client.input.field[l] = '\0';
 			goto display;
 		} else
 			tb_hide_cursor();
@@ -209,84 +245,82 @@ int main(int argc, char* argv[]) {
 		if (ev.key == TB_KEY_PGUP) {
 			int counter = atoi(vim_counter);
 			if (!counter) counter++;
-			posy -= counter * tb_height();
+			tab->scroll -= counter * tb_height();
 			bzero(vim_counter, sizeof(vim_counter));
-			if (posy < -1) posy = -1;
+			if (tab->scroll < -1) tab->scroll = -1;
 			vim_g = 0;
 			goto display;
 		}
 		if (ev.key == TB_KEY_PGDN) {
 			int counter = atoi(vim_counter);
 			if (!counter) counter++;
-			posy += counter * tb_height();
+			tab->scroll += counter * tb_height();
 			bzero(vim_counter, sizeof(vim_counter));
-			if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+			if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
 			vim_g = 0;
 			goto display;
 		}
 		switch (ev.ch) {
 		case 'u':
-			input_mode = 1;
-			snprintf(input, sizeof(input), ":o %s", gmi_url);
-			input_cursor = strnlen(input, sizeof(input));
+			client.input.mode = 1;
+			snprintf(client.input.field, sizeof(client.input.field), ":o %s", tab->url);
+			client.input.cursor = strnlen(client.input.field, sizeof(client.input.field));
 			break;
 		case ':':
-			input_mode = 1;
-			input_cursor = 1;
-			input[0] = ':';
-			input[1] = '\0';
+			client.input.mode = 1;
+			client.input.cursor = 1;
+			client.input.field[0] = ':';
+			client.input.field[1] = '\0';
 			break;
 		case 'r': // Reload
-			r = gmi_request(gmi_history->url);
-			gmi_load(gmi_data, r);
-			struct gmi_link* prev = gmi_history->prev;
+			gmi_request(tab->history->url);
+			struct gmi_link* prev = tab->history->prev;
 			prev->next = NULL;
-			free(gmi_history);
-			gmi_history = prev;
+			free(tab->history);
+			tab->history = prev;
 			break;
 		case 'h': // Back
-			if (gmi_code == 20 || gmi_code == 10 || gmi_code == 11) {
-				if (!gmi_history->prev) break;
-				gmi_history = gmi_history->prev;
+			if (page->code == 20 || page->code == 10 || page->code == 11) {
+				if (!tab->history->prev) break;
+				tab->history = tab->history->prev;
 			} else 
-				if (!gmi_history) break;
-			r = gmi_request(gmi_history->url);
-			if (r < 0) break;
-			gmi_load(gmi_data, r);
+				if (!tab->history) break;
+			if (gmi_request(tab->history->url) < 0) break;
 			break;
 		case 'l': // Forward
-			if (!gmi_history->next) break;
-			r = gmi_request(gmi_history->next->url);
-			if (r < 0) break;
-			gmi_history = gmi_history->next;
-			gmi_load(gmi_data, r);
+			if (!tab->history->next) break;
+			if (gmi_request(tab->history->next->url) < 0) break;
+			tab->history = tab->history->next;
 			break;
 		case 'k': // UP
 			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
-				posy -= atoi(vim_counter);
+				tab->scroll -= atoi(vim_counter);
 				bzero(vim_counter, sizeof(vim_counter));
-				if (posy < -1) posy = -1;
+				if (tab->scroll < -1) tab->scroll = -1;
 			}
-			else if (posy>-1) posy--;
+			else if (tab->scroll>-1) tab->scroll--;
 			vim_g = 0;
 			break;
 		case 'j': // DOWN
 			if (vim_counter[0] != '\0' && atoi(vim_counter)) {
-				posy += atoi(vim_counter);
+				tab->scroll += atoi(vim_counter);
 				bzero(vim_counter, sizeof(vim_counter));
-				if (posy+tb_height()-2>gmi_lines) posy = gmi_lines - tb_height() + 2;
+				if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
 			}
-			else if (posy+tb_height()-2<gmi_lines) posy++;
+			else if (tab->scroll+tb_height()-2<page->lines) tab->scroll++;
 			vim_g = 0;
+			break;
+		case 'H': // Show history
+			show_history();
 			break;
 		case 'g': // Start of file
 			if (vim_g) {
-				posy = -1;
+				tab->scroll = -1;
 				vim_g = 0;
 			} else vim_g++;
 			break;
 		case 'G': // End of file
-			posy = gmi_lines-tb_height()+2;
+			tab->scroll = page->lines-tb_height()+2;
 			break;
 		default:
 			if (!(ev.ch >= '0' && ev.ch <= '9'))
@@ -299,24 +333,26 @@ int main(int argc, char* argv[]) {
 
 		}
 display:
+		tab = &client.tabs[client.tab];
+		page = &tab->page;
 		tb_clear();
-		if (input_mode) {
-			if (gmi_code == 11 || gmi_code == 10)
-				tb_set_cursor(input_cursor+strnlen(gmi_input, sizeof(gmi_input))+2, tb_height()-1);
+		if (client.input.mode) {
+			if (page->code == 11 || page->code == 10)
+				tb_set_cursor(client.input.cursor+strnlen(client.input.label, sizeof(client.input.label))+2, tb_height()-1);
 			else
-				tb_set_cursor(input_cursor, tb_height()-1);
+				tb_set_cursor(client.input.cursor, tb_height()-1);
 		}
 
-		if (gmi_code == 20 || gmi_code == 10 || gmi_code == 11) {
+		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			if (ev.type == TB_EVENT_RESIZE) {
-				int lines = gmi_render(gmi_data, r, posy);
-				posy -= gmi_lines - lines;
+				int lines = gmi_render(tab);
+				tab->scroll -= page->lines - lines;
 				tb_clear();
 			}
 			tb_clear();
-			gmi_lines = gmi_render(gmi_data, r, posy);
-		} else if (gmi_error[0] != '\0') {
-			tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", gmi_error);
+			page->lines = gmi_render(tab);
+		} else if (client.error[0] != '\0') {
+			tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", client.error);
 		}
 
 		// current url
@@ -324,15 +360,15 @@ display:
 		char urlbuf[MAX_URL];
 		int hide = 0;
 		int posx = 0;
-		for (int i=0; gmi_url[i]; i++) {
-			if (hide && (gmi_url[i] == '/')) {
+		for (int i=0; tab->url[i]; i++) {
+			if (hide && (tab->url[i] == '/')) {
 				hide = 0;
 			}
 			if (!hide) {
-				urlbuf[posx] = gmi_url[i];
+				urlbuf[posx] = tab->url[i];
 				posx++;
 			}
-			if (gmi_url[i] == '?') {
+			if (tab->url[i] == '?') {
 				hide = 1;
 				urlbuf[posx] = '<';
 				urlbuf[posx+1] = '*';
@@ -344,9 +380,9 @@ display:
 		tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s", urlbuf);
 
 		// Show selected link url
-		if (gmi_selected != 0) {
-			int llen = strnlen(link_url, sizeof(link_url));
-			tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE, " => %s ", link_url);
+		if (tab->selected != 0) {
+			int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
+			tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE, " => %s ", tab->selected_url);
 		}
 
 		int count = atoi(vim_counter);
@@ -355,22 +391,22 @@ display:
 		}
 
 		// input
-		if (input_error) {
+		if (client.input.error) {
 			tb_hide_cursor();
 			tb_colorline(0, tb_height()-1, TB_RED);
-			tb_printf(0, tb_height()-1, TB_WHITE, TB_RED, gmi_error);
-			input[0] = '\0';
-			input_error = 0;
-		} else if (gmi_code == 10) {
-			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", gmi_input, input);
-		} else if (gmi_code == 11) {
+			tb_printf(0, tb_height()-1, TB_WHITE, TB_RED, client.error);
+			client.input.field[0] = '\0';
+			client.input.error = 0;
+		} else if (page->code == 10) {
+			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", client.input.label, client.input.field);
+		} else if (page->code == 11) {
 			char input_buf[1024];
 			int i = 0;
-			for (; input[i] && i < sizeof(input); i++) input_buf[i] = '*';
+			for (; client.input.field[i] && i < sizeof(client.input.field); i++) input_buf[i] = '*';
 			input_buf[i] = '\0';
-			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", gmi_input, input_buf);
+			tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", client.input.label, input_buf);
 		}
-		else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", input);
+		else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", client.input.field);
 
 		tb_present();
 	}

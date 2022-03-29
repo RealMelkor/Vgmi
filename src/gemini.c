@@ -17,192 +17,187 @@
 
 struct tls_config* config;
 struct tls* ctx;
+struct gmi_client client;
 
-char** gmi_links = NULL;
-size_t gmi_links_count = 0;
-size_t gmi_links_len = 0;
-int gmi_selected = 0;
-char gmi_url[MAX_URL];
-char gmi_host[256];
-char* gmi_data = NULL;
-int gmi_lines = 0;
-char gmi_error[256];
-char gmi_input[256];
-struct gmi_link* gmi_history = NULL;
-int gmi_code = 0;
+//char gmi_host[256];
 
 int gmi_goto(int id) {
 	id--;
-	if (id < 0 || id >= gmi_links_count) {
-		snprintf(gmi_error, sizeof(gmi_error), "Invalid link number, %d/%ld", id, gmi_links_count);
+	struct gmi_page* page = &client.tabs[client.tab].page;
+	if (id < 0 || id >= page->links_count) {
+		snprintf(client.error, sizeof(client.error), "Invalid link number, %d/%d", id, page->links_count);
+		client.input.error = 1;
 		return -1;
 	}
-	return gmi_nextlink(gmi_url, sizeof(gmi_url), gmi_links[id], sizeof(gmi_links[id]));
+	gmi_cleanforward(&client.tabs[client.tab]);
+	int ret = gmi_nextlink(client.tabs[client.tab].url, page->links[id]);
+	if (ret < 1) return ret;
+	client.tabs[client.tab].page.data_len = ret;
+	gmi_load(page);
+	return ret;
 }
 
-int gmi_nextlink(char* url, size_t url_len, char* link, size_t link_len) {
-	if (gmi_history && gmi_history->next)
-		gmi_cleanforward();
+int gmi_nextlink(char* url, char* link) {
+	//if (gmi_history && gmi_history->next)
+	//	gmi_cleanforward();
+	int url_len = strnlen(url, MAX_URL);
+	int link_len = strnlen(url, MAX_URL);
 	if (link[0] == '/' && link[1] == '/') {
 		int ret = gmi_request(&link[2]);
 		if (ret < 1) return ret;
-		gmi_load(gmi_data, ret);
 		return ret;
 	} else if (link[0] == '/') {
-		char* ptr = strchr(&gmi_url[GMI], '/');
-		if (ptr) *ptr = '\0';
+		if (url_len > GMI && strstr(url, "gemini://")) {
+			char* ptr = strchr(&url[GMI], '/');
+			if (ptr) *ptr = '\0';
+		}
 		char urlbuf[MAX_URL];
-		strncpy(urlbuf, gmi_url, sizeof(urlbuf));
+		strncpy(urlbuf, url, sizeof(urlbuf));
 		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
 		int ret = gmi_request(urlbuf);
-		if (ret < 1) return ret;
-		gmi_load(gmi_data, ret);
 		return ret;
 	} else if (strstr(link, "gemini://")) {
 		int ret = gmi_request(link);
-		if (ret < 1) return ret;
-		gmi_load(gmi_data, ret);
 		return ret;
 	} else {
-		char* ptr = strchr(&gmi_url[GMI], '/');
+		char* ptr = strchr(&url[GMI], '/');
 		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
-		strncpy(urlbuf, gmi_url, sizeof(urlbuf));
+		strncpy(urlbuf, url, sizeof(urlbuf));
 		strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
 		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
 		int ret = gmi_request(urlbuf);
-		if (ret < 1) return ret;
-		gmi_load(gmi_data, ret);
 		return ret;
 	}
 }
 
-void gmi_load(char* data, size_t len) {
-	gmi_links_count = 0;
-	gmi_lines = 0;
-	for (int c = 0; c < len; c++) {
-		if (data[c] == '\n') {
-			gmi_lines++;
+void gmi_load(struct gmi_page* page) {
+	for (int i=0; i<page->links_count; i++)
+		free(page->links[i]);
+	free(page->links);
+	page->links = NULL;
+	page->links_count = 0;
+	page->lines = 0;
+	for (int c = 0; c < page->data_len; c++) {
+		if (page->data[c] == '\n') {
+			page->lines++;
 			continue;
 		}
-		if (data[c] == '=' && data[c+1] == '>') {
+		if (page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
-			for (; data[c]==' '; c++) ;
-			char* url = (char*)&data[c];
-			for (; data[c]!=' '; c++) ;
-			data[c] = '\0';
-			if (gmi_links_count >= gmi_links_len) {
-				gmi_links_len+=1024;
-				if (gmi_links)
-					gmi_links = realloc(gmi_links, sizeof(char*) * gmi_links_len);
-				else
-					gmi_links = malloc(sizeof(char*) * gmi_links_len);
-				bzero(&gmi_links[gmi_links_len-1024], 1024 * sizeof(char*));
-			}
-			if (gmi_links[gmi_links_count]) free(gmi_links[gmi_links_count]);
-			if (strlen(url) == 0) {
-				gmi_links[gmi_links_count] = NULL;
-				data[c] = ' ';
+			for (; page->data[c]==' '; c++) ;
+			char* url = (char*)&page->data[c];
+			for (; page->data[c]!=' '; c++) ;
+			page->data[c] = '\0';
+			if (page->links)
+				page->links = realloc(page->links, sizeof(char*) * (page->links_count+1));
+			else
+				page->links = malloc(sizeof(char*));
+			if (url[0] == '\0') {
+				page->links[page->links_count] = NULL;
+				page->data[c] = ' ';
 				continue;
 			}
-			gmi_links[gmi_links_count] = malloc(strlen(url)+1);
-			strcpy(gmi_links[gmi_links_count], url);
-			gmi_links_count++;
-			data[c] = ' ';
+			int len = strnlen(url, MAX_URL);
+			page->links[page->links_count] = malloc(len+2);
+			memcpy(page->links[page->links_count], url, len+1);
+			page->links_count++;
+			page->data[c] = ' ';
 		}
 	}
 }
 
-int gmi_render(char* data, size_t len, int y) {
+int gmi_render(struct gmi_tab* tab) {
 	int line = 0;
 	int x = 0;
 	int links = 0;
 	uintattr_t color = TB_DEFAULT;
-	for (int c = 0; c < len; c++) {
-		if (data[c] == '\t') {
+	for (int c = 0; c < tab->page.data_len; c++) {
+		if (tab->page.data[c] == '\t') {
 			x+=4;
 			continue;
 		}
-		if (data[c] == '\r') continue;
-		for (int i=0; x == 0 && data[c+i] == '#' && i<3; i++) {
-			if (data[c+i+1] == ' ') {
+		if (tab->page.data[c] == '\r') continue;
+		for (int i=0; x == 0 && tab->page.data[c+i] == '#' && i<3; i++) {
+			if (tab->page.data[c+i+1] == ' ') {
 				color = TB_RED + i;
 				break;
 			}
 		}
-		if (x == 0 && data[c] == '*' && data[c+1] == ' ') {
+		if (x == 0 && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
 			color = TB_ITALIC|TB_CYAN;
 		}
-		if (x == 0 && data[c] == '>' && data[c+1] == ' ') {
+		if (x == 0 && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
 			color = TB_ITALIC|TB_MAGENTA;
 		}
-		if (x == 0 && data[c] == '=' && data[c+1] == '>') {
-			if (line-1>=(y>=0?y:0) && (line-y <= tb_height()-2)) {
+		if (x == 0 && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
+			if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) {
 				char buf[32];
 				snprintf(buf, sizeof(buf), "[%d]", links+1);
-				tb_print(x+2, line-1-y, links+1 == gmi_selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
+				tb_print(x+2, line-1-tab->scroll, links+1 == tab->selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
 				x += strlen(buf);
 			}
 			c += 2;
-			for (; data[c]==' '; c++) ;
-			for (; data[c]!=' '; c++) ;
-			for (; data[c]==' '; c++) ;
+			for (; tab->page.data[c]==' '; c++) ;
+			for (; tab->page.data[c]!=' '; c++) ;
+			for (; tab->page.data[c]==' '; c++) ;
 			x+=3;
 			if ((links+1)/10) x--;
 			if ((links+1)/100) x--;
 			if ((links+1)/1000) x--;
 			links++;
 		}
-		if (data[c] == '\n' || data[c] == ' ' || x+4 >= tb_width()) {
+		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
 			if (x+4>=tb_width()) c--;
-			int newline = (data[c] == '\n' || x+4 >= tb_width());
+			int newline = (tab->page.data[c] == '\n' || x+4 >= tb_width());
 			for (int i=1; 1; i++) {
 				if (i > tb_width() - 4) {
 					newline = 0;
 					break;
 				}
-				if (data[c+i] == ' ' || data[c+i] == '\n' ||
-				    data[c+i] == '\0' || c+i >= len)
+				if (tab->page.data[c+i] == ' ' || tab->page.data[c+i] == '\n' ||
+				    tab->page.data[c+i] == '\0' || c+i >= tab->page.data_len)
 					break;
 				if (tb_width()-4<=x+i) newline = 1;
 			}
 			if (newline) {
 				line++;
-				if (data[c] == '\n')
+				if (tab->page.data[c] == '\n')
 					color = TB_DEFAULT;
 				x = 0;
 				continue;
 			}
 		}
 		uint32_t ch = 0;
-		c += tb_utf8_char_to_unicode(&ch, &data[c])-1;
+		c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 
-		if (line-1>=(y>=0?y:0) && (line-y <= tb_height()-2)) 
-			tb_set_cell(x+2, line-1-y, ch, color, TB_DEFAULT);
+		if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) 
+			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
 		x++;
 	}
 	return line;
 }
 
-void gmi_cleanforward() {
-	struct gmi_link* ptr = gmi_history;
+void gmi_cleanforward(struct gmi_tab* tab) {
+	struct gmi_link* ptr = tab->history;
 	while (ptr && ptr->next) {
 		struct gmi_link* next = ptr->next;
-		if (gmi_history != ptr)
+		if (tab->history != ptr)
 			free(ptr);
 		if (!next) break;
 		ptr = next;
 	}
-	gmi_history->next = NULL;
+	if (tab->history)
+		tab->history->next = NULL;
 }
 
-void gmi_freehistory() {
-	struct gmi_link* ptr = gmi_history->prev;
-	free(gmi_history);
+void gmi_freehistory(struct gmi_tab* tab) {
+	struct gmi_link* ptr = tab->history->prev;
+	free(tab->history);
 	while ((ptr = ptr->prev)) {
-		gmi_history = ptr;
+		tab->history = ptr;
 		ptr = ptr->prev;
-		free(gmi_history);
+		free(tab->history);
 	}
 }
 
@@ -218,29 +213,62 @@ int gmi_init() {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
-	/*
-	if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
-	//if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
+	//if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
+	if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
 		printf("Failed to load keypair\n");
 		return -1;
 	}
-	*/
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
-	bzero(gmi_error, sizeof(gmi_error));
-	gmi_history = NULL;
-	gmi_data = NULL;
-	gmi_links = NULL;
-	gmi_links_count = 0;
-	gmi_links_len = 0;
-	
+	bzero(&client, sizeof(client));
+		
 	return 0;
+}
+
+char* home_page = 
+"20\r\n# Home Page - Vgmi client\n\n" \
+"Welcome\n";
+
+void gmi_newtab() {
+	int tab = client.tabs_count;
+	client.tabs_count++;
+	if (client.tabs) 
+		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tabs_count);
+	else
+		client.tabs = malloc(sizeof(struct gmi_tab));
+	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
+	strncpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
+	client.tabs[tab].page.code = 20;
+	int len = strlen(home_page);
+	client.tabs[tab].page.data = malloc(len + 1);
+	strncpy(client.tabs[tab].page.data, home_page, len);
+	client.tabs[tab].page.data_len = len;
+	gmi_load(&client.tabs[tab].page);
+}
+
+void gmi_newtab_url(char* url) {
+	int tab = client.tab;
+	client.tab++;
+	if (client.tabs) 
+		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tab);
+	else
+		client.tabs = malloc(sizeof(struct gmi_tab));
+	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
+	strncpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
+	client.tabs[tab].page.code = 20;
+	int len = strlen(home_page);
+	client.tabs[tab].page.data = malloc(len + 1);
+	strncpy(client.tabs[tab].page.data, home_page, len);
+	client.tabs[tab].page.data_len = len;
+	gmi_load(&client.tabs[tab].page);
+
 }
 
 #define PROTO_GEMINI 0
 #define PROTO_HTTP 1
 #define PROTO_HTTPS 2
 #define PROTO_GOPHER 3
+#define PROTO_FILE 4
 
 int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len) {
 	int proto = PROTO_GEMINI;
@@ -262,6 +290,7 @@ int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int ur
 	else if (!strcmp(proto_buf,"http")) proto = PROTO_HTTP;
 	else if (!strcmp(proto_buf,"https")) proto = PROTO_HTTPS;
 	else if (!strcmp(proto_buf,"gopher")) proto = PROTO_GOPHER;
+	else if (!strcmp(proto_buf,"file")) proto = PROTO_FILE;
 	else {
 		return -1; // unknown protocol
 	}
@@ -294,6 +323,9 @@ skip_proto:;
 	case PROTO_GOPHER:
 		strncpy(urlbuf, "gopher://", url_len);
 		break;
+	case PROTO_FILE:
+		strncpy(urlbuf, "file://", url_len);
+		break;
 	default:
 		return -1;
 	}
@@ -304,11 +336,18 @@ skip_proto:;
 }
 
 int gmi_request(const char* url) {
-	gmi_selected = 0;
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	tab->selected = 0;
 	int recv = TLS_WANT_POLLIN;
 	int sockfd = -1;
-	if (gmi_parseurl(url, gmi_host, sizeof(gmi_host), gmi_url, sizeof(gmi_url)) < 0) {
-		snprintf(gmi_error, sizeof(gmi_error), "Invalid url: %s", url);
+	char gmi_host[256];
+	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host), tab->url, sizeof(tab->url));
+	if (proto == PROTO_FILE) {
+		if (gmi_loadfile(&tab->url[P_FILE]) > 0)
+			gmi_load(&tab->page);
+	}
+	if (proto != PROTO_GEMINI) {
+		snprintf(client.error, sizeof(client.error), "Invalid url: %s", url);
 		return -1;
 	}
 	if (ctx) {
@@ -317,11 +356,11 @@ int gmi_request(const char* url) {
 	}
 	ctx = tls_client();
 	if (!ctx) {
-		snprintf(gmi_error, sizeof(gmi_error), "Failed to initialize TLS");
+		snprintf(client.error, sizeof(client.error), "Failed to initialize TLS");
 		return -1;
 	}
 	if (tls_configure(ctx, config)) {
-		snprintf(gmi_error, sizeof(gmi_error), "Failed to configure TLS");
+		snprintf(client.error, sizeof(client.error), "Failed to configure TLS");
 		return -1;
 	}
 
@@ -332,7 +371,7 @@ int gmi_request(const char* url) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags |= AI_CANONNAME;
 	if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
-		snprintf(gmi_error, sizeof(gmi_error), "Unknown domain name: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
 		return -1;
 	}
 
@@ -362,21 +401,21 @@ int gmi_request(const char* url) {
 	freeaddrinfo(result);
 	
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
-		snprintf(gmi_error, sizeof(gmi_error), "Connection to %s timed out", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Connection to %s timed out", gmi_host);
 		close(sockfd);
 		return -1;
 	}
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
-		snprintf(gmi_error, sizeof(gmi_error), "Unable to connect to: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Unable to connect to: %s", gmi_host);
 		goto request_error;
 	}
 	if (tls_handshake(ctx)) {
-		snprintf(gmi_error, sizeof(gmi_error), "Failed to handshake: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Failed to handshake: %s", gmi_host);
 		goto request_error;
 	}
 	char urlbuf[MAX_URL];
-	strncpy(urlbuf, gmi_url, MAX_URL);
+	strncpy(urlbuf, tab->url, MAX_URL);
 	size_t len = strnlen(urlbuf, MAX_URL)+2;
 	strncat(urlbuf, "\r\n", MAX_URL-len);
 	char* ptr = urlbuf;
@@ -387,121 +426,121 @@ int gmi_request(const char* url) {
 		if (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT)
 			continue;
 		if (ret == -1) {
-			snprintf(gmi_error, sizeof(gmi_error), "Failed to send request: %s", gmi_host);
+			snprintf(client.error, sizeof(client.error), "Failed to send request: %s", gmi_host);
 			goto request_error;
 		}
 		ptr += ret;
 		len -= ret;	
 	}
 	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
-		snprintf(gmi_error, sizeof(gmi_error), "Failed to send data to: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Failed to send data to: %s", gmi_host);
 		goto request_error;
 	}
 	char buf[1024];
 	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT || recv == 0)
 		recv = tls_read(ctx, buf, sizeof(buf));
 	if (recv <= 0) {
-		snprintf(gmi_error, sizeof(gmi_error), "[%d] Invalid data from: %s", recv, gmi_host);
+		snprintf(client.error, sizeof(client.error), "[%d] Invalid data from: %s", recv, gmi_host);
 		goto request_error;
 	}
 	ptr = strchr(buf, ' ');
 	if (!ptr) {
-		snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), "Invalid data to from: %s", gmi_host);
 		goto request_error;
 	}
 	*ptr = '\0';
-	gmi_code = atoi(buf);
-	switch (gmi_code) {
+	tab->page.code = atoi(buf);
+	switch (tab->page.code) {
 	case 10:
 	case 11:
 		ptr++;
-		strncpy(gmi_input, ptr, sizeof(gmi_input));
-		ptr = strchr(gmi_input, '\n');
+		strncpy(client.input.label, ptr, sizeof(client.input.label));
+		ptr = strchr(client.input.label, '\n');
 		if (ptr) *ptr = '\0';
-		ptr = strchr(gmi_input, '\r');
+		ptr = strchr(client.input.label, '\r');
 		if (ptr) *ptr = '\0';
 		goto exit;
 	case 20:
 		break;
 	case 30:
-		snprintf(gmi_error, sizeof(gmi_error), "Redirect temporary");
-
+		snprintf(client.error, sizeof(client.error), "Redirect temporary");
 		break;
 	case 31:
-		snprintf(gmi_error, sizeof(gmi_error), "Redirect permanent");
+		snprintf(client.error, sizeof(client.error), "Redirect permanent");
 		break;
 	case 40:
-		snprintf(gmi_error, sizeof(gmi_error), "Temporary failure");
+		snprintf(client.error, sizeof(client.error), "Temporary failure");
 		goto request_error;
 	case 41:
-		snprintf(gmi_error, sizeof(gmi_error), "Server unavailable");
+		snprintf(client.error, sizeof(client.error), "Server unavailable");
 		goto request_error;
 	case 42:
-		snprintf(gmi_error, sizeof(gmi_error), "CGI error");
+		snprintf(client.error, sizeof(client.error), "CGI error");
 		goto request_error;
 	case 43:
-		snprintf(gmi_error, sizeof(gmi_error), "Proxy error");
+		snprintf(client.error, sizeof(client.error), "Proxy error");
 		goto request_error;
 	case 44:
-		snprintf(gmi_error, sizeof(gmi_error), "Slow down: server above rate limit");
+		snprintf(client.error, sizeof(client.error), "Slow down: server above rate limit");
 		goto request_error;
 	case 50:
-		snprintf(gmi_error, sizeof(gmi_error), "Permanent failure");
+		snprintf(client.error, sizeof(client.error), "Permanent failure");
 		goto request_error;
 	case 51:
-		snprintf(gmi_error, sizeof(gmi_error), "Not found");
+		snprintf(client.error, sizeof(client.error), "Not found");
 		goto request_error;
 	case 52:
-		snprintf(gmi_error, sizeof(gmi_error), "Resource gone");
+		snprintf(client.error, sizeof(client.error), "Resource gone");
 		goto request_error;
 	case 53:
-		snprintf(gmi_error, sizeof(gmi_error), "Proxy request refused");
+		snprintf(client.error, sizeof(client.error), "Proxy request refused");
 		goto request_error;
 	case 59:
-		snprintf(gmi_error, sizeof(gmi_error), "Bad request");
+		snprintf(client.error, sizeof(client.error), "Bad request");
 		goto request_error;
 	case 60:
-		snprintf(gmi_error, sizeof(gmi_error), "Client certificate required");
+		snprintf(client.error, sizeof(client.error), "Client certificate required");
 		goto request_error;
 	case 61:
-		snprintf(gmi_error, sizeof(gmi_error), "Client not authorised");
+		snprintf(client.error, sizeof(client.error), "Client not authorised");
 		goto request_error;
 	case 62:
-		snprintf(gmi_error, sizeof(gmi_error), "Client certificate not valid");
+		snprintf(client.error, sizeof(client.error), "Client certificate not valid");
 		goto request_error;
 	default:
-		snprintf(gmi_error, sizeof(gmi_error), "Unknown status code: %d", gmi_code);
+		snprintf(client.error, sizeof(client.error), "Unknown status code: %d", tab->page.code);
 		goto request_error;
 	}
 	*ptr = ' ';
-	if (!gmi_data) free(gmi_data);
-	gmi_data = malloc(recv+1);
-	memcpy(gmi_data, buf, recv);
+	if (!tab->page.data) free(tab->page.data);
+	tab->page.data = malloc(recv+1);
+	memcpy(tab->page.data, buf, recv);
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
 		if (bytes == 0) break;
 		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT)
 			continue;
 		if (bytes < 1) {
-			snprintf(gmi_error, sizeof(gmi_error), "Invalid data to from: %s", gmi_host);
+			snprintf(client.error, sizeof(client.error), "Invalid data to from: %s", gmi_host);
 			goto request_error;
 		}
-		gmi_data = realloc(gmi_data, recv+bytes+1);
-		memcpy(&gmi_data[recv], buf, bytes);
+		tab->page.data = realloc(tab->page.data, recv+bytes+1);
+		memcpy(&tab->page.data[recv], buf, bytes);
 		recv += bytes;
 	}
 exit:
-	if (!gmi_history || (gmi_history && !gmi_history->next)) {
+	if (!tab->history || (tab->history && !tab->history->next)) {
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
 		link->next = NULL;
-		link->prev = gmi_history;
-		strncpy(link->url, gmi_url, sizeof(link->url));
-		gmi_history = link;
+		link->prev = tab->history;
+		strncpy(link->url, tab->url, sizeof(link->url));
+		tab->history = link;
 		if (link->prev)
-			link->prev->next = gmi_history;
+			link->prev->next = tab->history;
 	}
 	if (0) {
 request_error:
+		client.input.error = 1;
 		recv = -1;
 	}
 	if (sockfd != -1)
@@ -511,11 +550,11 @@ request_error:
 		tls_free(ctx);
 		ctx = NULL;
 	}
-	if (gmi_code == 11 || gmi_code == 10) {
-		return gmi_data?strlen(gmi_data):0;
+	if (tab->page.code == 11 || tab->page.code == 10) {
+		return tab->page.data?strlen(tab->page.data):0;
 	}
-	if (gmi_code == 31 || gmi_code == 30) {
-		char* ptr = strchr(gmi_data, ' ');
+	if (tab->page.code == 31 || tab->page.code == 30) {
+		char* ptr = strchr(tab->page.data, ' ');
 		if (!ptr) return -1;
 		char* ln = strchr(ptr+1, ' ');
 		if (ln) *ln = '\0';
@@ -523,7 +562,34 @@ request_error:
 		if (ln) *ln = '\0';
 		ln = strchr(ptr, '\r');
 		if (ln) *ln = '\0';
-		return gmi_nextlink(gmi_url, sizeof(gmi_url), ptr+1, strlen(ptr+1));//gmi_request(urlbuf);
+		return gmi_nextlink(tab->url, ptr+1);
 	}
+	tab->page.data_len = recv;
+	gmi_load(&tab->page);
 	return recv;
+}
+
+int gmi_loadfile(char* path) {
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	FILE* f = fopen(path, "rb");
+	if (!f) {
+		snprintf(client.error, sizeof(client.error), "Failed to open %s", path);
+		client.input.error = 1;
+		return -1;
+	}
+	fseek(f, 0, SEEK_END);
+	int len = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char* data = malloc(len);
+	if (len != fread(data, 1, len, f)) {
+		fclose(f);
+		free(data);
+		return -1;
+	}
+	fclose(f);
+	tab->page.code = 20;
+	tab->page.data_len = len;
+	tab->page.data = data;
+	snprintf(tab->url, sizeof(tab->url), "file://%s/", path);
+	return len;
 }
