@@ -15,6 +15,7 @@ Gemini client written in C with vim-like keybindings
 * r  - Reload the page
 * [number]Tab - Select link
 * Tab - Follow selected link
+* Shift+Tab - Open selected link in a new tab
 
 You can prefix a movement key with a number to repeat it.
 
@@ -22,6 +23,7 @@ You can prefix a movement key with a number to repeat it.
 
 * :q        - Exit the program
 * :o	    - Open an url
+* :nt <url> - Open a new tab, the url is optional
 * :[number] - Follow the link 
 
 ## Dependencies
