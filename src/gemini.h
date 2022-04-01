@@ -44,6 +44,10 @@ struct gmi_client {
 		int cursor;
 		int mode;
 	} input;
+	struct vim {
+		char counter[6];
+		int g;
+	} vim;
 	int tab;
 };
 
