@@ -19,8 +19,6 @@ struct tls_config* config;
 struct tls* ctx;
 struct gmi_client client;
 
-//char gmi_host[256];
-
 int gmi_goto(int id) {
 	id--;
 	struct gmi_page* page = &client.tabs[client.tab].page;
@@ -38,8 +36,6 @@ int gmi_goto(int id) {
 }
 
 int gmi_nextlink(char* url, char* link) {
-	//if (gmi_history && gmi_history->next)
-	//	gmi_cleanforward();
 	int url_len = strnlen(url, MAX_URL);
 	int link_len = strnlen(url, MAX_URL);
 	if (link[0] == '/' && link[1] == '/') {
@@ -112,25 +108,26 @@ int gmi_render(struct gmi_tab* tab) {
 	int x = 0;
 	int links = 0;
 	uintattr_t color = TB_DEFAULT;
+	int start = 1;
 	for (int c = 0; c < tab->page.data_len; c++) {
 		if (tab->page.data[c] == '\t') {
 			x+=4;
 			continue;
 		}
 		if (tab->page.data[c] == '\r') continue;
-		for (int i=0; x == 0 && tab->page.data[c+i] == '#' && i<3; i++) {
+		for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
 			if (tab->page.data[c+i+1] == ' ') {
 				color = TB_RED + i;
 				break;
 			}
 		}
-		if (x == 0 && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
+		if (start && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
 			color = TB_ITALIC|TB_CYAN;
 		}
-		if (x == 0 && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
+		if (start && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
 			color = TB_ITALIC|TB_MAGENTA;
 		}
-		if (x == 0 && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
+		if (start && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
 			if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) {
 				char buf[32];
 				snprintf(buf, sizeof(buf), "[%d]", links+1);
@@ -148,9 +145,14 @@ int gmi_render(struct gmi_tab* tab) {
 			links++;
 		}
 		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
-			if (x+4>=tb_width()) c--;
+			int end = 0;
+			if (x+4>=tb_width()) {
+				c--;
+				end = 1;
+			}
 			int newline = (tab->page.data[c] == '\n' || x+4 >= tb_width());
 			for (int i=1; 1; i++) {
+				if (x+i == tb_width() - 1) break;
 				if (i > tb_width() - 4) {
 					newline = 0;
 					break;
@@ -162,10 +164,15 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 			if (newline) {
 				line++;
-				if (tab->page.data[c] == '\n')
+				if (tab->page.data[c] == '\n') {
 					color = TB_DEFAULT;
+					start = 1;
+				}
 				x = 0;
 				continue;
+			} else if (end) {
+				c++;
+				x++;
 			}
 		}
 		uint32_t ch = 0;
@@ -174,6 +181,7 @@ int gmi_render(struct gmi_tab* tab) {
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) 
 			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
 		x++;
+		start = 0;
 	}
 	return line;
 }
@@ -237,6 +245,7 @@ void gmi_newtab() {
 	else
 		client.tabs = malloc(sizeof(struct gmi_tab));
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
+	client.tabs[tab].scroll = -1;
 	strncpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
@@ -348,6 +357,7 @@ int gmi_request(const char* url) {
 	}
 	if (proto != PROTO_GEMINI) {
 		snprintf(client.error, sizeof(client.error), "Invalid url: %s", url);
+		client.input.error = 1;
 		return -1;
 	}
 	if (ctx) {
@@ -357,10 +367,12 @@ int gmi_request(const char* url) {
 	ctx = tls_client();
 	if (!ctx) {
 		snprintf(client.error, sizeof(client.error), "Failed to initialize TLS");
+		client.input.error = 1;
 		return -1;
 	}
 	if (tls_configure(ctx, config)) {
 		snprintf(client.error, sizeof(client.error), "Failed to configure TLS");
+		client.input.error = 1;
 		return -1;
 	}
 
@@ -372,7 +384,9 @@ int gmi_request(const char* url) {
 	hints.ai_flags |= AI_CANONNAME;
 	if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
 		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
-		return -1;
+		goto request_error;
+		//client.input.error = 1;
+		//return -1;
 	}
 
 	struct sockaddr_in addr4;
@@ -402,8 +416,9 @@ int gmi_request(const char* url) {
 	
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 		snprintf(client.error, sizeof(client.error), "Connection to %s timed out", gmi_host);
-		close(sockfd);
-		return -1;
+		//close(sockfd);
+		goto request_error;
+		//return -1;
 	}
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
@@ -540,6 +555,11 @@ exit:
 	}
 	if (0) {
 request_error:
+		if (tab->history) {
+			strncpy(tab->url, tab->history->url, sizeof(tab->url));
+		} else {
+			strncpy(tab->url, "about:home", sizeof(tab->url));
+		}
 		client.input.error = 1;
 		recv = -1;
 	}
@@ -564,8 +584,10 @@ request_error:
 		if (ln) *ln = '\0';
 		return gmi_nextlink(tab->url, ptr+1);
 	}
-	tab->page.data_len = recv;
-	gmi_load(&tab->page);
+	if (recv > 0) {
+		tab->page.data_len = recv;
+		gmi_load(&tab->page);
+	}
 	return recv;
 }
 
@@ -580,8 +602,9 @@ int gmi_loadfile(char* path) {
 	fseek(f, 0, SEEK_END);
 	int len = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	char* data = malloc(len);
-	if (len != fread(data, 1, len, f)) {
+	char* data = malloc(len+1);
+	data[0] = '\n';
+	if (len != fread(&data[1], 1, len, f)) {
 		fclose(f);
 		free(data);
 		return -1;
