@@ -6,11 +6,31 @@
 int command() {
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	struct gmi_page* page = &tab->page;
+
+	// Trim
+	for (int i=strnlen(client.input.field, sizeof(client.input.field)) - 1;
+	client.input.field[i] == ' ' || client.input.field[i] == '\t'; i--)
+		client.input.field[i] = '\0';
+
 	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') return 1;
 	if (client.input.field[1] == 'n' && client.input.field[2] == 't' && client.input.field[3] == '\0') {
 		gmi_newtab();
 		client.tab = client.tabs_count - 1;
 		client.input.field[0] = '\0';
+		return 0;
+	}
+	if (client.input.field[1] == 'n' && client.input.field[2] == 't' && client.input.field[3] == ' ') {
+		client.input.cursor = 0;
+		int id = atoi(&client.input.field[4]);
+		if (id != 0 || (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
+			gmi_goto_new(id);
+			client.input.field[0] = '\0';
+		} else {
+			gmi_newtab();
+			client.tab = client.tabs_count - 1;
+			client.input.field[0] = '\0';
+			gmi_request(&client.input.field[4]);
+		}
 		return 0;
 	}
 	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
@@ -24,19 +44,37 @@ int command() {
 		}
 		if (page->code == 11 || page->code == 10) {
 			client.input.mode = 1;
+			client.input.cursor = 0;
 		}
 		tab->selected = 0;
 		return 0;
 	}
-	else if (client.input.field[1] == '\0') client.input.field[0] = '\0';
-	else if (atoi(&client.input.field[1]) || (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
+	if (client.input.field[1] == 's' && client.input.field[2] == ' ') {
+		char urlbuf[MAX_URL];
+		snprintf(urlbuf, sizeof(urlbuf), "gemini://geminispace.info/search?%s", &client.input.field[3]);
+		client.input.field[0] = '\0';
+		gmi_cleanforward(tab);
+		int bytes = gmi_request(urlbuf);
+		if (bytes > 0) {
+			tab->scroll = -1;
+		}
+		if (page->code == 11 || page->code == 10) {
+			client.input.mode = 1;
+			client.input.cursor = 0;
+		}
+		tab->selected = 0;
+		return 0;
+	}
+	if (atoi(&client.input.field[1]) || (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
 		int bytes = gmi_goto(atoi(&client.input.field[1]));
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
 		client.input.field[0] = '\0';
 		tab->selected = 0;
+		return 0;
 	}
+	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
 		client.input.error = -1;
 		snprintf(client.error, sizeof(client.error), "Unknown input: %s", &client.input.field[1]);
@@ -86,20 +124,10 @@ int input(struct tb_event ev) {
 		return 0;
 	}
 	if (ev.key == TB_KEY_BACK_TAB) {
-		if (tab->selected && tab->selected > 0 && tab->selected < page->links_count) {
-			char linkbuf[1024];
-			char urlbuf[1024];
-			strncpy(linkbuf, page->links[tab->selected - 1], sizeof(linkbuf));
-			strncpy(urlbuf, tab->url, sizeof(urlbuf));
+		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
 			int linkid = tab->selected;
 			tab->selected = 0;
-			gmi_newtab();
-			client.tab++;
-			tab = &client.tabs[client.tab];
-			page = &client.tabs[client.tab].page;
-			gmi_request(urlbuf);
-			gmi_goto(linkid);
-			tab->selected = 0;
+			gmi_goto_new(linkid);
 		}
 		return 0;
 	}
@@ -152,9 +180,27 @@ int input(struct tb_event ev) {
 		}
 		return command();	
 	}
+	if (client.input.mode && ev.key == TB_KEY_ARROW_LEFT && ev.mod == TB_MOD_CTRL) {
+		while (client.input.cursor>1) {
+			client.input.cursor--;
+			if (client.input.field[client.input.cursor] == ' ' ||
+			    client.input.field[client.input.cursor] == '.')
+				break;
+		}
+		return 0;
+	}
 	if (client.input.mode && ev.key == TB_KEY_ARROW_LEFT) {
 		if (client.input.cursor>1)
 			client.input.cursor--;
+		return 0;
+	}
+	if (client.input.mode && ev.key == TB_KEY_ARROW_RIGHT && ev.mod == TB_MOD_CTRL) {
+		while (client.input.field[client.input.cursor]) {
+			client.input.cursor++;
+			if (client.input.field[client.input.cursor] == ' ' ||
+			    client.input.field[client.input.cursor] == '.')
+				break;
+		}
 		return 0;
 	}
 	if (client.input.mode && ev.key == TB_KEY_ARROW_RIGHT) {
@@ -166,7 +212,7 @@ int input(struct tb_event ev) {
 	if (client.input.mode && ev.ch && l < sizeof(client.input.field)) {
 		char c1, c2;
 		c1 = client.input.field[l];
-		for (int i = l-1; i > client.input.cursor; i--) {
+		for (int i = l-1; i >= client.input.cursor; i--) {
 			client.input.field[i+1] = client.input.field[i];
 		}
 		client.input.field[client.input.cursor] = ev.ch;
@@ -219,7 +265,7 @@ int input(struct tb_event ev) {
 			client.tab--;
 		break;
 	case 'L': // Tab right
-		if (client.tab < client.tabs_count)
+		if (client.tab+1 < client.tabs_count)
 			client.tab++;
 		break;
 	case 'h': // Back
@@ -250,7 +296,7 @@ int input(struct tb_event ev) {
 			bzero(client.vim.counter, sizeof(client.vim.counter));
 			if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
 		}
-		else if (tab->scroll+tb_height()-2<page->lines) tab->scroll++;
+		else if (tab->scroll+(client.tabs_count==1?tb_height()-2:tb_height()-3)<page->lines) tab->scroll++;
 		client.vim.g = 0;
 		break;
 	case 'U': // Show history

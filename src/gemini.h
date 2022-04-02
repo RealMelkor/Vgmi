@@ -54,6 +54,7 @@ struct gmi_client {
 extern struct gmi_client client;
 int gmi_init();
 int gmi_goto(int id);
+int gmi_goto_new(int id);
 int gmi_request(const char* url);
 void gmi_load(struct gmi_page* page);
 int gmi_render(struct gmi_tab* tab);

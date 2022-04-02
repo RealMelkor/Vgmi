@@ -35,6 +35,25 @@ int gmi_goto(int id) {
 	return ret;
 }
 
+int gmi_goto_new(int id) {
+	id--;
+	struct gmi_page* page = &client.tabs[client.tab].page;
+	if (id < 0 || id >= page->links_count) {
+		snprintf(client.error, sizeof(client.error), "Invalid link number, %d/%d", id, page->links_count);
+		client.input.error = 1;
+		return -1;
+	}
+	int old_tab = client.tab;
+	gmi_newtab();
+	client.tab = client.tabs_count - 1;
+	page = &client.tabs[old_tab].page;
+	int ret = gmi_nextlink(client.tabs[old_tab].url, page->links[id]);
+	if (ret < 1) return ret;
+	client.tabs[client.tab].page.data_len = ret;
+	gmi_load(&client.tabs[client.tab].page);
+	return ret;
+}
+
 int gmi_nextlink(char* url, char* link) {
 	int url_len = strnlen(url, MAX_URL);
 	int link_len = strnlen(url, MAX_URL);
@@ -416,9 +435,7 @@ int gmi_request(const char* url) {
 	
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 		snprintf(client.error, sizeof(client.error), "Connection to %s timed out", gmi_host);
-		//close(sockfd);
 		goto request_error;
-		//return -1;
 	}
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
@@ -433,20 +450,6 @@ int gmi_request(const char* url) {
 	strncpy(urlbuf, tab->url, MAX_URL);
 	size_t len = strnlen(urlbuf, MAX_URL)+2;
 	strncat(urlbuf, "\r\n", MAX_URL-len);
-	char* ptr = urlbuf;
-	while (len) {
-		size_t ret;
-
-		ret = tls_write(ctx, ptr, len);
-		if (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT)
-			continue;
-		if (ret == -1) {
-			snprintf(client.error, sizeof(client.error), "Failed to send request: %s", gmi_host);
-			goto request_error;
-		}
-		ptr += ret;
-		len -= ret;	
-	}
 	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
 		snprintf(client.error, sizeof(client.error), "Failed to send data to: %s", gmi_host);
 		goto request_error;
@@ -458,7 +461,7 @@ int gmi_request(const char* url) {
 		snprintf(client.error, sizeof(client.error), "[%d] Invalid data from: %s", recv, gmi_host);
 		goto request_error;
 	}
-	ptr = strchr(buf, ' ');
+	char* ptr = strchr(buf, ' ');
 	if (!ptr) {
 		snprintf(client.error, sizeof(client.error), "Invalid data to from: %s", gmi_host);
 		goto request_error;
@@ -533,10 +536,12 @@ int gmi_request(const char* url) {
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
 		if (bytes == 0) break;
-		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT)
+		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) {
+			//usleep(10);
 			continue;
+		}
 		if (bytes < 1) {
-			snprintf(client.error, sizeof(client.error), "Invalid data to from: %s", gmi_host);
+			snprintf(client.error, sizeof(client.error), "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
 		}
 		tab->page.data = realloc(tab->page.data, recv+bytes+1);

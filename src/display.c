@@ -20,10 +20,18 @@ void display() {
 
         if (page->code == 20 || page->code == 10 || page->code == 11) {
                 tb_clear();
+		if (client.tabs_count > 1) tab->scroll--;
                 page->lines = gmi_render(tab);
+		if (client.tabs_count > 1) tab->scroll++;
         } else if (client.error[0] != '\0') {
                 tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", client.error);
         }
+
+	// current tab
+	if (client.tabs_count > 1) {
+		tb_colorline(0, 0, TB_WHITE);
+		tb_printf(0, 0, TB_BLACK, TB_WHITE, "Tabs : %d/%d", client.tab+1, client.tabs_count);
+	}
 
         // current url
         tb_colorline(0, tb_height()-2, TB_WHITE);
@@ -64,7 +72,7 @@ void display() {
         if (client.input.error) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_RED);
-                tb_printf(0, tb_height()-1, TB_WHITE, TB_RED, client.error);
+                tb_print(0, tb_height()-1, TB_WHITE, TB_RED, client.error);
                 client.input.field[0] = '\0';
                 client.input.error = 0;
         } else if (page->code == 10) {

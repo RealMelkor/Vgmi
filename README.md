@@ -8,6 +8,8 @@ Gemini client written in C with vim-like keybindings
 * l  - Go forward in the history
 * k  - Scroll up
 * j  - Scroll down
+* H  - Switch to the previous tab
+* L  - Switch to the next tab
 * gg - Go at the top of the page
 * G  - Go at the top of the page
 * :  - Open input mode
@@ -21,10 +23,11 @@ You can prefix a movement key with a number to repeat it.
 
 ## Commands
 
-* :q        - Exit the program
-* :o	    - Open an url
-* :nt <url> - Open a new tab, the url is optional
-* :[number] - Follow the link 
+* :q		- Exit the program
+* :o		- Open an url
+* :s [search]	- Search the Geminispace using geminispace.info
+* :nt [url]	- Open a new tab, the url is optional
+* :[number]	- Follow the link 
 
 ## Dependencies
 
