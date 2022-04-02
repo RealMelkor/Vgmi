@@ -183,6 +183,7 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 			if (newline) {
 				line++;
+				if (tab->page.data[c+1] == ' ') c++;
 				if (tab->page.data[c] == '\n') {
 					color = TB_DEFAULT;
 					start = 1;
@@ -298,7 +299,7 @@ void gmi_newtab_url(char* url) {
 #define PROTO_GOPHER 3
 #define PROTO_FILE 4
 
-int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len) {
+int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len, unsigned short* port) {
 	int proto = PROTO_GEMINI;
 	char* proto_ptr = strstr(url, "://");
 	char* ptr = (char*)url;
@@ -323,9 +324,22 @@ int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int ur
 		return -1; // unknown protocol
 	}
 skip_proto:;
-     	if (!proto_ptr) proto_ptr = ptr;
+	if (proto == PROTO_GEMINI) *port = 1965;
+	if (!proto_ptr) proto_ptr = ptr;
 	char* host_ptr = strchr(ptr, '/');
 	if (!host_ptr) host_ptr = ptr+strlen(ptr);
+	char* port_ptr = strchr(ptr, ':');
+	if (port_ptr && port_ptr < host_ptr) {
+		port_ptr++;	
+		char c = *host_ptr;
+		*host_ptr = '\0';
+		*port = atoi(port_ptr);
+		if (*port < 1) {
+			return -1; // invalid port
+		}
+		*host_ptr = c;
+		host_ptr = port_ptr - 1;
+	}
 	for(; host_ptr!=ptr; ptr++) {
 		if (host_len <= host_ptr-ptr) {
 			return -1;
@@ -369,7 +383,8 @@ int gmi_request(const char* url) {
 	int recv = TLS_WANT_POLLIN;
 	int sockfd = -1;
 	char gmi_host[256];
-	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host), tab->url, sizeof(tab->url));
+	unsigned short port;
+	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host), tab->url, sizeof(tab->url), &port);
 	if (proto == PROTO_FILE) {
 		if (gmi_loadfile(&tab->url[P_FILE]) > 0)
 			gmi_load(&tab->page);
@@ -404,8 +419,6 @@ int gmi_request(const char* url) {
 	if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
 		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
 		goto request_error;
-		//client.input.error = 1;
-		//return -1;
 	}
 
 	struct sockaddr_in addr4;
@@ -421,13 +434,13 @@ int gmi_request(const char* url) {
 	if (result->ai_family == AF_INET) {
 		addr4.sin_addr = ((struct sockaddr_in*) result->ai_addr)->sin_addr;
 		addr4.sin_family = AF_INET;
-		addr4.sin_port = htons(1965);
+		addr4.sin_port = htons(port);
 		addr = (struct sockaddr*)&addr4;
 	}
 	else if (result->ai_family == AF_INET6) {
 		addr6.sin6_addr = ((struct sockaddr_in6*) result->ai_addr)->sin6_addr;
 		addr6.sin6_family = AF_INET6;
-		addr6.sin6_port = htons(1965);
+		addr6.sin6_port = htons(port);
 		addr = (struct sockaddr*)&addr6;
 	}
 	int family = result->ai_family;

@@ -58,7 +58,7 @@ int gmi_goto_new(int id);
 int gmi_request(const char* url);
 void gmi_load(struct gmi_page* page);
 int gmi_render(struct gmi_tab* tab);
-int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len);
+int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len, unsigned short* port);
 void gmi_cleanforward(struct gmi_tab* tab);
 int gmi_nextlink(char* url, char* link);
 void gmi_newtab();
