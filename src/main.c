@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 	if (gmi_init()) return 0;
 	gmi_newtab();
 	if (argc < 2)
-		gmi_request("gemini://gemini.rmf-dev.com");
+		;//gmi_request("gemini://gemini.rmf-dev.com");
 	else if (argv[1][0] == '/' || argv[1][0] == '.') {
 		if (gmi_loadfile(argv[1]))
 			gmi_load(&client.tabs[client.tab].page);

@@ -11,7 +11,7 @@ Gemini client written in C with vim-like keybindings
 * H  - Switch to the previous tab
 * L  - Switch to the next tab
 * gg - Go at the top of the page
-* G  - Go at the top of the page
+* G  - Go at the bottom of the page
 * :  - Open input mode
 * u  - Open input mode with the current url
 * r  - Reload the page
@@ -25,7 +25,7 @@ You can prefix a movement key with a number to repeat it.
 
 * :q		- Close the current tab
 * :qa		- Close all tabs, exit the program
-* :o		- Open an url
+* :o [url]	- Open an url
 * :s [search]	- Search the Geminispace using geminispace.info
 * :nt [url]	- Open a new tab, the url is optional
 * :[number]	- Follow the link 
