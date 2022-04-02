@@ -241,11 +241,10 @@ int gmi_init() {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
-	//if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
-	if (tls_config_set_keypair_file(config, "txt.rmf-dev.com.crt", "txt.rmf-dev.com.key")) {
+	/*if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
 		printf("Failed to load keypair\n");
 		return -1;
-	}
+	}*/
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
 	bzero(&client, sizeof(client));
@@ -254,8 +253,35 @@ int gmi_init() {
 }
 
 char* home_page = 
-"20\r\n# Home Page - Vgmi client\n\n" \
-"Welcome\n";
+"20\r\n# Vgmi\n\n" \
+"A Gemini client written in C with vim-like keybindings\n\n" \
+"## Keybindings\n\n" \
+"* h - Go back in the history\n" \
+"* l - Go forward in the history\n" \
+"* k - Scroll up\n" \
+"* j - Scroll down\n" \
+"* H - Switch to the previous tab\n" \
+"* L - Switch to the next tab\n" \
+"* gg - Go at the top of the page\n" \
+"* G - Go at the bottom of the page\n" \
+"* : - Open input mode\n" \
+"* u - Open input mode with the current url\n" \
+"* r - Reload the page\n" \
+"* [number]Tab - Select a link\n" \
+"* Tab - Follow the selected link\n" \
+"* Shift+Tab - Open the selected link in a new tab\n" \
+"\nYou can prefix a movement key with a number to repeat it.\n\n" \
+"## Commands\n\n" \
+"* :q - Close the current tab\n" \
+"* :qa - Close all tabs, exit the program\n" \
+"* :o [url] - Open an url\n" \
+"* :s [search] - Search the Geminispace using geminispace.info\n" \
+"* :nt [url] - Open a new tab, the url is optional\n" \
+"* :[number] - Follow the link\n\n"
+"## Links\n\n" \
+"=>gemini://geminispace.info Geminispace\n" \
+"=>gemini://gemini.rmf-dev.com Gemigit\n" \
+;
 
 void gmi_newtab() {
 	int tab = client.tabs_count;
@@ -388,6 +414,7 @@ int gmi_request(const char* url) {
 	if (proto == PROTO_FILE) {
 		if (gmi_loadfile(&tab->url[P_FILE]) > 0)
 			gmi_load(&tab->page);
+		return 0;
 	}
 	if (proto != PROTO_GEMINI) {
 		snprintf(client.error, sizeof(client.error), "Invalid url: %s", url);
