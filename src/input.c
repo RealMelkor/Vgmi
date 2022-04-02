@@ -12,7 +12,20 @@ int command() {
 	client.input.field[i] == ' ' || client.input.field[i] == '\t'; i--)
 		client.input.field[i] = '\0';
 
-	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') return 1;
+	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
+		client.tabs_count--;
+		for (int i = client.tab; i < client.tabs_count; i++) {
+			client.tabs[i] = client.tabs[i+1];
+		}
+		if (client.tab > 0 && client.tab == client.tabs_count)
+			client.tab--;
+		client.input.field[0] = '\0';
+		if (client.tabs_count < 1)
+			return 1;
+		return 0;
+	}
+	if (client.input.field[1] == 'q' && client.input.field[2] == 'a' && client.input.field[3] == '\0') 
+		return 1;
 	if (client.input.field[1] == 'n' && client.input.field[2] == 't' && client.input.field[3] == '\0') {
 		gmi_newtab();
 		client.tab = client.tabs_count - 1;
