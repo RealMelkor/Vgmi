@@ -2,6 +2,7 @@
 #include "input.h"
 #include "gemini.h"
 #include "display.h"
+#include "cert.h"
 
 int command() {
 	struct gmi_tab* tab = &client.tabs[client.tab];
@@ -75,6 +76,14 @@ int command() {
 			client.input.mode = 1;
 			client.input.cursor = 0;
 		}
+		tab->selected = 0;
+		return 0;
+	}
+	if (strcmp(client.input.field, ":gencert") == 0) {
+		char host[256];
+		gmi_parseurl(client.tabs[client.tab].url, host, sizeof(host), NULL, 0, NULL);
+		cert_create(host);
+		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;
 	}

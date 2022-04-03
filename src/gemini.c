@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <termbox.h>
 #include <ctype.h>
+#include "cert.h"
 
 struct tls_config* config;
 struct tls* ctx;
@@ -32,6 +33,7 @@ int gmi_goto(int id) {
 	if (ret < 1) return ret;
 	client.tabs[client.tab].page.data_len = ret;
 	gmi_load(page);
+	client.tabs[client.tab].scroll = -1;
 	return ret;
 }
 
@@ -232,6 +234,7 @@ void gmi_freehistory(struct gmi_tab* tab) {
 struct tls_config* config;
 #include <time.h>
 int gmi_init() {
+	srand(time(NULL));
 	if (tls_init()) {
 		printf("Failed to initialize TLS\n");
 		return -1;
@@ -241,10 +244,12 @@ int gmi_init() {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
-	/*if (tls_config_set_keypair_file(config, "cert.crt", "cert.key")) {
-		printf("Failed to load keypair\n");
+	/*
+	if (tls_config_set_keypair_file(config, "cert/cert.pem", "cert/key.pem")) {
+		printf("Failed to load keypair: %s\n", tls_config_error(config));
 		return -1;
-	}*/
+	}
+	*/
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
 	bzero(&client, sizeof(client));
@@ -350,7 +355,7 @@ int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int ur
 		return -1; // unknown protocol
 	}
 skip_proto:;
-	if (proto == PROTO_GEMINI) *port = 1965;
+	if (port && proto == PROTO_GEMINI) *port = 1965;
 	if (!proto_ptr) proto_ptr = ptr;
 	char* host_ptr = strchr(ptr, '/');
 	if (!host_ptr) host_ptr = ptr+strlen(ptr);
@@ -359,9 +364,11 @@ skip_proto:;
 		port_ptr++;	
 		char c = *host_ptr;
 		*host_ptr = '\0';
-		*port = atoi(port_ptr);
-		if (*port < 1) {
-			return -1; // invalid port
+		if (port) {
+			*port = atoi(port_ptr);
+			if (*port < 1) {
+				return -1; // invalid port
+			}
 		}
 		*host_ptr = c;
 		host_ptr = port_ptr - 1;
@@ -377,6 +384,7 @@ skip_proto:;
 		host[ptr-proto_ptr] = *ptr;
 	}
 	host[ptr-proto_ptr] = '\0';
+	if (!urlbuf) return proto;
 	if (url_len < 16) return -1; // buffer too small
 	switch (proto) {
 	case PROTO_GEMINI:
@@ -404,6 +412,7 @@ skip_proto:;
 }
 
 int gmi_request(const char* url) {
+	char* data_ptr = NULL;
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	tab->selected = 0;
 	int recv = TLS_WANT_POLLIN;
@@ -431,6 +440,29 @@ int gmi_request(const char* url) {
 		client.input.error = 1;
 		return -1;
 	}
+
+	int cert = 0;
+	char crt[1024];
+	char key[1024];
+	if (cert_getpath(gmi_host, crt, sizeof(crt), key, sizeof(key)) == -1) {
+		client.input.error = 1;
+		cert = -1;
+	}
+
+	if (cert == 0) {
+		FILE* f = fopen(crt, "rb");
+		if (f) {
+			cert = 1;
+			fclose(f);
+		}
+	}
+
+	if (cert == 1 && tls_config_set_keypair_file(config, crt, key)) {
+		client.input.error = 1;
+		snprintf(client.error, sizeof(client.error), "%s", tls_config_error(config));
+		return -1;
+	}
+
 	if (tls_configure(ctx, config)) {
 		snprintf(client.error, sizeof(client.error), "Failed to configure TLS");
 		client.input.error = 1;
@@ -521,9 +553,13 @@ int gmi_request(const char* url) {
 	case 20:
 		break;
 	case 30:
+		data_ptr = tab->page.data;	
+		tab->page.data = NULL;
 		snprintf(client.error, sizeof(client.error), "Redirect temporary");
 		break;
 	case 31:
+		data_ptr = tab->page.data;	
+		tab->page.data = NULL;
 		snprintf(client.error, sizeof(client.error), "Redirect permanent");
 		break;
 	case 40:
@@ -576,10 +612,7 @@ int gmi_request(const char* url) {
 	while (1) {
 		int bytes = tls_read(ctx, buf, sizeof(buf));
 		if (bytes == 0) break;
-		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) {
-			//usleep(10);
-			continue;
-		}
+		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) continue;
 		if (bytes < 1) {
 			snprintf(client.error, sizeof(client.error), "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
@@ -616,7 +649,7 @@ request_error:
 		ctx = NULL;
 	}
 	if (tab->page.code == 11 || tab->page.code == 10) {
-		return tab->page.data?strlen(tab->page.data):0;
+		return tab->page.data_len;
 	}
 	if (tab->page.code == 31 || tab->page.code == 30) {
 		char* ptr = strchr(tab->page.data, ' ');
@@ -627,7 +660,17 @@ request_error:
 		if (ln) *ln = '\0';
 		ln = strchr(ptr, '\r');
 		if (ln) *ln = '\0';
-		return gmi_nextlink(tab->url, ptr+1);
+		int r = gmi_nextlink(tab->url, ptr+1);
+		if (r < 1) return r;
+		if (tab->page.code != 20) {
+			free(tab->page.data);
+			tab->page.data = data_ptr;
+		} else {
+			tab->page.data_len = r;
+			gmi_load(&tab->page);
+			tab->scroll = -1;
+		}
+		return r;
 	}
 	if (recv > 0) {
 		tab->page.data_len = recv;

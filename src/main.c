@@ -2,6 +2,7 @@
 #include "gemini.h"
 #include "display.h"
 #include "input.h"
+#include "cert.h"
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
