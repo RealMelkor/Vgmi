@@ -29,6 +29,7 @@ You can prefix a movement key with a number to repeat it.
 * :s [search]	- Search the Geminispace using geminispace.info
 * :nt [url]	- Open a new tab, the url is optional
 * :[number]	- Follow the link 
+* :gencert	- Generate a certificate for the current capsule
 
 ## Dependencies
 

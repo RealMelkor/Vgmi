@@ -1,9 +1,9 @@
 SHELL = /bin/sh
 
 PREFIX = /usr
-CFLAG = -O2 -Wall
+CFLAG = -O2 -Wall -Wpedantic -Wextra
 CC = cc
-LIBS = -ltls
+LIBS = -ltls -lcrypto
 
 # FreeBSD
 #PREFIX = /usr/local
