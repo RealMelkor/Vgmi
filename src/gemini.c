@@ -77,11 +77,15 @@ int gmi_nextlink(char* url, char* link) {
 		int ret = gmi_request(link);
 		return ret;
 	} else {
+		char* ptr = strrchr(&url[GMI], '/');
+		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
 		strncpy(urlbuf, url, sizeof(urlbuf));
 		if (url[strlen(url)-1] != '/')
 			strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
 		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
+		int l = strnlen(urlbuf, MAX_URL);
+		if (urlbuf[l-1] == '/') urlbuf[l-1] = '\0';
 		int ret = gmi_request(urlbuf);
 		return ret;
 	}
