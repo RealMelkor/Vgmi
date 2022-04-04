@@ -251,18 +251,6 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 		tab->history->next = NULL;
 }
 
-/*
-void gmi_freehistory(struct gmi_tab* tab) {
-	struct gmi_link* ptr = tab->history->prev;
-	free(tab->history);
-	while ((ptr = ptr->prev)) {
-		tab->history = ptr;
-		ptr = ptr->prev;
-		free(tab->history);
-	}
-}
-*/
-
 struct tls_config* config;
 #include <time.h>
 int gmi_init() {
@@ -271,17 +259,13 @@ int gmi_init() {
 		printf("Failed to initialize TLS\n");
 		return -1;
 	}
+	
 	config = tls_config_new();
 	if (!config) {
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
-	/*
-	if (tls_config_set_keypair_file(config, "cert/cert.pem", "cert/key.pem")) {
-		printf("Failed to load keypair: %s\n", tls_config_error(config));
-		return -1;
-	}
-	*/
+
 	tls_config_insecure_noverifycert(config);
 	ctx = NULL;
 	bzero(&client, sizeof(client));
@@ -291,8 +275,18 @@ int gmi_init() {
 
 void gmi_freetab(struct gmi_tab* tab) {
 	if (tab->history) {
-		for (struct gmi_link* link = tab->history->next; link; link = link->next) free(link);
-		for (struct gmi_link* link = tab->history->prev; link; link = link->prev) free(link);
+		struct gmi_link* link = tab->history->next;
+		while (link) {
+			struct gmi_link* ptr = link->next;
+			free(link);
+			link = ptr;
+		}
+		link = tab->history->prev;
+		while (link) {
+			struct gmi_link* ptr = link->prev;
+			free(link);
+			link = ptr;
+		}
 		free(tab->history);
 	}
 	for (int i=0; i < tab->page.links_count; i++)
