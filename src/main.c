@@ -38,5 +38,6 @@ int main(int argc, char* argv[]) {
 		if (input(ev)) break;
 	}
 	tb_shutdown();
+	gmi_free();
 	return 0;
 }
