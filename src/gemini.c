@@ -77,11 +77,10 @@ int gmi_nextlink(char* url, char* link) {
 		int ret = gmi_request(link);
 		return ret;
 	} else {
-		char* ptr = strchr(&url[GMI], '/');
-		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
 		strncpy(urlbuf, url, sizeof(urlbuf));
-		strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
+		if (url[strlen(url)-1] != '/')
+			strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
 		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
 		int ret = gmi_request(urlbuf);
 		return ret;
@@ -95,16 +94,25 @@ void gmi_load(struct gmi_page* page) {
 	page->links = NULL;
 	page->links_count = 0;
 	page->lines = 0;
+	int x = 0;
 	for (int c = 0; c < page->data_len; c++) {
-		if (page->data[c] == '\n') {
-			page->lines++;
-			continue;
-		}
-		if (page->data[c] == '=' && page->data[c+1] == '>') {
+		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
-			for (; page->data[c]==' '; c++) ;
 			char* url = (char*)&page->data[c];
-			for (; page->data[c]!=' '; c++) ;
+			int nospace = c;
+			for (; page->data[c]==' '; c++) {
+				if (page->data[c] == '\n' || page->data[c] == '\0') {
+					c = nospace;
+					break;
+				}
+			}
+			url = (char*)&page->data[c];
+			for (; page->data[c]!=' '; c++) {
+				if (page->data[c] == '\n' || page->data[c] == '\0') {
+					break;
+				}
+			}
+			char save = page->data[c];
 			page->data[c] = '\0';
 			if (page->links)
 				page->links = realloc(page->links, sizeof(char*) * (page->links_count+1));
@@ -112,15 +120,21 @@ void gmi_load(struct gmi_page* page) {
 				page->links = malloc(sizeof(char*));
 			if (url[0] == '\0') {
 				page->links[page->links_count] = NULL;
-				page->data[c] = ' ';
+				page->data[c] = save;
 				continue;
 			}
 			int len = strnlen(url, MAX_URL);
 			page->links[page->links_count] = malloc(len+2);
 			memcpy(page->links[page->links_count], url, len+1);
 			page->links_count++;
-			page->data[c] = ' ';
+			page->data[c] = save;
 		}
+		if (page->data[c] == '\n') {
+			page->lines++;
+			x = 0;
+			continue;
+		}
+		x++;
 	}
 }
 
@@ -156,9 +170,21 @@ int gmi_render(struct gmi_tab* tab) {
 				x += strlen(buf);
 			}
 			c += 2;
-			for (; tab->page.data[c]==' '; c++) ;
-			for (; tab->page.data[c]!=' '; c++) ;
-			for (; tab->page.data[c]==' '; c++) ;
+
+			for (; tab->page.data[c]==' ' && 
+			tab->page.data[c]!='\n' &&
+			tab->page.data[c]!='\0'; c++) ;
+
+			int initial = c;
+			for (; tab->page.data[c]!=' ' &&
+			tab->page.data[c]!='\n' &&
+			tab->page.data[c]!='\0'; c++) ;
+
+			for (; tab->page.data[c]==' ' && 
+			tab->page.data[c]!='\n' &&
+			tab->page.data[c]!='\0'; c++) ;
+
+			if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0') c = initial;
 			x+=3;
 			if ((links+1)/10) x--;
 			if ((links+1)/100) x--;
@@ -221,6 +247,7 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 		tab->history->next = NULL;
 }
 
+/*
 void gmi_freehistory(struct gmi_tab* tab) {
 	struct gmi_link* ptr = tab->history->prev;
 	free(tab->history);
@@ -230,6 +257,7 @@ void gmi_freehistory(struct gmi_tab* tab) {
 		free(tab->history);
 	}
 }
+*/
 
 struct tls_config* config;
 #include <time.h>
@@ -255,6 +283,23 @@ int gmi_init() {
 	bzero(&client, sizeof(client));
 		
 	return 0;
+}
+
+void gmi_freetab(struct gmi_tab* tab) {
+	if (tab->history) {
+		for (struct gmi_link* link = tab->history->next; link; link = link->next) free(link);
+		for (struct gmi_link* link = tab->history->prev; link; link = link->prev) free(link);
+		free(tab->history);
+	}
+	for (int i=0; i < tab->page.links_count; i++)
+		free(tab->page.links[i]);
+	free(tab->page.links);
+	free(tab->page.data);
+}
+
+void gmi_free() {
+	for (int i=0; i < client.tabs_count; i++) gmi_freetab(&client.tabs[i]);
+	free(client.tabs);
 }
 
 char* home_page = 
@@ -606,7 +651,7 @@ int gmi_request(const char* url) {
 		goto request_error;
 	}
 	*ptr = ' ';
-	if (!tab->page.data) free(tab->page.data);
+	if (tab->page.data) free(tab->page.data);
 	tab->page.data = malloc(recv+1);
 	memcpy(tab->page.data, buf, recv);
 	while (1) {
@@ -700,6 +745,7 @@ int gmi_loadfile(char* path) {
 	fclose(f);
 	tab->page.code = 20;
 	tab->page.data_len = len;
+	if (tab->page.data) free(tab->page.data);
 	tab->page.data = data;
 	snprintf(tab->url, sizeof(tab->url), "file://%s/", path);
 	return len;

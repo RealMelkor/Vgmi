@@ -64,5 +64,7 @@ int gmi_nextlink(char* url, char* link);
 void gmi_newtab();
 void gmi_newtab_url(char* url);
 int gmi_loadfile(char* path);
+void gmi_freetab(struct gmi_tab* tab);
+void gmi_free();
 
 #endif

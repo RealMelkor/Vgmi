@@ -15,6 +15,7 @@ int command() {
 
 	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
 		client.tabs_count--;
+		gmi_freetab(&client.tabs[client.tab]);
 		for (int i = client.tab; i < client.tabs_count; i++) {
 			client.tabs[i] = client.tabs[i+1];
 		}
@@ -291,11 +292,11 @@ int input(struct tb_event ev) {
 			client.tab++;
 		break;
 	case 'h': // Back
+		if (!tab->history) break;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			if (!tab->history->prev) break;
 			tab->history = tab->history->prev;
-		} else
-			if (!tab->history) break;
+		} 
 		if (gmi_request(tab->history->url) < 0) break;
 		break;
 	case 'l': // Forward
@@ -332,6 +333,7 @@ int input(struct tb_event ev) {
 		break;
 	case 'G': // End of file
 		tab->scroll = page->lines-tb_height()+2;
+		if (client.tabs_count != 1) tab->scroll++;
 		break;
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
