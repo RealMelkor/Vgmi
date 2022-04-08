@@ -20,6 +20,8 @@
 #endif
 #include "cert.h"
 
+#define TIMEOUT 3
+
 struct tls_config* config;
 struct tls* ctx;
 struct gmi_client client;
@@ -550,7 +552,7 @@ int gmi_request(const char* url) {
 	struct sockaddr_in6 addr6;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	struct timeval tv;
-	tv.tv_sec = 3;
+	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
 	int value = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
@@ -581,9 +583,9 @@ int gmi_request(const char* url) {
 	conn.family = family;
 	conn.socket = sockfd;
 	pthread_create(&tid, NULL, (void*)(void*)sock_connect, (void*)&conn);
-	for (int i=0; i < 3000 && !conn.connected; i++)
-		usleep(1);
-if (conn.connected != 1) {
+	for (int i=0; i < TIMEOUT * 1000 && !conn.connected; i++)
+		usleep(1000);
+	if (conn.connected != 1) {
 #else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 #endif
