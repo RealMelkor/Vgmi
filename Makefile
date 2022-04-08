@@ -6,9 +6,9 @@ CC = cc
 LIBS = -ltls -lcrypto
 
 # FreeBSD
-#PREFIX = /usr/local
-#LIBSPATH = -L/usr/local/lib
-#INCLUDES = -I/usr/local/include
+PREFIX = /usr/local
+LIBSPATH = -L/usr/local/lib
+INCLUDES = -I/usr/local/include
 
 vgmi: src
 	${CC} $(wildcard src/*.c) ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
