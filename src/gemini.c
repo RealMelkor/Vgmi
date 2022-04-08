@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <termbox.h>
 #include <ctype.h>
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <pthread.h>
 #include <sys/socket.h>
 #endif
@@ -460,7 +460,7 @@ skip_proto:;
 	return proto;
 }
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
 struct conn {
 	int connected;
 	int socket;
@@ -573,7 +573,7 @@ int gmi_request(const char* url) {
 	int family = result->ai_family;
 	freeaddrinfo(result);
 	
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
 	pthread_t tid;
 	struct conn conn;
 	conn.connected = 0;
