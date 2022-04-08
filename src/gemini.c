@@ -14,6 +14,10 @@
 #include <errno.h>
 #include <termbox.h>
 #include <ctype.h>
+#ifdef __FreeBSD__
+#include <pthread.h>
+#include <sys/socket.h>
+#endif
 #include "cert.h"
 
 struct tls_config* config;
@@ -454,6 +458,25 @@ skip_proto:;
 	return proto;
 }
 
+#ifdef __FreeBSD__
+struct conn {
+	int connected;
+	int socket;
+	struct sockaddr* addr;
+	int family;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+};
+
+void sock_connect(struct conn* conn) {
+	if (connect(conn->socket, conn->addr, 
+	(conn->family == AF_INET)?sizeof(conn->addr4):sizeof(conn->addr6)) != 0) {
+		conn->connected = -1;
+	}
+	conn->connected = 1;
+}
+#endif
+
 int gmi_request(const char* url) {
 	char* data_ptr = NULL;
 	struct gmi_tab* tab = &client.tabs[client.tab];
@@ -548,7 +571,22 @@ int gmi_request(const char* url) {
 	int family = result->ai_family;
 	freeaddrinfo(result);
 	
+#ifdef __FreeBSD__
+	pthread_t tid;
+	struct conn conn;
+	conn.connected = 0;
+	conn.addr = addr;
+	conn.addr4 = addr4;
+	conn.addr6 = addr6;
+	conn.family = family;
+	conn.socket = sockfd;
+	pthread_create(&tid, NULL, (void*)(void*)sock_connect, (void*)&conn);
+	for (int i=0; i < 3000 && !conn.connected; i++)
+		usleep(1);
+if (conn.connected != 1) {
+#else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
+#endif
 		snprintf(client.error, sizeof(client.error), "Connection to %s timed out", gmi_host);
 		goto request_error;
 	}
