@@ -6,6 +6,14 @@ CC = cc
 LIBS = -ltls -lcrypto
 
 ifeq ($(shell uname -s),FreeBSD)
+bsd = yes
+endif
+
+ifeq ($(shell uname -s),OpenBSD)
+bsd = yes
+endif
+
+ifdef bsd
 PREFIX = /usr/local
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include
