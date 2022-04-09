@@ -5,10 +5,20 @@ CFLAG = -O2 -Wall -Wpedantic -Wextra
 CC = cc
 LIBS = -ltls -lcrypto
 
-# FreeBSD
+ifeq ($(shell uname -s),FreeBSD)
+bsd = yes
+endif
+
+ifeq ($(shell uname -s),OpenBSD)
+bsd = yes
+endif
+
+ifdef bsd
 PREFIX = /usr/local
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include
+LIBS = -ltls -lcrypto -lpthread
+endif
 
 vgmi: src
 	${CC} $(wildcard src/*.c) ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
