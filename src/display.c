@@ -13,7 +13,8 @@ void display() {
         tb_clear();
         if (client.input.mode) {
                 if (page->code == 11 || page->code == 10)
-                        tb_set_cursor(client.input.cursor+strnlen(client.input.label, sizeof(client.input.label))+2, tb_height()-1);
+                        tb_set_cursor(client.input.cursor+strnlen(client.input.label,
+				      sizeof(client.input.label))+2, tb_height()-1);
                 else
                         tb_set_cursor(client.input.cursor, tb_height()-1);
         }
@@ -30,7 +31,8 @@ void display() {
 	// current tab
 	if (client.tabs_count > 1) {
 		tb_colorline(0, 0, TB_WHITE);
-		tb_printf(0, 0, TB_BLACK, TB_WHITE, "Tabs : %d/%d", client.tab+1, client.tabs_count);
+		tb_printf(0, 0, TB_BLACK, TB_WHITE,
+			  "Tabs : %d/%d", client.tab+1, client.tabs_count);
 	}
 
         // current url
@@ -60,12 +62,14 @@ void display() {
         // Show selected link url
         if (tab->selected != 0) {
                 int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
-                tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE, " => %s ", tab->selected_url);
+                tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE,
+			  " => %s ", tab->selected_url);
         }
 
         int count = atoi(client.vim.counter);
         if (count) {
-                tb_printf(tb_width() - 8, tb_height() - 1, TB_DEFAULT, TB_DEFAULT, "%d", count);
+                tb_printf(tb_width() - 8, tb_height() - 1, TB_DEFAULT, TB_DEFAULT,
+			 "%d", count);
         }
 
         // input
@@ -76,13 +80,16 @@ void display() {
                 client.input.field[0] = '\0';
                 client.input.error = 0;
         } else if (page->code == 10) {
-                tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", client.input.label, client.input.field);
+                tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
+			 "%s: %s", client.input.label, client.input.field);
         } else if (page->code == 11) {
                 char input_buf[1024];
                 int i = 0;
-                for (; client.input.field[i] && i < sizeof(client.input.field); i++) input_buf[i] = '*';
+                for (; client.input.field[i] && i < sizeof(client.input.field); i++)
+			input_buf[i] = '*';
                 input_buf[i] = '\0';
-                tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s: %s", client.input.label, input_buf);
+                tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
+			  "%s: %s", client.input.label, input_buf);
         }
         else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", client.input.field);
 
