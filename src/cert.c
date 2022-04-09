@@ -64,7 +64,8 @@ int cert_create(char* host) {
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	X509* x509 = X509_new();
-	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), ((unsigned)rand()+2)*((unsigned)rand()+2)+2) != 1)
+	if (ASN1_INTEGER_set(X509_get_serialNumber(x509),
+	   ((unsigned)rand()+2)*((unsigned)rand()+2)+2) != 1)
 		goto failed;
 
 	X509_gmtime_adj(X509_get_notBefore(x509), 0);
@@ -73,7 +74,8 @@ int cert_create(char* host) {
 	if (X509_set_pubkey(x509, pkey) != 1) goto failed;
 
 	X509_NAME* name = X509_get_subject_name(x509);
-	if (X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)host, -1, -1, 0) != 1) 
+	if (X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+	   (unsigned char *)host, -1, -1, 0) != 1) 
 		goto failed;
 	
 	if (X509_set_issuer_name(x509, name) != 1) goto failed;

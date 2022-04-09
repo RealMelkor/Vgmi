@@ -10,7 +10,7 @@ int command() {
 
 	// Trim
 	for (int i=strnlen(client.input.field, sizeof(client.input.field)) - 1;
-	client.input.field[i] == ' ' || client.input.field[i] == '\t'; i--)
+	     client.input.field[i] == ' ' || client.input.field[i] == '\t'; i--)
 		client.input.field[i] = '\0';
 
 	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
@@ -26,15 +26,18 @@ int command() {
 			return 1;
 		return 0;
 	}
-	if (client.input.field[1] == 'q' && client.input.field[2] == 'a' && client.input.field[3] == '\0') 
+	if (client.input.field[1] == 'q' && client.input.field[2] == 'a'
+	    && client.input.field[3] == '\0') 
 		return 1;
-	if (client.input.field[1] == 'n' && client.input.field[2] == 't' && client.input.field[3] == '\0') {
+	if (client.input.field[1] == 'n' && client.input.field[2] == 't'
+	    && client.input.field[3] == '\0') {
 		gmi_newtab();
 		client.tab = client.tabs_count - 1;
 		client.input.field[0] = '\0';
 		return 0;
 	}
-	if (client.input.field[1] == 'n' && client.input.field[2] == 't' && client.input.field[3] == ' ') {
+	if (client.input.field[1] == 'n' && client.input.field[2] == 't'
+	   && client.input.field[3] == ' ') {
 		client.input.cursor = 0;
 		int id = atoi(&client.input.field[4]);
 		if (id != 0 || (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
@@ -66,7 +69,8 @@ int command() {
 	}
 	if (client.input.field[1] == 's' && client.input.field[2] == ' ') {
 		char urlbuf[MAX_URL];
-		snprintf(urlbuf, sizeof(urlbuf), "gemini://geminispace.info/search?%s", &client.input.field[3]);
+		snprintf(urlbuf, sizeof(urlbuf),
+			 "gemini://geminispace.info/search?%s", &client.input.field[3]);
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
 		int bytes = gmi_request(urlbuf);
@@ -88,7 +92,8 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
-	if (atoi(&client.input.field[1]) || (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
+	if (atoi(&client.input.field[1]) ||
+	   (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
 		int bytes = gmi_goto(atoi(&client.input.field[1]));
 		if (bytes > 0) {
 			tab->scroll = -1;
@@ -100,7 +105,8 @@ int command() {
 	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
 		client.input.error = -1;
-		snprintf(client.error, sizeof(client.error), "Unknown input: %s", &client.input.field[1]);
+		snprintf(client.error, sizeof(client.error),
+			 "Unknown input: %s", &client.input.field[1]);
 	}
 	return 0;
 }
@@ -141,7 +147,8 @@ int input(struct tb_event ev) {
 	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
 		if (i>((page->code==10||page->code==11)?0:1)) {
-			strncpy(&client.input.field[i-1], &client.input.field[i], sizeof(client.input.field)-i);
+			strncpy(&client.input.field[i-1],
+				&client.input.field[i], sizeof(client.input.field)-i);
 			client.input.cursor--;
 		}
 		return 0;
@@ -163,7 +170,9 @@ int input(struct tb_event ev) {
 				tab->selected = 0;
 				client.input.error = 1;
 			}
-			else strncpy(tab->selected_url, page->links[tab->selected - 1], sizeof(tab->selected_url));
+			else 
+				strncpy(tab->selected_url, page->links[tab->selected - 1],
+					sizeof(tab->selected_url));
 		}
 		else if (tab->selected) {
 			gmi_goto(tab->selected);
@@ -176,7 +185,8 @@ int input(struct tb_event ev) {
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
+			if (tab->scroll+tb_height()-2>page->lines)
+				tab->scroll = page->lines - tb_height() + 2;
 		}
 		else if (tab->scroll+tb_height()-2<page->lines) tab->scroll++;
 		client.vim.g = 0;
@@ -189,9 +199,11 @@ int input(struct tb_event ev) {
 			char urlbuf[MAX_URL];
 			char* start = strstr(tab->url, "gemini://");
 			if (!(start?strchr(&start[GMI], '/'):strchr(tab->url, '/')))
-				snprintf(urlbuf, sizeof(urlbuf), "%s/?%s", tab->url, client.input.field);
+				snprintf(urlbuf, sizeof(urlbuf),
+					 "%s/?%s", tab->url, client.input.field);
 			else
-				snprintf(urlbuf, sizeof(urlbuf), "%s?%s", tab->url, client.input.field);
+				snprintf(urlbuf, sizeof(urlbuf),
+					 "%s?%s", tab->url, client.input.field);
 			int bytes = gmi_request(urlbuf);
 			if (bytes>0) {
 				tab = &client.tabs[client.tab];
@@ -260,7 +272,8 @@ int input(struct tb_event ev) {
 		if (!counter) counter++;
 		tab->scroll += counter * tb_height();
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
+		if (tab->scroll+tb_height()-2>page->lines)
+			tab->scroll = page->lines - tb_height() + 2;
 		client.vim.g = 0;
 		return 0;
 	}
@@ -317,9 +330,11 @@ int input(struct tb_event ev) {
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->scroll+tb_height()-2>page->lines) tab->scroll = page->lines - tb_height() + 2;
+			if (tab->scroll+tb_height()-2>page->lines)
+				tab->scroll = page->lines - tb_height() + 2;
 		}
-		else if (tab->scroll+(client.tabs_count==1?tb_height()-2:tb_height()-3)<page->lines) tab->scroll++;
+		else if (tab->scroll+(client.tabs_count==1?tb_height()-2:tb_height()-3)
+			 < page->lines) tab->scroll++;
 		client.vim.g = 0;
 		break;
 	case 'U': // Show history
