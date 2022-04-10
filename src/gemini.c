@@ -30,7 +30,8 @@ int gmi_goto(int id) {
 	id--;
 	struct gmi_page* page = &client.tabs[client.tab].page;
 	if (id < 0 || id >= page->links_count) {
-		snprintf(client.error, sizeof(client.error), "Invalid link number, %d/%d", id, page->links_count);
+		snprintf(client.error, sizeof(client.error),
+			 "Invalid link number, %d/%d", id, page->links_count);
 		client.input.error = 1;
 		return -1;
 	}
@@ -47,7 +48,8 @@ int gmi_goto_new(int id) {
 	id--;
 	struct gmi_page* page = &client.tabs[client.tab].page;
 	if (id < 0 || id >= page->links_count) {
-		snprintf(client.error, sizeof(client.error), "Invalid link number, %d/%d", id, page->links_count);
+		snprintf(client.error, sizeof(client.error),
+			 "Invalid link number, %d/%d", id, page->links_count);
 		client.input.error = 1;
 		return -1;
 	}
@@ -125,7 +127,8 @@ void gmi_load(struct gmi_page* page) {
 			char save = page->data[c];
 			page->data[c] = '\0';
 			if (page->links)
-				page->links = realloc(page->links, sizeof(char*) * (page->links_count+1));
+				page->links = realloc(page->links, sizeof(char*) 
+						      * (page->links_count+1));
 			else
 				page->links = malloc(sizeof(char*));
 			if (url[0] == '\0') {
@@ -154,53 +157,63 @@ int gmi_render(struct gmi_tab* tab) {
 	int links = 0;
 	uintattr_t color = TB_DEFAULT;
 	int start = 1;
+	int ignore = 0;
 	for (int c = 0; c < tab->page.data_len; c++) {
 		if (tab->page.data[c] == '\t') {
 			x+=4;
 			continue;
 		}
 		if (tab->page.data[c] == '\r') continue;
-		for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
-			if (tab->page.data[c+i+1] == ' ') {
-				color = TB_RED + i;
-				break;
+		if (start && tab->page.data[c] == '`' &&
+		    tab->page.data[c+1] == '`' && tab->page.data[c+2] == '`') 
+			ignore = !ignore;	
+		
+		if (!ignore) {
+			for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
+				if (tab->page.data[c+i+1] == ' ') {
+					color = TB_RED + i;
+					break;
+				}
+			}
+			if (start && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
+				color = TB_ITALIC|TB_CYAN;
+			}
+			if (start && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
+				color = TB_ITALIC|TB_MAGENTA;
+			}
+			if (start && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
+				if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
+				   line-tab->scroll <= tb_height()-2) {
+					char buf[32];
+					snprintf(buf, sizeof(buf), "[%d]", links+1);
+					tb_print(x+2, line-1-tab->scroll,
+					links+1 == tab->selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
+					x += strlen(buf);
+				}
+				c += 2;
+
+				for (; tab->page.data[c]==' ' && 
+				tab->page.data[c]!='\n' &&
+				tab->page.data[c]!='\0'; c++) ;
+
+				int initial = c;
+				for (; tab->page.data[c]!=' ' &&
+				tab->page.data[c]!='\n' &&
+				tab->page.data[c]!='\0'; c++) ;
+
+				for (; tab->page.data[c]==' ' && 
+				tab->page.data[c]!='\n' &&
+				tab->page.data[c]!='\0'; c++) ;
+
+				if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0') c = initial;
+				x+=3;
+				if ((links+1)/10) x--;
+				if ((links+1)/100) x--;
+				if ((links+1)/1000) x--;
+				links++;
 			}
 		}
-		if (start && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
-			color = TB_ITALIC|TB_CYAN;
-		}
-		if (start && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
-			color = TB_ITALIC|TB_MAGENTA;
-		}
-		if (start && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
-			if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) {
-				char buf[32];
-				snprintf(buf, sizeof(buf), "[%d]", links+1);
-				tb_print(x+2, line-1-tab->scroll, links+1 == tab->selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
-				x += strlen(buf);
-			}
-			c += 2;
 
-			for (; tab->page.data[c]==' ' && 
-			tab->page.data[c]!='\n' &&
-			tab->page.data[c]!='\0'; c++) ;
-
-			int initial = c;
-			for (; tab->page.data[c]!=' ' &&
-			tab->page.data[c]!='\n' &&
-			tab->page.data[c]!='\0'; c++) ;
-
-			for (; tab->page.data[c]==' ' && 
-			tab->page.data[c]!='\n' &&
-			tab->page.data[c]!='\0'; c++) ;
-
-			if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0') c = initial;
-			x+=3;
-			if ((links+1)/10) x--;
-			if ((links+1)/100) x--;
-			if ((links+1)/1000) x--;
-			links++;
-		}
 		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
 			int end = 0;
 			if (x+4>=tb_width()) {
@@ -352,7 +365,8 @@ void gmi_newtab_url(char* url) {
 #define PROTO_GOPHER 3
 #define PROTO_FILE 4
 
-int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len, unsigned short* port) {
+int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf,
+		 int url_len, unsigned short* port) {
 	int proto = PROTO_GEMINI;
 	char* proto_ptr = strstr(url, "://");
 	char* ptr = (char*)url;
@@ -516,7 +530,8 @@ int gmi_request(const char* url) {
 	int sockfd = -1;
 	char gmi_host[256];
 	unsigned short port;
-	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host), tab->url, sizeof(tab->url), &port);
+	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host),
+				 tab->url, sizeof(tab->url), &port);
 	if (proto == PROTO_FILE) {
 		if (gmi_loadfile(&tab->url[P_FILE]) > 0)
 			gmi_load(&tab->page);
@@ -642,16 +657,19 @@ int gmi_request(const char* url) {
 #else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 #endif
-		snprintf(client.error, sizeof(client.error), "Connection to %s timed out", gmi_host);
+		snprintf(client.error, sizeof(client.error), 
+			 "Connection to %s timed out", gmi_host);
 		goto request_error;
 	}
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
-		snprintf(client.error, sizeof(client.error), "Unable to connect to: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error), 
+			 "Unable to connect to: %s", gmi_host);
 		goto request_error;
 	}
 	if (tls_handshake(ctx)) {
-		snprintf(client.error, sizeof(client.error), "Failed to handshake: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error),
+			 "Failed to handshake: %s", gmi_host);
 		goto request_error;
 	}
 	char urlbuf[MAX_URL];
@@ -659,19 +677,22 @@ int gmi_request(const char* url) {
 	size_t len = strnlen(urlbuf, MAX_URL)+2;
 	strncat(urlbuf, "\r\n", MAX_URL-len);
 	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
-		snprintf(client.error, sizeof(client.error), "Failed to send data to: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error),
+			 "Failed to send data to: %s", gmi_host);
 		goto request_error;
 	}
 	char buf[1024];
 	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT || recv == 0)
 		recv = tls_read(ctx, buf, sizeof(buf));
 	if (recv <= 0) {
-		snprintf(client.error, sizeof(client.error), "[%d] Invalid data from: %s", recv, gmi_host);
+		snprintf(client.error, sizeof(client.error),
+			 "[%d] Invalid data from: %s", recv, gmi_host);
 		goto request_error;
 	}
 	char* ptr = strchr(buf, ' ');
 	if (!ptr) {
-		snprintf(client.error, sizeof(client.error), "Invalid data to from: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error),
+			 "Invalid data to from: %s", gmi_host);
 		goto request_error;
 	}
 	*ptr = '\0';
@@ -738,7 +759,8 @@ int gmi_request(const char* url) {
 		snprintf(client.error, sizeof(client.error), "Client certificate not valid");
 		goto request_error;
 	default:
-		snprintf(client.error, sizeof(client.error), "Unknown status code: %d", tab->page.code);
+		snprintf(client.error, sizeof(client.error),
+			 "Unknown status code: %d", tab->page.code);
 		goto request_error;
 	}
 	*ptr = ' ';
@@ -750,7 +772,8 @@ int gmi_request(const char* url) {
 		if (bytes == 0) break;
 		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) continue;
 		if (bytes < 1) {
-			snprintf(client.error, sizeof(client.error), "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
+			snprintf(client.error, sizeof(client.error),
+				 "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
 		}
 		tab->page.data = realloc(tab->page.data, recv+bytes+1);
