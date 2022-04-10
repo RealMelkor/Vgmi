@@ -910,9 +910,11 @@ int gmi_init() {
 void gmi_free() {
 	for (int i=0; i < client.tabs_count; i++) gmi_freetab(&client.tabs[i]);
 	free(client.tabs);
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	pthread_kill(conn.tid, SIGUSR1);
 	pthread_join(conn.tid, NULL);
 	pthread_kill(dnsquery.tid, SIGUSR1);
 	pthread_join(dnsquery.tid, NULL);
+#endif
 }
 
