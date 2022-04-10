@@ -13,11 +13,15 @@ ifeq ($(shell uname -s),OpenBSD)
 bsd = yes
 endif
 
+ifeq ($(shell uname -s),NetBSD)
+bsd = yes
+endif
+
 ifdef bsd
 PREFIX = /usr/local
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include
-LIBS = -ltls -lcrypto -lpthread
+LIBS = -ltls -lcrypto -lpthread -luv
 endif
 
 vgmi: src

@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <termbox.h>
 #include <ctype.h>
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include <pthread.h>
 #include <sys/socket.h>
 #endif
@@ -257,28 +257,6 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 		tab->history->next = NULL;
 }
 
-struct tls_config* config;
-#include <time.h>
-int gmi_init() {
-	srand(time(NULL));
-	if (tls_init()) {
-		printf("Failed to initialize TLS\n");
-		return -1;
-	}
-	
-	config = tls_config_new();
-	if (!config) {
-		printf("Failed to initialize TLS config\n");
-		return -1;
-	}
-
-	tls_config_insecure_noverifycert(config);
-	ctx = NULL;
-	bzero(&client, sizeof(client));
-		
-	return 0;
-}
-
 void gmi_freetab(struct gmi_tab* tab) {
 	if (tab->history) {
 		struct gmi_link* link = tab->history->next;
@@ -299,11 +277,6 @@ void gmi_freetab(struct gmi_tab* tab) {
 		free(tab->page.links[i]);
 	free(tab->page.links);
 	free(tab->page.data);
-}
-
-void gmi_free() {
-	for (int i=0; i < client.tabs_count; i++) gmi_freetab(&client.tabs[i]);
-	free(client.tabs);
 }
 
 char* home_page = 
@@ -460,7 +433,7 @@ skip_proto:;
 	return proto;
 }
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 struct conn {
 	int connected;
 	int socket;
@@ -468,15 +441,71 @@ struct conn {
 	int family;
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
+	pthread_t tid;
+	pthread_cond_t cond;
+	pthread_mutex_t mutex;
 };
+struct conn conn;
 
-void sock_connect(struct conn* conn) {
-	if (connect(conn->socket, conn->addr, 
-	(conn->family == AF_INET)?sizeof(conn->addr4):sizeof(conn->addr6)) != 0) {
-		conn->connected = -1;
+void conn_thread() {
+	if (pthread_mutex_init(&conn.mutex, NULL)) {
+		snprintf(client.error, sizeof(client.error), 
+			"Failed to initialize connection mutex\n");
+		return;
 	}
-	conn->connected = 1;
+	pthread_mutex_lock(&conn.mutex);
+	while (1) {
+		pthread_cond_wait(&conn.cond, &conn.mutex);
+		if (connect(conn.socket, conn.addr, 
+		(conn.family == AF_INET)?sizeof(conn.addr4):sizeof(conn.addr6)) != 0) {
+			conn.connected = -1;
+			continue;
+		}
+		conn.connected = 1;
+	}
 }
+
+struct dnsquery {
+	struct addrinfo* result;
+	int resolved;
+	char* host;
+	pthread_t tid;
+	pthread_cond_t cond;
+	pthread_mutex_t mutex;
+};
+struct dnsquery dnsquery;
+
+void dnsquery_thread(int signal) {
+	if (pthread_mutex_init(&dnsquery.mutex, NULL)) {
+		snprintf(client.error, sizeof(client.error), 
+			"Failed to initialize connection mutex\n");
+		return;
+	}
+	pthread_mutex_lock(&dnsquery.mutex);
+	while (1) {
+		pthread_cond_wait(&dnsquery.cond, &dnsquery.mutex);
+		struct addrinfo hints;
+		memset (&hints, 0, sizeof (hints));
+		hints.ai_family = PF_UNSPEC;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_flags |= AI_CANONNAME;
+		if (getaddrinfo(dnsquery.host, NULL, &hints, &dnsquery.result)) {
+			dnsquery.resolved = -1;
+			continue;
+		}
+		dnsquery.resolved = 1;
+	}
+}
+
+void signal_cb() {
+	pthread_t thread = pthread_self();
+	if (thread == conn.tid)
+		pthread_mutex_destroy(&conn.mutex);
+	if (thread == dnsquery.tid)
+		pthread_mutex_destroy(&dnsquery.mutex);
+	pthread_exit(NULL);
+}
+
 #endif
 
 int gmi_request(const char* url) {
@@ -538,6 +567,25 @@ int gmi_request(const char* url) {
 	}
 
 	// Manually create socket to set a timeout
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+	dnsquery.host = gmi_host;
+	dnsquery.resolved = 0;
+	pthread_cond_signal(&dnsquery.cond);
+	for (int i=0; i < TIMEOUT * 1000 && !dnsquery.resolved; i++)
+		usleep(1000);
+	
+	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
+		if (!dnsquery.resolved) {
+			pthread_cancel(dnsquery.tid);
+			pthread_kill(dnsquery.tid, SIGUSR1);
+			pthread_join(dnsquery.tid, NULL);
+			pthread_create(&dnsquery.tid, NULL, (void*)(void*)dnsquery_thread, NULL);
+		}
+		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
+		goto request_error;
+	}
+	struct addrinfo *result = dnsquery.result;
+#else
 	struct addrinfo hints, *result;
 	memset (&hints, 0, sizeof (hints));
 	hints.ai_family = PF_UNSPEC;
@@ -547,6 +595,7 @@ int gmi_request(const char* url) {
 		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
 		goto request_error;
 	}
+#endif
 
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
@@ -573,19 +622,23 @@ int gmi_request(const char* url) {
 	int family = result->ai_family;
 	freeaddrinfo(result);
 	
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
-	pthread_t tid;
-	struct conn conn;
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	conn.connected = 0;
 	conn.addr = addr;
 	conn.addr4 = addr4;
 	conn.addr6 = addr6;
 	conn.family = family;
 	conn.socket = sockfd;
-	pthread_create(&tid, NULL, (void*)(void*)sock_connect, (void*)&conn);
+	pthread_cond_signal(&conn.cond);
 	for (int i=0; i < TIMEOUT * 1000 && !conn.connected; i++)
 		usleep(1000);
 	if (conn.connected != 1) {
+		if (!conn.connected) {
+			pthread_cancel(conn.tid);
+			pthread_kill(conn.tid, SIGUSR1);
+			pthread_join(conn.tid, NULL);
+			pthread_create(&conn.tid, NULL, (void*)(void*)conn_thread, NULL);
+		}
 #else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 #endif
@@ -788,3 +841,55 @@ int gmi_loadfile(char* path) {
 	snprintf(tab->url, sizeof(tab->url), "file://%s/", path);
 	return len;
 }
+
+int gmi_init() {
+	srand(time(NULL));
+	if (tls_init()) {
+		printf("Failed to initialize TLS\n");
+		return -1;
+	}
+	
+	config = tls_config_new();
+	if (!config) {
+		printf("Failed to initialize TLS config\n");
+		return -1;
+	}
+
+	tls_config_insecure_noverifycert(config);
+	ctx = NULL;
+	bzero(&client, sizeof(client));
+
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+	bzero(&conn, sizeof(conn));
+	if (pthread_cond_init(&conn.cond, NULL)) {                                    
+		printf("Failed to initialize pthread condition\n");
+		return -1;
+	}
+	if (pthread_create(&conn.tid, NULL, (void*)(void*)conn_thread, NULL)) {
+		printf("Failed to initialize connection thread\n");
+		return -1;
+	}
+	bzero(&dnsquery, sizeof(dnsquery));
+	if (pthread_cond_init(&dnsquery.cond, NULL)) {                                    
+		printf("Failed to initialize thread condition\n");
+		return -1;
+	}
+	if (pthread_create(&dnsquery.tid, NULL, (void*)(void*)dnsquery_thread, NULL)) {
+		printf("Failed to initialize dns query thread\n");
+		return -1;
+	}
+	signal(SIGUSR1, signal_cb);
+#endif
+		
+	return 0;
+}
+
+void gmi_free() {
+	for (int i=0; i < client.tabs_count; i++) gmi_freetab(&client.tabs[i]);
+	free(client.tabs);
+	pthread_kill(conn.tid, SIGUSR1);
+	pthread_join(conn.tid, NULL);
+	pthread_kill(dnsquery.tid, SIGUSR1);
+	pthread_join(dnsquery.tid, NULL);
+}
+
