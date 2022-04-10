@@ -21,7 +21,7 @@ ifdef bsd
 PREFIX = /usr/local
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include
-LIBS = -ltls -lcrypto -lpthread -luv
+LIBS = -ltls -lcrypto -lpthread
 endif
 
 vgmi: src
