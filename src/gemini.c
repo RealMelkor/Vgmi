@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <termbox.h>
 #include <ctype.h>
+#include <time.h>
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include <pthread.h>
 #include <sys/socket.h>
