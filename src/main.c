@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 #endif
 	if (gmi_init()) return 0;
 	gmi_newtab();
-	if (argc > 1) { //&& argv[1][0] == '/' || argv[1][0] == '.') {
+	if (argc > 1) {
 		if (gmi_loadfile(argv[1]) > 0)
 			gmi_load(&client.tabs[client.tab].page);
 		else if (gmi_request(argv[1]) > 0) {
