@@ -48,7 +48,7 @@ void display() {
                         urlbuf[posx] = tab->url[i];
                         posx++;
                 }
-                if (tab->url[i] == '?') {
+                if (!hide && tab->url[i] == '?') {
                         hide = 1;
                         urlbuf[posx] = '<';
                         urlbuf[posx+1] = '*';
