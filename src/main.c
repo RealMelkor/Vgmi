@@ -12,8 +12,10 @@
 
 int main(int argc, char* argv[]) {
 #ifdef __OpenBSD__
+#ifndef HIDE_HOME
 	char path[1024];
 	gethomefolder(path, sizeof(path));
+#endif
 	char certpath[1024];
 	getcachefolder(certpath, sizeof(certpath));
 	tb_init();
@@ -32,15 +34,15 @@ int main(int argc, char* argv[]) {
 #endif
 	if (gmi_init()) return 0;
 	gmi_newtab();
-	if (argc < 2)
-		;//gmi_request("gemini://gemini.rmf-dev.com");
-	else if (argv[1][0] == '/' || argv[1][0] == '.') {
-		if (gmi_loadfile(argv[1]))
+	if (argc > 1) { //&& argv[1][0] == '/' || argv[1][0] == '.') {
+		if (gmi_loadfile(argv[1]) > 0)
 			gmi_load(&client.tabs[client.tab].page);
-		else
-			client.input.error = 1;
-	} else
-		gmi_request(argv[1]);
+		else if (gmi_request(argv[1]) > 0) {
+			client.error[0] = '\0';
+			client.input.error = 0;
+		}
+			
+	}
 	
 #ifndef __OpenBSD__
 	tb_init();
