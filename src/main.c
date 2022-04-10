@@ -6,10 +6,30 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 #define TB_IMPL
 #include <termbox.h>
 
 int main(int argc, char* argv[]) {
+#ifdef __OpenBSD__
+	char path[1024];
+	gethomefolder(path, sizeof(path));
+	char certpath[1024];
+	getcachefolder(certpath, sizeof(certpath));
+	tb_init();
+	if (unveil(certpath, "rwc") || 
+#ifndef HIDE_HOME
+	    unveil(path, "r") ||
+#endif
+	    unveil(NULL, NULL)) {
+		printf("Failed to unveil\n");
+		return 0;
+	}
+	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
+		printf("Failed to pledge\n");
+		return 0;
+	}
+#endif
 	if (gmi_init()) return 0;
 	gmi_newtab();
 	if (argc < 2)
@@ -22,7 +42,9 @@ int main(int argc, char* argv[]) {
 	} else
 		gmi_request(argv[1]);
 	
+#ifndef __OpenBSD__
 	tb_init();
+#endif
 	struct tb_event ev;
 	bzero(&ev, sizeof(ev));
 	int ret = 0;

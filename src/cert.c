@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include "gemini.h"
 
-int getcachefolder(char* path, size_t len) {
+int gethomefolder(char* path, size_t len) {
         char* dir = getenv("HOME");
         if (dir) {
                 strncpy(path, dir, len);
@@ -21,7 +21,12 @@ int getcachefolder(char* path, size_t len) {
                 if (!pw) return 0;
                 strncpy(path, pw->pw_dir, len);
         }
-        strncat(path, "/.cache/vgmi", len - strnlen(path, len));
+	return strnlen(path, len);
+}
+
+int getcachefolder(char* path, size_t len) {
+	int length = gethomefolder(path, len);
+        strncat(path, "/.cache/vgmi", len - length);
         return strnlen(path, len);
 }
 
@@ -33,7 +38,7 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
                 int err = mkdir(path, 0700);
                 if (err) {
 			snprintf(client.error, sizeof(client.error),
-			"Failed to create cache directory at %s %d\n", path, err);
+			"Failed to create cache directory at %s %d", path, err);
 			return -1;
 		}
         }
@@ -45,7 +50,7 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
 	strncpy(key, path, key_len);
 	if (crt_len - len < 4 || key_len - len < 4) {
 		snprintf(client.error, sizeof(client.error),
-		"The path to the certificate is too long\n");
+		"The path to the certificate is too long");
 		return -1;
 	}
         strncat(crt, ".crt", crt_len - len);
