@@ -73,6 +73,7 @@ getpath_overflow:
 }
 
 int cert_create(char* host) {
+	FILE *f = NULL;
 	int ret = 1;
 	EVP_PKEY* pkey;
 	pkey = EVP_PKEY_new();
@@ -106,7 +107,7 @@ int cert_create(char* host) {
 	if (cert_getpath(host, crt, sizeof(crt), key, sizeof(key)) == -1)
 		goto skip_error;
 
-	FILE *f = fopen(key, "wb");
+	f = fopen(key, "wb");
 	if (!f) {
 		snprintf(client.error, sizeof(client.error), "Failed to write to %s", key);
 		goto skip_error;
