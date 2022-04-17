@@ -30,6 +30,17 @@ struct tls_config* config;
 struct tls* ctx;
 struct gmi_client client;
 
+void fatal() {
+	tb_shutdown();
+	printf("Failed to allocate memory, terminating\n");
+	exit(0);
+}
+
+int fatalI() {
+	fatal();
+	return -1;
+}
+
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 	int j = 0;
 	int inquery = 0;
@@ -376,18 +387,14 @@ void gmi_newtab() {
 		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tabs_count);
 	else
 		client.tabs = malloc(sizeof(struct gmi_tab));
+	if (!client.tabs) return fatal();
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
 	client.tabs[tab].scroll = -1;
 	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
-	if (!client.tabs[tab].page.data) {
-		tb_shutdown();
-		printf("Failed to allocate memory, terminating\n");
-		exit(0);
-		return;
-	}
+	if (!client.tabs[tab].page.data) return fatal();
 	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
@@ -400,11 +407,13 @@ void gmi_newtab_url(char* url) {
 		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tab);
 	else
 		client.tabs = malloc(sizeof(struct gmi_tab));
+	if (!client.tabs) return fatal();
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
 	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
+	if (!client.tabs[tab].page.data) return fatal();
 	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
@@ -736,7 +745,7 @@ int gmi_request(const char* url) {
 	char urlbuf[MAX_URL];
 	size_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
 	if (len >= MAX_URL ||
-	    len + strlcpy(&urlbuf[len], "\r\n", MAX_URL - len) >= MAX_URL) {
+	    (len += strlcpy(&urlbuf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
 		snprintf(client.error, sizeof(client.error),
 			 "Url too long: %s", urlbuf);
 		goto request_error;
@@ -845,6 +854,7 @@ int gmi_request(const char* url) {
 	*ptr = ' ';
 	if (tab->page.data) free(tab->page.data);
 	tab->page.data = malloc(recv+1);
+	if (!tab->page.data) return fatalI();
 	memcpy(tab->page.data, buf, recv);
 	now = time(0);
 	while (1) {
@@ -870,6 +880,7 @@ int gmi_request(const char* url) {
 exit:
 	if (!tab->history || (tab->history && !tab->history->next)) {
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
+		if (!link) return fatalI();
 		link->next = NULL;
 		link->prev = tab->history;
 		strlcpy(link->url, tab->url, sizeof(link->url));
@@ -937,6 +948,7 @@ int gmi_loadfile(char* path) {
 	int len = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* data = malloc(len+1);
+	if (!data) return fatalI();
 	data[0] = '\n';
 	if (len != fread(&data[1], 1, len, f)) {
 		fclose(f);
