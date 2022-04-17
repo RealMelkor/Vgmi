@@ -155,7 +155,6 @@ void gmi_load(struct gmi_page* page) {
 	for (int c = 0; c < page->data_len; c++) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
-			char* url = (char*)&page->data[c];
 			int nospace = c;
 			for (; page->data[c]==' '; c++) {
 				if (page->data[c] == '\n' || page->data[c] == '\0') {
@@ -163,7 +162,7 @@ void gmi_load(struct gmi_page* page) {
 					break;
 				}
 			}
-			url = (char*)&page->data[c];
+			char* url = (char*)&page->data[c];
 			for (; page->data[c]!=' '; c++) {
 				if (page->data[c] == '\n' || page->data[c] == '\0') {
 					break;
@@ -383,6 +382,12 @@ void gmi_newtab() {
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
+	if (!client.tabs[tab].page.data) {
+		tb_shutdown();
+		printf("Failed to allocate memory, terminating\n");
+		exit(0);
+		return;
+	}
 	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
@@ -675,7 +680,6 @@ int gmi_request(const char* url) {
 	struct timeval tv;
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
-	int value = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
 	struct sockaddr* addr;
@@ -731,8 +735,8 @@ int gmi_request(const char* url) {
 	}
 	char urlbuf[MAX_URL];
 	size_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
-	len = strlcat(urlbuf, "\r\n", MAX_URL);
-	if (len >= MAX_URL) {
+	if (len >= MAX_URL ||
+	    len + strlcpy(&urlbuf[len], "\r\n", MAX_URL - len) >= MAX_URL) {
 		snprintf(client.error, sizeof(client.error),
 			 "Url too long: %s", urlbuf);
 		goto request_error;

@@ -219,7 +219,6 @@ int input(struct tb_event ev) {
 			int bytes = gmi_request(urlbuf);
 			if (bytes>0) {
 				tab = &client.tabs[client.tab];
-				page = &tab->page;
 				tab->scroll = -1;
 			}
 			client.input.field[0] = '\0';
@@ -257,8 +256,6 @@ int input(struct tb_event ev) {
 	}
 	int l = strnlen(client.input.field, sizeof(client.input.field));
 	if (client.input.mode && ev.ch && l < sizeof(client.input.field)) {
-		char c1, c2;
-		c1 = client.input.field[l];
 		for (int i = l-1; i >= client.input.cursor; i--) {
 			client.input.field[i+1] = client.input.field[i];
 		}
