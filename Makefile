@@ -5,6 +5,10 @@ CFLAG = -O2 -Wall -Wpedantic -Wextra
 CC = cc
 LIBS = -ltls -lcrypto
 
+ifeq ($(shell uname -s),Linux)
+LIBS = -ltls -lcrypto -lbsd
+endif
+
 ifeq ($(shell uname -s),FreeBSD)
 bsd = yes
 endif

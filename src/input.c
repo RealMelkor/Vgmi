@@ -3,6 +3,10 @@
 #include "gemini.h"
 #include "display.h"
 #include "cert.h"
+#include <stdio.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 
 int command() {
 	struct gmi_tab* tab = &client.tabs[client.tab];
@@ -53,7 +57,11 @@ int command() {
 	}
 	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
 		char urlbuf[MAX_URL];
-		strncpy(urlbuf, &client.input.field[3], sizeof(urlbuf));
+		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) < sizeof(urlbuf)) {
+			client.input.error = 1;
+			snprintf(client.error, sizeof(client.error), "Url too long");
+			return 0;
+		}
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
 		int bytes = gmi_request(urlbuf);
@@ -147,7 +155,7 @@ int input(struct tb_event ev) {
 	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
 		if (i>((page->code==10||page->code==11)?0:1)) {
-			strncpy(&client.input.field[i-1],
+			strlcpy(&client.input.field[i-1],
 				&client.input.field[i], sizeof(client.input.field)-i);
 			client.input.cursor--;
 		}
@@ -170,9 +178,13 @@ int input(struct tb_event ev) {
 				tab->selected = 0;
 				client.input.error = 1;
 			}
-			else 
-				strncpy(tab->selected_url, page->links[tab->selected - 1],
-					sizeof(tab->selected_url));
+			else if (strlcpy(tab->selected_url, page->links[tab->selected - 1],
+			sizeof(tab->selected_url)) >= sizeof(tab->selected_url)) {
+				snprintf(client.error, sizeof(client.error),
+					"Invalid link, above %lu characters", sizeof(tab->selected_url));
+				tab->selected = 0;
+				client.input.error = 1;
+			}
 		}
 		else if (tab->selected) {
 			gmi_goto(tab->selected);
@@ -261,7 +273,7 @@ int input(struct tb_event ev) {
 	if (ev.key == TB_KEY_PGUP) {
 		int counter = atoi(client.vim.counter);
 		if (!counter) counter++;
-	 tab->scroll -= counter * tb_height();
+		tab->scroll -= counter * tb_height();
 		bzero(client.vim.counter, sizeof(client.vim.counter));
 		if (tab->scroll < -1) tab->scroll = -1;
 		client.vim.g = 0;
@@ -272,7 +284,8 @@ int input(struct tb_event ev) {
 		if (!counter) counter++;
 		tab->scroll += counter * tb_height();
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (tab->scroll+tb_height()-2>page->lines)
+		if (page->lines <= tb_height()) tab->scroll = -1;
+		else if (tab->scroll+tb_height()-2>page->lines)
 			tab->scroll = page->lines - tb_height() + 2;
 		client.vim.g = 0;
 		return 0;

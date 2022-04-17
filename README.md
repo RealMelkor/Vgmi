@@ -35,6 +35,9 @@ You can prefix a movement key with a number to repeat it.
 
 * [libtls][0] - a new TLS library
 * [termbox2][1] - terminal rendering library
+### On Linux
+* [libbsd][2] - utility functions from BSD systems
 
-[0]: https://www.libressl.org/
+[0]: https://git.causal.agency/libretls/about/
 [1]: https://github.com/termbox/termbox2
+[2]: https://libbsd.freedesktop.org/wiki/

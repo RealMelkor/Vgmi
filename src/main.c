@@ -14,22 +14,28 @@ int main(int argc, char* argv[]) {
 #ifdef __OpenBSD__
 #ifndef HIDE_HOME
 	char path[1024];
-	gethomefolder(path, sizeof(path));
+	if (gethomefolder(path, sizeof(path)) < 1) {
+		printf("Failed to get home folder\n");
+		return -1;
+	}
 #endif
 	char certpath[1024];
-	getcachefolder(certpath, sizeof(certpath));
+	if (getcachefolder(certpath, sizeof(certpath)) < 1) {
+		printf("Failed to get cache folder\n");
+		return -1;
+	}
 	tb_init();
 	if (unveil(certpath, "rwc") || 
 #ifndef HIDE_HOME
-	    unveil(path, "r") ||
+		unveil(path, "r") ||
 #endif
-	    unveil(NULL, NULL)) {
+		unveil(NULL, NULL)) {
 		printf("Failed to unveil\n");
-		return 0;
+		return -1;
 	}
 	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
 		printf("Failed to pledge\n");
-		return 0;
+		return -1;
 	}
 #endif
 	if (gmi_init()) return 0;
@@ -41,7 +47,6 @@ int main(int argc, char* argv[]) {
 			client.error[0] = '\0';
 			client.input.error = 0;
 		}
-			
 	}
 	
 #ifndef __OpenBSD__
@@ -52,8 +57,6 @@ int main(int argc, char* argv[]) {
 	int ret = 0;
 	client.tabs[client.tab].scroll = -1;
 
-	struct gmi_tab* tab = &client.tabs[client.tab];
-	struct gmi_page* page = &tab->page;
 	while (1) {
 		display();
 		if (!((ret = tb_poll_event(&ev)) == TB_OK || ret == -14)) {
