@@ -15,6 +15,9 @@
 #include <termbox.h>
 #include <ctype.h>
 #include <time.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include <pthread.h>
 #include <sys/socket.h>
@@ -45,8 +48,7 @@ int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 			char format[8];
 			snprintf(format, sizeof(format), "%%%x", (unsigned char)url[i]);
 			buf[j] = '\0';
-			strncat(buf, format, llen);
-			j = strnlen(buf, llen);
+			j = strlcat(buf, format, llen);
 		}
 	}
 	if (j >= llen) j = llen - 1;
@@ -94,7 +96,6 @@ int gmi_goto_new(int id) {
 
 int gmi_nextlink(char* url, char* link) {
 	int url_len = strnlen(url, MAX_URL);
-	int link_len = strnlen(url, MAX_URL);
 	if (link[0] == '/' && link[1] == '/') {
 		int ret = gmi_request(&link[2]);
 		if (ret < 1) return ret;
@@ -105,8 +106,11 @@ int gmi_nextlink(char* url, char* link) {
 			if (ptr) *ptr = '\0';
 		}
 		char urlbuf[MAX_URL];
-		strncpy(urlbuf, url, sizeof(urlbuf));
-		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
+		int l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		if (l >= sizeof(urlbuf))
+			goto nextlink_overflow;
+		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >= sizeof(urlbuf) - l)
+			goto nextlink_overflow;
 		int ret = gmi_request(urlbuf);
 		return ret;
 	} else if (strstr(link, "gemini://")) {
@@ -116,15 +120,28 @@ int gmi_nextlink(char* url, char* link) {
 		char* ptr = strrchr(&url[GMI], '/');
 		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
-		strncpy(urlbuf, url, sizeof(urlbuf));
-		if (url[strlen(url)-1] != '/')
-			strncat(urlbuf, "/", sizeof(urlbuf)-strnlen(urlbuf, MAX_URL)-1);
-		strncat(urlbuf, link, sizeof(urlbuf)-strlen(link)-1);
-		int l = strnlen(urlbuf, MAX_URL);
+		int l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		if (l >= sizeof(urlbuf))
+			goto nextlink_overflow;
+		if (urlbuf[l-1] != '/') {
+			int l2 = strlcpy(urlbuf + l, "/", sizeof(urlbuf) - l);
+			if (l2 >= sizeof(urlbuf) - l)
+				goto nextlink_overflow;
+			l += l2;
+		}
+		int l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
+		if (l2 >= sizeof(urlbuf) - l)
+			goto nextlink_overflow;
+		l += l2;
 		if (urlbuf[l-1] == '/') urlbuf[l-1] = '\0';
 		int ret = gmi_request(urlbuf);
 		return ret;
 	}
+nextlink_overflow:
+	client.input.error = 1;
+	snprintf(client.error, sizeof(client.error),
+	 "Link too long, above 1024 characters");
+	return -1;
 }
 
 void gmi_load(struct gmi_page* page) {
@@ -216,7 +233,7 @@ int gmi_render(struct gmi_tab* tab) {
 					snprintf(buf, sizeof(buf), "[%d]", links+1);
 					tb_print(x+2, line-1-tab->scroll,
 					links+1 == tab->selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
-					x += strlen(buf);
+					x += strnlen(buf, sizeof(buf));
 				}
 				c += 2;
 
@@ -245,7 +262,7 @@ int gmi_render(struct gmi_tab* tab) {
 		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
 			int end = 0;
 			if (x+4>=tb_width()) {
-				c--;
+				//c--;
 				end = 1;
 			}
 			int newline = (tab->page.data[c] == '\n' || x+4 >= tb_width());
@@ -275,7 +292,9 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 		}
 		uint32_t ch = 0;
-		c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
+		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
+		if (size > 0)
+			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) 
 			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
@@ -360,11 +379,11 @@ void gmi_newtab() {
 		client.tabs = malloc(sizeof(struct gmi_tab));
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
 	client.tabs[tab].scroll = -1;
-	strncpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
+	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
-	strncpy(client.tabs[tab].page.data, home_page, len);
+	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
 }
@@ -377,11 +396,11 @@ void gmi_newtab_url(char* url) {
 	else
 		client.tabs = malloc(sizeof(struct gmi_tab));
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
-	strncpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
+	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
-	strncpy(client.tabs[tab].page.data, home_page, len);
+	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
 
@@ -422,7 +441,7 @@ skip_proto:;
 	if (port && proto == PROTO_GEMINI) *port = 1965;
 	if (!proto_ptr) proto_ptr = ptr;
 	char* host_ptr = strchr(ptr, '/');
-	if (!host_ptr) host_ptr = ptr+strlen(ptr);
+	if (!host_ptr) host_ptr = ptr+strnlen(ptr, MAX_URL);
 	char* port_ptr = strchr(ptr, ':');
 	if (port_ptr && port_ptr < host_ptr) {
 		port_ptr++;	
@@ -450,29 +469,39 @@ skip_proto:;
 	host[ptr-proto_ptr] = '\0';
 	if (!urlbuf) return proto;
 	if (url_len < 16) return -1; // buffer too small
+	int len = 0;
 	switch (proto) {
 	case PROTO_GEMINI:
-		strncpy(urlbuf, "gemini://", url_len);
+		len = strlcpy(urlbuf, "gemini://", url_len);
 		break;
 	case PROTO_HTTP:
-		strncpy(urlbuf, "http://", url_len);
+		len = strlcpy(urlbuf, "http://", url_len);
 		break;
 	case PROTO_HTTPS:
-		strncpy(urlbuf, "http://", url_len);
+		len = strlcpy(urlbuf, "http://", url_len);
 		break;
 	case PROTO_GOPHER:
-		strncpy(urlbuf, "gopher://", url_len);
+		len = strlcpy(urlbuf, "gopher://", url_len);
 		break;
 	case PROTO_FILE:
-		strncpy(urlbuf, "file://", url_len);
+		len = strlcpy(urlbuf, "file://", url_len);
 		break;
 	default:
 		return -1;
 	}
-	strncat(urlbuf, host, url_len);
-	if (host_ptr)
-		strncat(urlbuf, host_ptr, url_len);
+	int l = strlcpy(urlbuf + len, host, sizeof(urlbuf) - len);
+	if (l >= sizeof(urlbuf) - len) {
+		goto parseurl_overflow;
+	}
+	len += l;
+	if (host_ptr && strlcpy(urlbuf + len, host_ptr, sizeof(urlbuf) - len) >= sizeof(urlbuf) - len)
+		goto parseurl_overflow;
 	return proto;
+parseurl_overflow:
+	client.input.error = 1;
+	snprintf(client.error, sizeof(client.error),
+	 "Link too long, above 1024 characters");
+	return -1;
 }
 
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
@@ -615,7 +644,7 @@ int gmi_request(const char* url) {
 	dnsquery.resolved = 0;
 	pthread_cond_signal(&dnsquery.cond);
 	for (int i=0; i < TIMEOUT * 1000 && !dnsquery.resolved; i++)
-		usleep(1000);
+		nanosleep(1000000);
 	
 	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
 		if (!dnsquery.resolved) {
@@ -674,7 +703,7 @@ int gmi_request(const char* url) {
 	conn.socket = sockfd;
 	pthread_cond_signal(&conn.cond);
 	for (int i=0; i < TIMEOUT * 1000 && !conn.connected; i++)
-		usleep(1000);
+		nanosleep(1000000);
 	if (conn.connected != 1) {
 		if (!conn.connected) {
 			pthread_cancel(conn.tid);
@@ -702,8 +731,13 @@ int gmi_request(const char* url) {
 	}
 	char urlbuf[MAX_URL];
 	size_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
-	strncat(urlbuf, "\r\n", MAX_URL-len);
-	if (tls_write(ctx, urlbuf, strnlen(urlbuf, MAX_URL)) < strnlen(urlbuf, MAX_URL)) {
+	len = strlcat(urlbuf, "\r\n", MAX_URL);
+	if (len >= MAX_URL) {
+		snprintf(client.error, sizeof(client.error),
+			 "Url too long: %s", urlbuf);
+		goto request_error;
+	}
+	if (tls_write(ctx, urlbuf, len) < len) {
 		snprintf(client.error, sizeof(client.error),
 			 "Failed to send data to: %s", gmi_host);
 		goto request_error;
@@ -741,7 +775,7 @@ int gmi_request(const char* url) {
 	case 10:
 	case 11:
 		ptr++;
-		strncpy(client.input.label, ptr, sizeof(client.input.label));
+		strlcpy(client.input.label, ptr, sizeof(client.input.label));
 		ptr = strchr(client.input.label, '\n');
 		if (ptr) *ptr = '\0';
 		ptr = strchr(client.input.label, '\r');
@@ -834,7 +868,7 @@ exit:
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
 		link->next = NULL;
 		link->prev = tab->history;
-		strncpy(link->url, tab->url, sizeof(link->url));
+		strlcpy(link->url, tab->url, sizeof(link->url));
 		tab->history = link;
 		if (link->prev)
 			link->prev->next = tab->history;
@@ -842,9 +876,9 @@ exit:
 	if (0) {
 request_error:
 		if (tab->history) {
-			strncpy(tab->url, tab->history->url, sizeof(tab->url));
+			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else {
-			strncpy(tab->url, "about:home", sizeof(tab->url));
+			strlcpy(tab->url, "about:home", sizeof(tab->url));
 		}
 		client.input.error = 1;
 		recv = -1;
@@ -915,7 +949,6 @@ int gmi_loadfile(char* path) {
 }
 
 int gmi_init() {
-	srand(time(NULL));
 	if (tls_init()) {
 		printf("Failed to initialize TLS\n");
 		return -1;

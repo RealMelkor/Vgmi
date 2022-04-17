@@ -10,52 +10,66 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/random.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 #include "gemini.h"
 
 int gethomefolder(char* path, size_t len) {
-        char* dir = getenv("HOME");
-        if (dir) {
-                strncpy(path, dir, len);
-        } else {
-                struct passwd *pw = getpwuid(geteuid());
-                if (!pw) return 0;
-                strncpy(path, pw->pw_dir, len);
-        }
-	return strnlen(path, len);
+	struct passwd *pw = getpwuid(geteuid());
+	if (!pw) return 0;
+	int length = strlcpy(path, pw->pw_dir, len);
+       	if (length >= len) return -1;
+	return length;
 }
 
 int getcachefolder(char* path, size_t len) {
 	int length = gethomefolder(path, len);
-        strncat(path, "/.cache/vgmi", len - length);
-        return strnlen(path, len);
+	if (length == -1) return -1;
+	if (length >= len) return -1;
+	length += strlcpy(&path[length], "/.cache/vgmi", len - length);
+        if (length >= len) return -1;
+        return length;
 }
 
 int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
 	char path[1024];
         int len = getcachefolder(path, sizeof(path));
+	if (len < 1) {
+		snprintf(client.error, sizeof(client.error),
+		"Failed to get cache directory");
+		return -1;
+	}
         struct stat _stat;
-        if (stat(path, &_stat)) {
-                int err = mkdir(path, 0700);
-                if (err) {
-			snprintf(client.error, sizeof(client.error),
-			"Failed to create cache directory at %s %d", path, err);
-			return -1;
-		}
+        if (stat(path, &_stat) && mkdir(path, 0700)) {
+		snprintf(client.error, sizeof(client.error),
+		"Failed to create cache directory at %s", path);
+		return -1;
         }
 	path[len] = '/';
 	path[len+1] = '\0';
-        strncat(path, host, sizeof(path) - len);
-	len = strnlen(path, sizeof(path));
-	strncpy(crt, path, crt_len);
-	strncpy(key, path, key_len);
+        len += strlcpy(&path[len], host, sizeof(path) - len);
+	if (len >= sizeof(path))
+		goto getpath_overflow;
+	if (strlcpy(crt, path, crt_len) >= crt_len)
+		goto getpath_overflow;
+	if (strlcpy(key, path, key_len) >= key_len)
+		goto getpath_overflow;
 	if (crt_len - len < 4 || key_len - len < 4) {
 		snprintf(client.error, sizeof(client.error),
 		"The path to the certificate is too long");
 		return -1;
 	}
-        strncat(crt, ".crt", crt_len - len);
-        strncat(key, ".key", key_len - len);
+        if (strlcpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
+		goto getpath_overflow;
+        if (strlcpy(&key[len], ".key", key_len - len) + len >= key_len)
+		goto getpath_overflow;
 	return len+4;
+getpath_overflow:
+	snprintf(client.error, sizeof(client.error),
+	"The cache folder path is too long %s", path);
+	return -1;
 }
 
 int cert_create(char* host) {
@@ -69,8 +83,9 @@ int cert_create(char* host) {
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	X509* x509 = X509_new();
-	if (ASN1_INTEGER_set(X509_get_serialNumber(x509),
-	   ((unsigned)rand()+2)*((unsigned)rand()+2)+2) != 1)
+	int id;
+	getrandom(&id, sizeof(id), GRND_RANDOM);
+	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;
 
 	X509_gmtime_adj(X509_get_notBefore(x509), 0);
@@ -113,11 +128,11 @@ int cert_create(char* host) {
 failed:
 	snprintf(client.error, sizeof(client.error), "Failed to generate certificate");
 skip_error:
-	if (!f) fclose(f);
+	if (f) fclose(f);
 	BN_free(bne);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
-	//RSA_free(rsa);
+	RSA_free(rsa);
 	if (ret) client.input.error = 1;
 	return ret;
 }
