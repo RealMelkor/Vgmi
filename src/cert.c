@@ -135,7 +135,7 @@ skip_error:
 	BN_free(bne);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
-	RSA_free(rsa); // crash on linux
+	//RSA_free(rsa);
 	if (ret) client.input.error = 1;
 	return ret;
 }
