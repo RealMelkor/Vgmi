@@ -186,6 +186,7 @@ void gmi_load(struct gmi_page* page) {
 						      * (page->links_count+1));
 			else
 				page->links = malloc(sizeof(char*));
+			if (!page->links) return fatal();
 			if (url[0] == '\0') {
 				page->links[page->links_count] = NULL;
 				page->data[c] = save;
@@ -193,6 +194,7 @@ void gmi_load(struct gmi_page* page) {
 			}
 			int len = strnlen(url, MAX_URL);
 			page->links[page->links_count] = malloc(len+2);
+			if (!page->links[page->links_count]) return fatal();
 			memcpy(page->links[page->links_count], url, len+1);
 			page->links_count++;
 			page->data[c] = save;
