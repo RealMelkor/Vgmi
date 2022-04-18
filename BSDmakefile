@@ -1,12 +1,14 @@
 SHELL = /bin/sh
 
-PREFIX = /usr
+PREFIX = /usr/local
 CFLAG = -O2 -Wall -Wpedantic -Wextra
 CC = cc
-LIBS = -ltls -lcrypto -lbsd
+LIBSPATH = -L/usr/local/lib
+INCLUDES = -I/usr/local/include
+LIBS = -ltls -lcrypto -lpthread
 
 vgmi: src
-	${CC} $(wildcard src/*.c) ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
+	${CC} ${:!ls src/*.c!} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
 
 install:
 	cp vgmi ${PREFIX}/bin
