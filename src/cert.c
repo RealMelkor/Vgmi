@@ -19,28 +19,30 @@
 int gethomefolder(char* path, size_t len) {
 	struct passwd *pw = getpwuid(geteuid());
 	if (!pw) return 0;
-	int length = strlcpy(path, pw->pw_dir, len);
+	size_t length = strlcpy(path, pw->pw_dir, len);
        	if (length >= len) return -1;
 	return length;
 }
 
 int getcachefolder(char* path, size_t len) {
-	int length = gethomefolder(path, len);
-	if (length == -1) return -1;
+	int ret = gethomefolder(path, len);
+	if (ret == -1) return -1;
+	size_t length = ret;
 	if (length >= len) return -1;
 	length += strlcpy(&path[length], "/.cache/vgmi", len - length);
         if (length >= len) return -1;
         return length;
 }
 
-int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
+int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_len) {
 	char path[1024];
-        int len = getcachefolder(path, sizeof(path));
-	if (len < 1) {
+        int ret = getcachefolder(path, sizeof(path));
+	if (ret < 1) {
 		snprintf(client.error, sizeof(client.error),
 		"Failed to get cache directory");
 		return -1;
 	}
+	size_t len = ret;
         struct stat _stat;
         if (stat(path, &_stat) && mkdir(path, 0700)) {
 		snprintf(client.error, sizeof(client.error),
@@ -78,11 +80,11 @@ int cert_create(char* host) {
 	pkey = EVP_PKEY_new();
 	RSA* rsa = RSA_new();
 	BIGNUM* bne = BN_new();
+	X509* x509 = X509_new();
 	if (BN_set_word(bne, 65537) != 1) goto failed;
 	if (RSA_generate_key_ex(rsa, 2048, bne, NULL) != 1) goto failed;
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
-	X509* x509 = X509_new();
 	int id;
 	getrandom(&id, sizeof(id), GRND_RANDOM);
 	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
@@ -133,7 +135,7 @@ skip_error:
 	BN_free(bne);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
-	//RSA_free(rsa); // crash on linux
+	RSA_free(rsa); // crash on linux
 	if (ret) client.input.error = 1;
 	return ret;
 }

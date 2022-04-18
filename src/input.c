@@ -152,7 +152,7 @@ int input(struct tb_event ev) {
 		tb_hide_cursor();
 		return 0;
 	}
-	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2) || (ev.key == TB_KEY_BACKSPACE)) {
+	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2 || ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
 		if (i>((page->code==10||page->code==11)?0:1)) {
 			strlcpy(&client.input.field[i-1],
@@ -254,7 +254,7 @@ int input(struct tb_event ev) {
 			client.input.cursor++;
 		return 0;
 	}
-	int l = strnlen(client.input.field, sizeof(client.input.field));
+	unsigned int l = strnlen(client.input.field, sizeof(client.input.field));
 	if (client.input.mode && ev.ch && l < sizeof(client.input.field)) {
 		for (int i = l-1; i >= client.input.cursor; i--) {
 			client.input.field[i+1] = client.input.field[i];
@@ -364,7 +364,7 @@ int input(struct tb_event ev) {
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
 			break;
-		int len = strnlen(client.vim.counter, sizeof(client.vim.counter));
+		unsigned int len = strnlen(client.vim.counter, sizeof(client.vim.counter));
 		if (len == 0 && ev.ch == '0') break;
 		if (len >= sizeof(client.vim.counter)) break;
 		client.vim.counter[len] = ev.ch;
