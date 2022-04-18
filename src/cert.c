@@ -48,7 +48,7 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
 		return -1;
         }
 	path[len] = '/';
-	path[len+1] = '\0';
+	path[++len] = '\0';
         len += strlcpy(&path[len], host, sizeof(path) - len);
 	if (len >= sizeof(path))
 		goto getpath_overflow;
