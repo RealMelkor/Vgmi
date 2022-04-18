@@ -555,7 +555,7 @@ struct dnsquery {
 struct dnsquery dnsquery;
 
 void dnsquery_thread(int signal) {
-	if (signal != SIGUSR1) return;
+	if (signal != 0 && signal != SIGUSR1) return;
 	if (pthread_mutex_init(&dnsquery.mutex, NULL)) {
 		snprintf(client.error, sizeof(client.error), 
 			"Failed to initialize connection mutex\n");

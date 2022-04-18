@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 PREFIX = /usr
-CFLAGS = -O2 -Wall -Wpedantic -Wextra
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
 CC = cc
 LIBS = -ltls -lcrypto -lbsd
 
