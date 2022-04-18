@@ -359,6 +359,7 @@ int input(struct tb_event ev) {
 	case 'G': // End of file
 		tab->scroll = page->lines-tb_height()+2;
 		if (client.tabs_count != 1) tab->scroll++;
+		if (tb_height() >= page->lines) tab->scroll = -1;
 		break;
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
