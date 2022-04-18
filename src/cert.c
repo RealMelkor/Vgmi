@@ -47,6 +47,8 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
 		"Failed to create cache directory at %s", path);
 		return -1;
         }
+	if (len+1 >= sizeof(path))
+		goto getpath_overflow;
 	path[len] = '/';
 	path[++len] = '\0';
         len += strlcpy(&path[len], host, sizeof(path) - len);
@@ -56,11 +58,8 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
 		goto getpath_overflow;
 	if (strlcpy(key, path, key_len) >= key_len)
 		goto getpath_overflow;
-	if (crt_len - len < 4 || key_len - len < 4) {
-		snprintf(client.error, sizeof(client.error),
-		"The path to the certificate is too long");
-		return -1;
-	}
+	if (crt_len - len < 4 || key_len - len < 4)
+		goto getpath_overflow;
         if (strlcpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
 		goto getpath_overflow;
         if (strlcpy(&key[len], ".key", key_len - len) + len >= key_len)
@@ -124,6 +123,7 @@ int cert_create(char* host) {
 	if (PEM_write_X509(f, x509) != 1)
 		goto failed;
 	fclose(f);
+	f = NULL;
 	ret = 0;
 	goto skip_error;
 failed:
@@ -133,7 +133,7 @@ skip_error:
 	BN_free(bne);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
-	RSA_free(rsa);
+	//RSA_free(rsa); // crash on linux
 	if (ret) client.input.error = 1;
 	return ret;
 }
