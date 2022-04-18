@@ -660,7 +660,7 @@ int gmi_request(const char* url) {
 	dnsquery.resolved = 0;
 	pthread_cond_signal(&dnsquery.cond);
 	for (int i=0; i < TIMEOUT * 1000 && !dnsquery.resolved; i++)
-		nanosleep(1000000);
+		usleep(1000);
 	
 	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
 		if (!dnsquery.resolved) {
@@ -718,7 +718,7 @@ int gmi_request(const char* url) {
 	conn.socket = sockfd;
 	pthread_cond_signal(&conn.cond);
 	for (int i=0; i < TIMEOUT * 1000 && !conn.connected; i++)
-		nanosleep(1000000);
+		usleep(1000);
 	if (conn.connected != 1) {
 		if (!conn.connected) {
 			pthread_cancel(conn.tid);
