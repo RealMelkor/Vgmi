@@ -84,7 +84,7 @@ void display() {
 			 "%s: %s", client.input.label, client.input.field);
         } else if (page->code == 11) {
                 char input_buf[1024];
-                int i = 0;
+                size_t i = 0;
                 for (; client.input.field[i] && i < sizeof(client.input.field); i++)
 			input_buf[i] = '*';
                 input_buf[i] = '\0';

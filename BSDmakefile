@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 PREFIX = /usr/local
-CFLAG = -O2 -Wall -Wpedantic -Wextra
+CFLAGS = -O2 -Wall -Wpedantic -Wextra
 CC = cc
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include

@@ -117,7 +117,7 @@ int gmi_nextlink(char* url, char* link) {
 			if (ptr) *ptr = '\0';
 		}
 		char urlbuf[MAX_URL];
-		int l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		size_t l = strlcpy(urlbuf, url, sizeof(urlbuf));
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
 		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >= sizeof(urlbuf) - l)
@@ -131,16 +131,16 @@ int gmi_nextlink(char* url, char* link) {
 		char* ptr = strrchr(&url[GMI], '/');
 		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
-		int l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		size_t l = strlcpy(urlbuf, url, sizeof(urlbuf));
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
 		if (urlbuf[l-1] != '/') {
-			int l2 = strlcpy(urlbuf + l, "/", sizeof(urlbuf) - l);
+			size_t l2 = strlcpy(urlbuf + l, "/", sizeof(urlbuf) - l);
 			if (l2 >= sizeof(urlbuf) - l)
 				goto nextlink_overflow;
 			l += l2;
 		}
-		int l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
+		size_t l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
 		if (l2 >= sizeof(urlbuf) - l)
 			goto nextlink_overflow;
 		l += l2;
@@ -186,7 +186,10 @@ void gmi_load(struct gmi_page* page) {
 						      * (page->links_count+1));
 			else
 				page->links = malloc(sizeof(char*));
-			if (!page->links) return fatal();
+			if (!page->links) {
+				fatal();
+				return;
+			}
 			if (url[0] == '\0') {
 				page->links[page->links_count] = NULL;
 				page->data[c] = save;
@@ -194,7 +197,10 @@ void gmi_load(struct gmi_page* page) {
 			}
 			int len = strnlen(url, MAX_URL);
 			page->links[page->links_count] = malloc(len+2);
-			if (!page->links[page->links_count]) return fatal();
+			if (!page->links[page->links_count]) {
+				fatal();
+				return;
+			}
 			memcpy(page->links[page->links_count], url, len+1);
 			page->links_count++;
 			page->data[c] = save;
@@ -389,37 +395,23 @@ void gmi_newtab() {
 		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tabs_count);
 	else
 		client.tabs = malloc(sizeof(struct gmi_tab));
-	if (!client.tabs) return fatal();
+	if (!client.tabs) {
+		fatal();
+		return;
+	}
 	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
 	client.tabs[tab].scroll = -1;
 	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
 	client.tabs[tab].page.code = 20;
 	int len = strlen(home_page);
 	client.tabs[tab].page.data = malloc(len + 1);
-	if (!client.tabs[tab].page.data) return fatal();
+	if (!client.tabs[tab].page.data) {
+		fatal();
+		return;
+	}
 	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
 	gmi_load(&client.tabs[tab].page);
-}
-
-void gmi_newtab_url(char* url) {
-	int tab = client.tab;
-	client.tab++;
-	if (client.tabs) 
-		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tab);
-	else
-		client.tabs = malloc(sizeof(struct gmi_tab));
-	if (!client.tabs) return fatal();
-	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
-	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
-	client.tabs[tab].page.code = 20;
-	int len = strlen(home_page);
-	client.tabs[tab].page.data = malloc(len + 1);
-	if (!client.tabs[tab].page.data) return fatal();
-	strlcpy(client.tabs[tab].page.data, home_page, len);
-	client.tabs[tab].page.data_len = len;
-	gmi_load(&client.tabs[tab].page);
-
 }
 
 #define PROTO_GEMINI 0
@@ -439,7 +431,7 @@ int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf,
 	char proto_buf[16];
 	for(; proto_ptr!=ptr; ptr++) {
 		if (!((*ptr > 'a' && *ptr < 'z') || (*ptr > 'A' && *ptr < 'Z'))) goto skip_proto;
-		if (ptr-url >= sizeof(proto_buf)) goto skip_proto;
+		if (ptr - url >= (signed)sizeof(proto_buf)) goto skip_proto;
 		proto_buf[ptr-url] = tolower(*ptr);
 	}
 	proto_buf[ptr-url] = '\0';
@@ -505,7 +497,7 @@ skip_proto:;
 	default:
 		return -1;
 	}
-	int l = strlcpy(urlbuf + len, host, sizeof(urlbuf) - len);
+	size_t l = strlcpy(urlbuf + len, host, sizeof(urlbuf) - len);
 	if (l >= sizeof(urlbuf) - len) {
 		goto parseurl_overflow;
 	}
@@ -563,6 +555,7 @@ struct dnsquery {
 struct dnsquery dnsquery;
 
 void dnsquery_thread(int signal) {
+	if (signal != SIGUSR1) return;
 	if (pthread_mutex_init(&dnsquery.mutex, NULL)) {
 		snprintf(client.error, sizeof(client.error), 
 			"Failed to initialize connection mutex\n");
@@ -667,7 +660,7 @@ int gmi_request(const char* url) {
 			pthread_cancel(dnsquery.tid);
 			pthread_kill(dnsquery.tid, SIGUSR1);
 			pthread_join(dnsquery.tid, NULL);
-			pthread_create(&dnsquery.tid, NULL, (void*)(void*)dnsquery_thread, NULL);
+			pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL);
 		}
 		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
 		goto request_error;
@@ -687,13 +680,15 @@ int gmi_request(const char* url) {
 
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
+	bzero(&addr4, sizeof(addr4));
+	bzero(&addr6, sizeof(addr6));
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
 	struct timeval tv;
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
 	setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-	struct sockaddr* addr;
+	struct sockaddr* addr = NULL;
 	if (result->ai_family == AF_INET) {
 		addr4.sin_addr = ((struct sockaddr_in*) result->ai_addr)->sin_addr;
 		addr4.sin_family = AF_INET;
@@ -705,6 +700,10 @@ int gmi_request(const char* url) {
 		addr6.sin6_family = AF_INET6;
 		addr6.sin6_port = htons(port);
 		addr = (struct sockaddr*)&addr6;
+	} else {
+		snprintf(client.error, sizeof(client.error), 
+			 "Unexpected error, invalid address family %s", gmi_host);
+		goto request_error;
 	}
 	int family = result->ai_family;
 	freeaddrinfo(result);
@@ -724,7 +723,7 @@ int gmi_request(const char* url) {
 			pthread_cancel(conn.tid);
 			pthread_kill(conn.tid, SIGUSR1);
 			pthread_join(conn.tid, NULL);
-			pthread_create(&conn.tid, NULL, (void*)(void*)conn_thread, NULL);
+			pthread_create(&conn.tid, NULL, (void *(*)(void *))conn_thread, NULL);
 		}
 #else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
@@ -745,7 +744,7 @@ int gmi_request(const char* url) {
 		goto request_error;
 	}
 	char urlbuf[MAX_URL];
-	size_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
+	ssize_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
 	if (len >= MAX_URL ||
 	    (len += strlcpy(&urlbuf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
 		snprintf(client.error, sizeof(client.error),
@@ -947,7 +946,7 @@ int gmi_loadfile(char* path) {
 		return -1;
 	}
 	fseek(f, 0, SEEK_END);
-	int len = ftell(f);
+	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* data = malloc(len+1);
 	if (!data) return fatalI();
@@ -988,7 +987,7 @@ int gmi_init() {
 		printf("Failed to initialize pthread condition\n");
 		return -1;
 	}
-	if (pthread_create(&conn.tid, NULL, (void*)(void*)conn_thread, NULL)) {
+	if (pthread_create(&conn.tid, NULL, (void *(*)(void *))conn_thread, NULL)) {
 		printf("Failed to initialize connection thread\n");
 		return -1;
 	}
@@ -997,7 +996,7 @@ int gmi_init() {
 		printf("Failed to initialize thread condition\n");
 		return -1;
 	}
-	if (pthread_create(&dnsquery.tid, NULL, (void*)(void*)dnsquery_thread, NULL)) {
+	if (pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL)) {
 		printf("Failed to initialize dns query thread\n");
 		return -1;
 	}
