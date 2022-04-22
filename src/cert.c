@@ -10,61 +10,84 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/random.h>
+#ifdef __linux__
+#include <bsd/string.h>
+#endif
 #include "gemini.h"
 
-int getcachefolder(char* path, size_t len) {
-        char* dir = getenv("HOME");
-        if (dir) {
-                strncpy(path, dir, len);
-        } else {
-                struct passwd *pw = getpwuid(geteuid());
-                if (!pw) return 0;
-                strncpy(path, pw->pw_dir, len);
-        }
-        strncat(path, "/.cache/vgmi", len - strnlen(path, len));
-        return strnlen(path, len);
+int gethomefolder(char* path, size_t len) {
+	struct passwd *pw = getpwuid(geteuid());
+	if (!pw) return 0;
+	size_t length = strlcpy(path, pw->pw_dir, len);
+       	if (length >= len) return -1;
+	return length;
 }
 
-int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len) {
+int getcachefolder(char* path, size_t len) {
+	int ret = gethomefolder(path, len);
+	if (ret == -1) return -1;
+	size_t length = ret;
+	if (length >= len) return -1;
+	length += strlcpy(&path[length], "/.cache/vgmi", len - length);
+        if (length >= len) return -1;
+        return length;
+}
+
+int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_len) {
 	char path[1024];
-        int len = getcachefolder(path, sizeof(path));
-        struct stat _stat;
-        if (stat(path, &_stat)) {
-                int err = mkdir(path, 0700);
-                if (err) {
-			snprintf(client.error, sizeof(client.error),
-			"Failed to create cache directory at %s %d\n", path, err);
-			return -1;
-		}
-        }
-	path[len] = '/';
-	path[len+1] = '\0';
-        strncat(path, host, sizeof(path) - len);
-	len = strnlen(path, sizeof(path));
-	strncpy(crt, path, crt_len);
-	strncpy(key, path, key_len);
-	if (crt_len - len < 4 || key_len - len < 4) {
+        int ret = getcachefolder(path, sizeof(path));
+	if (ret < 1) {
 		snprintf(client.error, sizeof(client.error),
-		"The path to the certificate is too long\n");
+		"Failed to get cache directory");
 		return -1;
 	}
-        strncat(crt, ".crt", crt_len - len);
-        strncat(key, ".key", key_len - len);
+	size_t len = ret;
+        struct stat _stat;
+        if (stat(path, &_stat) && mkdir(path, 0700)) {
+		snprintf(client.error, sizeof(client.error),
+		"Failed to create cache directory at %s", path);
+		return -1;
+        }
+	if (len+1 >= sizeof(path))
+		goto getpath_overflow;
+	path[len] = '/';
+	path[++len] = '\0';
+        len += strlcpy(&path[len], host, sizeof(path) - len);
+	if (len >= sizeof(path))
+		goto getpath_overflow;
+	if (strlcpy(crt, path, crt_len) >= crt_len)
+		goto getpath_overflow;
+	if (strlcpy(key, path, key_len) >= key_len)
+		goto getpath_overflow;
+	if (crt_len - len < 4 || key_len - len < 4)
+		goto getpath_overflow;
+        if (strlcpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
+		goto getpath_overflow;
+        if (strlcpy(&key[len], ".key", key_len - len) + len >= key_len)
+		goto getpath_overflow;
 	return len+4;
+getpath_overflow:
+	snprintf(client.error, sizeof(client.error),
+	"The cache folder path is too long %s", path);
+	return -1;
 }
 
 int cert_create(char* host) {
+	FILE *f = NULL;
 	int ret = 1;
 	EVP_PKEY* pkey;
 	pkey = EVP_PKEY_new();
 	RSA* rsa = RSA_new();
 	BIGNUM* bne = BN_new();
+	X509* x509 = X509_new();
 	if (BN_set_word(bne, 65537) != 1) goto failed;
 	if (RSA_generate_key_ex(rsa, 2048, bne, NULL) != 1) goto failed;
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
-	X509* x509 = X509_new();
-	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), ((unsigned)rand()+2)*((unsigned)rand()+2)+2) != 1)
+	int id;
+	getrandom(&id, sizeof(id), GRND_RANDOM);
+	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;
 
 	X509_gmtime_adj(X509_get_notBefore(x509), 0);
@@ -73,7 +96,8 @@ int cert_create(char* host) {
 	if (X509_set_pubkey(x509, pkey) != 1) goto failed;
 
 	X509_NAME* name = X509_get_subject_name(x509);
-	if (X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char *)host, -1, -1, 0) != 1) 
+	if (X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+	   (unsigned char *)host, -1, -1, 0) != 1) 
 		goto failed;
 	
 	if (X509_set_issuer_name(x509, name) != 1) goto failed;
@@ -84,7 +108,7 @@ int cert_create(char* host) {
 	if (cert_getpath(host, crt, sizeof(crt), key, sizeof(key)) == -1)
 		goto skip_error;
 
-	FILE *f = fopen(key, "wb");
+	f = fopen(key, "wb");
 	if (!f) {
 		snprintf(client.error, sizeof(client.error), "Failed to write to %s", key);
 		goto skip_error;
@@ -101,12 +125,13 @@ int cert_create(char* host) {
 	if (PEM_write_X509(f, x509) != 1)
 		goto failed;
 	fclose(f);
+	f = NULL;
 	ret = 0;
 	goto skip_error;
 failed:
 	snprintf(client.error, sizeof(client.error), "Failed to generate certificate");
 skip_error:
-	if (!f) fclose(f);
+	if (f) fclose(f);
 	BN_free(bne);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);

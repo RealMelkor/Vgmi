@@ -1,14 +1,9 @@
 SHELL = /bin/sh
 
 PREFIX = /usr
-CFLAG = -O2 -Wall -Wpedantic -Wextra
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
 CC = cc
-LIBS = -ltls -lcrypto
-
-# FreeBSD
-#PREFIX = /usr/local
-#LIBSPATH = -L/usr/local/lib
-#INCLUDES = -I/usr/local/include
+LIBS = -ltls -lcrypto -lbsd
 
 vgmi: src
 	${CC} $(wildcard src/*.c) ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
