@@ -278,15 +278,18 @@ void gmi_freetab(struct gmi_tab* tab) {
 		struct gmi_link* link = tab->history->next;
 		while (link) {
 			struct gmi_link* ptr = link->next;
+			bzero(link->url, sizeof(link->url));
 			free(link);
 			link = ptr;
 		}
 		link = tab->history->prev;
 		while (link) {
 			struct gmi_link* ptr = link->prev;
+			bzero(link->url, sizeof(link->url));
 			free(link);
 			link = ptr;
 		}
+		bzero(tab->history->url, sizeof(tab->history->url));
 		free(tab->history);
 	}
 	for (int i=0; i < tab->page.links_count; i++)
