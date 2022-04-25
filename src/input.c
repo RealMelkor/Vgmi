@@ -57,7 +57,7 @@ int command() {
 	}
 	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
 		char urlbuf[MAX_URL];
-		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) < sizeof(urlbuf)) {
+		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) >= sizeof(urlbuf)) {
 			client.input.error = 1;
 			snprintf(client.error, sizeof(client.error), "Url too long");
 			return 0;
