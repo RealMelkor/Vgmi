@@ -215,8 +215,8 @@ void gmi_load(struct gmi_page* page) {
 }
 
 int gmi_render(struct gmi_tab* tab) {
-#ifdef TERMINAL_IMG_VIEWER
 #include "img.h"
+#ifdef TERMINAL_IMG_VIEWER
 	if (strncmp(tab->page.meta, "image/", 6) == 0) {
 		if (!tab->page.img.tried) {
 			char* ptr = strchr(tab->page.data, '\n');
