@@ -52,6 +52,16 @@ int main(int argc, char* argv[]) {
 #ifndef __OpenBSD__
 	tb_init();
 #endif
+	
+#ifdef TERMINAL_IMG_VIEWER
+	if (tb_set_output_mode(TB_OUTPUT_256)) {
+		gmi_free();
+		printf("Terminal doesn't support 256 colors mode\n");
+		return -1;
+	}
+	client.c256 = 1;
+#endif
+
 	struct tb_event ev;
 	bzero(&ev, sizeof(ev));
 	int ret = 0;

@@ -4,12 +4,12 @@ Gemini client written in C with vim-like keybindings
 
 ## Keybindings
 
-* h  - Go back in the history
-* l  - Go forward in the history
 * k  - Scroll up
 * j  - Scroll down
-* H  - Switch to the previous tab
-* L  - Switch to the next tab
+* h  - Switch to the previous tab
+* l  - Switch to the next tab
+* H  - Go back in the history
+* L  - Go forward in the history
 * gg - Go at the top of the page
 * G  - Go at the bottom of the page
 * :  - Open input mode
@@ -35,9 +35,14 @@ You can prefix a movement key with a number to repeat it.
 
 * [libtls][0] - a new TLS library
 * [termbox2][1] - terminal rendering library
+
+### Optional dependency
+* [stb-image][2] - image loading library
+
 ### On Linux
-* [libbsd][2] - utility functions from BSD systems
+* [libbsd][3] - utility functions from BSD systems
 
 [0]: https://git.causal.agency/libretls/about/
 [1]: https://github.com/termbox/termbox2
-[2]: https://libbsd.freedesktop.org/wiki/
+[2]: https://github.com/nothings/stb/blob/master/stb_image.h
+[3]: https://libbsd.freedesktop.org/wiki/

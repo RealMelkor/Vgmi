@@ -1,3 +1,4 @@
+/* See LICENSE file for copyright and license details. */
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
