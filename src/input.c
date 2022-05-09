@@ -306,15 +306,15 @@ int input(struct tb_event ev) {
 		free(tab->history);
 		tab->history = prev;
 		break;
-	case 'H': // Tab left
+	case 'h': // Tab left
 		if (client.tab > 0)
 			client.tab--;
 		break;
-	case 'L': // Tab right
+	case 'l': // Tab right
 		if (client.tab+1 < client.tabs_count)
 			client.tab++;
 		break;
-	case 'h': // Back
+	case 'H': // Back
 		if (!tab->history) break;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			if (!tab->history->prev) break;
@@ -322,7 +322,7 @@ int input(struct tb_event ev) {
 		} 
 		if (gmi_request(tab->history->url) < 0) break;
 		break;
-	case 'l': // Forward
+	case 'L': // Forward
 		if (!tab->history->next) break;
 		if (gmi_request(tab->history->next->url) < 0) break;
 		tab->history = tab->history->next;
@@ -359,7 +359,7 @@ int input(struct tb_event ev) {
 	case 'G': // End of file
 		tab->scroll = page->lines-tb_height()+2;
 		if (client.tabs_count != 1) tab->scroll++;
-		if (tb_height() >= page->lines) tab->scroll = -1;
+		if (tb_height()-2-(client.tabs_count>1) > page->lines) tab->scroll = -1;
 		break;
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))

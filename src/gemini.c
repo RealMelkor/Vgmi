@@ -1,5 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#include "gemini.h"
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,6 +14,7 @@
 #include <termbox.h>
 #include <ctype.h>
 #include <time.h>
+#include "gemini.h"
 #ifdef __linux__
 #include <bsd/string.h>
 #endif
@@ -215,6 +215,46 @@ void gmi_load(struct gmi_page* page) {
 }
 
 int gmi_render(struct gmi_tab* tab) {
+#ifdef TERMINAL_IMG_VIEWER
+#include "img.h"
+	if (strncmp(tab->page.meta, "image/", 6) == 0) {
+		if (!tab->page.img.tried) {
+			char* ptr = strchr(tab->page.data, '\n');
+			if (!ptr) {
+				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
+					  "Invalid data: new line not found");
+				tab->page.img.tried = 1;
+				return 1;
+			}
+			ptr++;
+			if (tab->page.img.data) stbi_image_free(tab->page.img.data);
+			tab->page.img.data = 
+			stbi_load_from_memory((unsigned char*)ptr, 
+						tab->page.data_len-(int)(ptr-tab->page.data),
+						&tab->page.img.w, &tab->page.img.h,
+						&tab->page.img.channels, 3);
+			if (!tab->page.img.data) {
+				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
+					  "Failed to decode image: %s", tab->page.meta);
+				tab->page.img.tried = 1;
+				return 1;
+			}
+
+			tab->page.img.tried = 1;
+		}
+		if (tab->page.img.data) {
+			img_display(tab->page.img.data,
+					tab->page.img.w, tab->page.img.h,
+					client.tabs_count>1);
+			return 1;
+		}
+	}
+#endif
+	if (strcmp(tab->page.meta, "text/gemini")) {
+		tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
+			  "Unable to render format : %s", tab->page.meta);
+		return 1;
+	}
 	int line = 0;
 	int x = 0;
 	int links = 0;
@@ -222,6 +262,11 @@ int gmi_render(struct gmi_tab* tab) {
 	int start = 1;
 	int ignore = 0;
 	for (int c = 0; c < tab->page.data_len; c++) {
+		if (x == 0 && tab->page.data[c] == '\n') {
+			if (c+1 != tab->page.data_len)
+				line++;
+			continue;
+		}
 		if (tab->page.data[c] == '\t') {
 			x+=4;
 			continue;
@@ -250,7 +295,8 @@ int gmi_render(struct gmi_tab* tab) {
 					char buf[32];
 					snprintf(buf, sizeof(buf), "[%d]", links+1);
 					tb_print(x+2, line-1-tab->scroll,
-					links+1 == tab->selected?TB_RED:TB_BLUE, TB_DEFAULT, buf);
+					links+1 == tab->selected?TB_RED:TB_BLUE,
+					TB_DEFAULT, buf);
 					x += strnlen(buf, sizeof(buf));
 				}
 				c += 2;
@@ -268,7 +314,8 @@ int gmi_render(struct gmi_tab* tab) {
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0'; c++) ;
 
-				if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0') c = initial;
+				if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0')
+					c = initial;
 				x+=3;
 				if ((links+1)/10) x--;
 				if ((links+1)/100) x--;
@@ -296,7 +343,8 @@ int gmi_render(struct gmi_tab* tab) {
 				if (tb_width()-4<=x+i) newline = 1;
 			}
 			if (newline) {
-				line++;
+				if (c+1 != tab->page.data_len)
+					line++;
 				if (tab->page.data[c+1] == ' ') c++;
 				if (tab->page.data[c] == '\n') {
 					color = TB_DEFAULT;
@@ -319,7 +367,7 @@ int gmi_render(struct gmi_tab* tab) {
 		x++;
 		start = 0;
 	}
-	return line;
+	return line+1;
 }
 
 void gmi_cleanforward(struct gmi_tab* tab) {
@@ -358,18 +406,19 @@ void gmi_freetab(struct gmi_tab* tab) {
 		free(tab->page.links[i]);
 	free(tab->page.links);
 	free(tab->page.data);
+	free(tab->page.img.data);
 }
 
 char* home_page = 
-"20\r\n# Vgmi\n\n" \
+"20 text/gemini\r\n# Vgmi\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
 "## Keybindings\n\n" \
-"* h - Go back in the history\n" \
-"* l - Go forward in the history\n" \
 "* k - Scroll up\n" \
 "* j - Scroll down\n" \
-"* H - Switch to the previous tab\n" \
-"* L - Switch to the next tab\n" \
+"* h - Switch to the previous tab\n" \
+"* l - Switch to the next tab\n" \
+"* H - Go back in the history\n" \
+"* L - Go forward in the history\n" \
 "* gg - Go at the top of the page\n" \
 "* G - Go at the bottom of the page\n" \
 "* : - Open input mode\n" \
@@ -414,6 +463,8 @@ void gmi_newtab() {
 	}
 	strlcpy(client.tabs[tab].page.data, home_page, len);
 	client.tabs[tab].page.data_len = len;
+	strlcpy(client.tabs[tab].page.meta, "text/gemini",
+		sizeof(client.tabs[tab].page.meta));
 	gmi_load(&client.tabs[tab].page);
 }
 
@@ -769,6 +820,7 @@ int gmi_request(const char* url) {
 		}
 		recv = tls_read(ctx, buf, sizeof(buf));
 	}
+	
 	if (recv <= 0 || recv == 1024) {
 		snprintf(client.error, sizeof(client.error),
 			 "[%d] Invalid data from: %s", recv, gmi_host);
@@ -785,9 +837,10 @@ int gmi_request(const char* url) {
 			 "Invalid data from: %s", gmi_host);
 		goto request_error;
 	}
-	*ptr = '\0';
+	//*ptr = '\0';
 	int previous_code = tab->page.code;
 	tab->page.code = atoi(buf);
+
 	switch (tab->page.code) {
 	case 10:
 	case 11:
@@ -799,6 +852,20 @@ int gmi_request(const char* url) {
 		if (ptr) *ptr = '\0';
 		goto exit;
 	case 20:
+	{
+		tab->page.img.tried = 0;
+		char* meta = strchr(++ptr, '\r');
+		if (!meta) {
+			snprintf(client.error, sizeof(client.error),
+				 "Invalid data from: %s", gmi_host);
+			goto request_error;
+		}
+		*meta = '\0';
+		strlcpy(tab->page.meta, ptr, MAX_META);
+		*meta = '\r';
+		char* ptr_meta = strchr(tab->page.meta, ';');
+		if (ptr_meta) *ptr_meta = '\0';
+	}
 		break;
 	case 30:
 		data_ptr = tab->page.data;	
@@ -855,7 +922,7 @@ int gmi_request(const char* url) {
 		tab->page.code = previous_code;
 		goto request_error;
 	}
-	*ptr = ' ';
+	//*ptr = ' ';
 	if (tab->page.data) free(tab->page.data);
 	tab->page.data = malloc(recv+1);
 	if (!tab->page.data) return fatalI();

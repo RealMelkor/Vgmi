@@ -8,6 +8,7 @@
 #define GMI 9
 #define P_FILE 7
 #define MAX_URL 1024
+#define MAX_META 1024
 
 struct gmi_link {
 	char url[MAX_URL];
@@ -22,6 +23,14 @@ struct gmi_page {
 	int data_len;
 	int code;
 	int lines;
+	char meta[MAX_META];
+	struct img {
+		int tried;
+		unsigned char* data;
+		int w;
+		int h;
+		int channels;
+	} img;
 };
 
 struct gmi_tab {
@@ -49,6 +58,7 @@ struct gmi_client {
 		int g;
 	} vim;
 	int tab;
+	int c256;
 };
 
 extern struct gmi_client client;
@@ -66,5 +76,22 @@ void gmi_newtab_url(char* url);
 int gmi_loadfile(char* path);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
+
+#ifdef TERMINAL_IMG_VIEWER
+#undef TB_WHITE
+#define TB_WHITE 15
+#undef TB_BLACK
+#define TB_BLACK 16
+#undef TB_BLUE
+#define TB_BLUE 4
+#undef TB_RED
+#define TB_RED 9
+#undef TB_CYAN
+#define TB_CYAN 14
+#undef TB_MAGENTA
+#define TB_MAGENTA 13
+#undef TB_ITALIC
+#define TB_ITALIC 0
+#endif
 
 #endif

@@ -5,7 +5,7 @@ CFLAGS = -O2 -Wall -Wpedantic -Wextra
 CC = cc
 LIBSPATH = -L/usr/local/lib
 INCLUDES = -I/usr/local/include
-LIBS = -ltls -lcrypto -lpthread
+LIBS = -ltls -lcrypto -lpthread -lm
 
 vgmi: src
 	${CC} ${:!ls src/*.c!} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
