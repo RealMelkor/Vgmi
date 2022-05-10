@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#include <string.h>
+#include <strings.h>
+#include <termbox.h>
 #include "input.h"
 #include "gemini.h"
 #include "display.h"
