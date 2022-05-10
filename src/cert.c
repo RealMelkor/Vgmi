@@ -11,27 +11,43 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__NetBSD__)
 #include <sys/random.h>
+#endif
 #ifdef __linux__
 #include <bsd/string.h>
 #endif
 #include "gemini.h"
 
+char homefolder[1024];
+int homepath_cached = 0;
 int gethomefolder(char* path, size_t len) {
+	if (homepath_cached)
+		return strlcpy(path, homefolder, len);
 	struct passwd *pw = getpwuid(geteuid());
 	if (!pw) return 0;
 	size_t length = strlcpy(path, pw->pw_dir, len);
        	if (length >= len) return -1;
+	homepath_cached = 1;
+	strlcpy(homefolder, path, sizeof(homefolder));
 	return length;
 }
 
+char cachefolder[1024];
+int cachepath_cached = 0;
 int getcachefolder(char* path, size_t len) {
+	if (cachepath_cached)
+		return strlcpy(path, cachefolder, len);
 	int ret = gethomefolder(path, len);
 	if (ret == -1) return -1;
 	size_t length = ret;
 	if (length >= len) return -1;
 	length += strlcpy(&path[length], "/.cache/vgmi", len - length);
         if (length >= len) return -1;
+        struct stat _stat;
+        if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
+	cachepath_cached = 1;
+	strlcpy(cachefolder, path, sizeof(cachefolder));
         return length;
 }
 
@@ -44,12 +60,14 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 		return -1;
 	}
 	size_t len = ret;
+/*
         struct stat _stat;
         if (stat(path, &_stat) && mkdir(path, 0700)) {
 		snprintf(client.error, sizeof(client.error),
 		"Failed to create cache directory at %s", path);
 		return -1;
         }
+*/
 	if (len+1 >= sizeof(path))
 		goto getpath_overflow;
 	path[len] = '/';
@@ -87,7 +105,11 @@ int cert_create(char* host) {
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	int id;
+#ifdef __OpenBSD__
+	arc4random_buf(&id, sizeof(id));
+#else
 	getrandom(&id, sizeof(id), GRND_RANDOM);
+#endif
 	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;
 

@@ -77,6 +77,7 @@ int gmi_loadfile(char* path);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
 
+#include "img.h"
 #ifdef TERMINAL_IMG_VIEWER
 #undef TB_WHITE
 #define TB_WHITE 15

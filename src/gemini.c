@@ -25,6 +25,7 @@
 #include "cert.h"
 
 #define TIMEOUT 3
+struct timespec timeout = {0, 50000000};
 
 struct tls_config* config;
 struct tls* ctx;
@@ -706,8 +707,8 @@ int gmi_request(const char* url) {
 	dnsquery.host = gmi_host;
 	dnsquery.resolved = 0;
 	pthread_cond_signal(&dnsquery.cond);
-	for (int i=0; i < TIMEOUT * 1000 && !dnsquery.resolved; i++)
-		usleep(1000);
+	for (int i=0; i < TIMEOUT * 20 && !dnsquery.resolved; i++)
+		nanosleep(&timeout, NULL);
 	
 	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
 		if (!dnsquery.resolved) {
@@ -716,7 +717,8 @@ int gmi_request(const char* url) {
 			pthread_join(dnsquery.tid, NULL);
 			pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL);
 		}
-		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
+		snprintf(client.error, sizeof(client.error),
+			 "Unknown domain name: %s %d", gmi_host, dnsquery.resolved);
 		goto request_error;
 	}
 	struct addrinfo *result = dnsquery.result;
@@ -770,8 +772,8 @@ int gmi_request(const char* url) {
 	conn.family = family;
 	conn.socket = sockfd;
 	pthread_cond_signal(&conn.cond);
-	for (int i=0; i < TIMEOUT * 1000 && !conn.connected; i++)
-		usleep(1000);
+	for (int i=0; i < TIMEOUT * 20 && !conn.connected; i++)
+		nanosleep(&timeout, NULL);
 	if (conn.connected != 1) {
 		if (!conn.connected) {
 			pthread_cancel(conn.tid);
