@@ -275,7 +275,8 @@ int input(struct tb_event ev) {
 	if (ev.key == TB_KEY_PGUP) {
 		int counter = atoi(client.vim.counter);
 		if (!counter) counter++;
-		tab->scroll -= counter * tb_height();
+		int H = tb_height() - 2 - (client.tabs_count>1);
+		tab->scroll -= counter * H;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
 		if (tab->scroll < -1) tab->scroll = -1;
 		client.vim.g = 0;
@@ -284,11 +285,12 @@ int input(struct tb_event ev) {
 	if (ev.key == TB_KEY_PGDN) {
 		int counter = atoi(client.vim.counter);
 		if (!counter) counter++;
-		tab->scroll += counter * tb_height();
+		int H = tb_height() - 2 - (client.tabs_count>1);
+		tab->scroll += counter * H;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (page->lines <= tb_height()) tab->scroll = -1;
-		else if (tab->scroll+tb_height()-2>page->lines)
-			tab->scroll = page->lines - tb_height() + 2;
+		if (page->lines <= H) tab->scroll = -1;
+		else if (tab->scroll + H >page->lines)
+			tab->scroll = page->lines - H;
 		client.vim.g = 0;
 		return 0;
 	}
@@ -312,12 +314,12 @@ int input(struct tb_event ev) {
 		tab->history = prev;
 		break;
 	case 'h': // Tab left
-		if (client.tab > 0)
-			client.tab--;
+		client.tab--;
+		if (client.tab < 0) client.tab = client.tabs_count - 1;
 		break;
 	case 'l': // Tab right
-		if (client.tab+1 < client.tabs_count)
-			client.tab++;
+		client.tab++;
+		if (client.tab >= client.tabs_count) client.tab = 0;
 		break;
 	case 'H': // Back
 		if (!tab->history) break;
@@ -328,7 +330,7 @@ int input(struct tb_event ev) {
 		if (gmi_request(tab->history->url) < 0) break;
 		break;
 	case 'L': // Forward
-		if (!tab->history->next) break;
+		if (!tab->history || !tab->history->next) break;
 		if (gmi_request(tab->history->next->url) < 0) break;
 		tab->history = tab->history->next;
 		break;
