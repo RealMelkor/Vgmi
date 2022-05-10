@@ -62,7 +62,7 @@ int command() {
 		char urlbuf[MAX_URL];
 		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) >= sizeof(urlbuf)) {
 			client.input.error = 1;
-			snprintf(client.error, sizeof(client.error), "Url too long");
+			snprintf(tab->error, sizeof(tab->error), "Url too long");
 			return 0;
 		}
 		client.input.field[0] = '\0';
@@ -116,7 +116,7 @@ int command() {
 	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
 		client.input.error = -1;
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown input: %s", &client.input.field[1]);
 	}
 	return 0;
@@ -177,14 +177,16 @@ int input(struct tb_event ev) {
 			tab->selected = atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
 			if (tab->selected > page->links_count) {
-				snprintf(client.error, sizeof(client.error), "Invalid link number");
+				snprintf(tab->error, sizeof(tab->error),
+					 "Invalid link number");
 				tab->selected = 0;
 				client.input.error = 1;
 			}
 			else if (strlcpy(tab->selected_url, page->links[tab->selected - 1],
 			sizeof(tab->selected_url)) >= sizeof(tab->selected_url)) {
-				snprintf(client.error, sizeof(client.error),
-					"Invalid link, above %lu characters", sizeof(tab->selected_url));
+				snprintf(tab->error, sizeof(tab->error),
+					 "Invalid link, above %lu characters",
+					 sizeof(tab->selected_url));
 				tab->selected = 0;
 				client.input.error = 1;
 			}

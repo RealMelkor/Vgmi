@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
 		if (gmi_loadfile(argv[1]) > 0)
 			gmi_load(&client.tabs[client.tab].page);
 		else if (gmi_request(argv[1]) > 0) {
-			client.error[0] = '\0';
+			client.tabs[0].error[0] = '\0';
 			client.input.error = 0;
 		}
 	}
