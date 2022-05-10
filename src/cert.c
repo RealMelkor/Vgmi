@@ -11,7 +11,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#if defined(__FreeBSD__) || defined(__linux__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__linux__)
 #include <sys/random.h>
 #endif
 #ifdef __linux__
@@ -97,7 +97,7 @@ int cert_create(char* host) {
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	int id;
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__NetBSD__)
 	arc4random_buf(&id, sizeof(id));
 #else
 	getrandom(&id, sizeof(id), GRND_RANDOM);
