@@ -25,8 +25,9 @@ void display() {
 		if (client.tabs_count > 1) tab->scroll--;
                 page->lines = gmi_render(tab);
 		if (client.tabs_count > 1) tab->scroll++;
-        } else if (client.error[0] != '\0') {
-                tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s", client.error);
+        } else if (tab->error[0] != '\0') {
+                tb_printf(2, 1+(client.tabs_count>1), TB_RED, TB_DEFAULT,
+			  "# %s", tab->error);
         }
 
 	// current tab
@@ -77,7 +78,7 @@ void display() {
         if (client.input.error) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_RED);
-                tb_print(0, tb_height()-1, TB_WHITE, TB_RED, client.error);
+                tb_print(0, tb_height()-1, TB_WHITE, TB_RED, tab->error);
                 client.input.field[0] = '\0';
                 client.input.error = 0;
         } else if (page->code == 10) {

@@ -53,8 +53,9 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 	char path[1024];
         int ret = getcachefolder(path, sizeof(path));
 	if (ret < 1) {
-		snprintf(client.error, sizeof(client.error),
-		"Failed to get cache directory");
+		snprintf(client.tabs[client.tab].error, 
+			 sizeof(client.tabs[client.tab].error),
+			 "Failed to get cache directory");
 		return -1;
 	}
 	size_t len = ret;
@@ -77,8 +78,9 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 		goto getpath_overflow;
 	return len+4;
 getpath_overflow:
-	snprintf(client.error, sizeof(client.error),
-	"The cache folder path is too long %s", path);
+	snprintf(client.tabs[client.tab].error,
+		 sizeof(client.tabs[client.tab].error),
+		 "The cache folder path is too long %s", path);
 	return -1;
 }
 
@@ -123,7 +125,9 @@ int cert_create(char* host) {
 
 	f = fopen(key, "wb");
 	if (!f) {
-		snprintf(client.error, sizeof(client.error), "Failed to write to %s", key);
+		snprintf(client.tabs[client.tab].error,
+			 sizeof(client.tabs[client.tab].error),
+			 "Failed to write to %s", key);
 		goto skip_error;
 	}
 	if (PEM_write_PrivateKey(f, pkey, NULL, NULL, 0, NULL, NULL) != 1)
@@ -132,7 +136,9 @@ int cert_create(char* host) {
 
 	f = fopen(crt, "wb");
 	if (!f) {
-		snprintf(client.error, sizeof(client.error), "Failed to write to %s", crt);
+		snprintf(client.tabs[client.tab].error,
+			 sizeof(client.tabs[client.tab].error),
+			 "Failed to write to %s", crt);
 		goto skip_error;
 	}
 	if (PEM_write_X509(f, x509) != 1)
@@ -142,7 +148,9 @@ int cert_create(char* host) {
 	ret = 0;
 	goto skip_error;
 failed:
-	snprintf(client.error, sizeof(client.error), "Failed to generate certificate");
+	snprintf(client.tabs[client.tab].error,
+		 sizeof(client.tabs[client.tab].error),
+		 "Failed to generate certificate");
 skip_error:
 	if (f) fclose(f);
 	BN_free(bne);

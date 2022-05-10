@@ -40,10 +40,10 @@ struct gmi_tab {
 	int selected;
 	char selected_url[MAX_URL];
 	char url[MAX_URL];
+	char error[256];
 };
 
 struct gmi_client {
-	char error[256];
 	struct gmi_tab* tabs;
 	int tabs_count;
 	struct input {

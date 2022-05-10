@@ -70,9 +70,10 @@ int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 
 int gmi_goto(int id) {
 	id--;
-	struct gmi_page* page = &client.tabs[client.tab].page;
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	struct gmi_page* page = &tab->page;
 	if (id < 0 || id >= page->links_count) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid link number, %d/%d", id, page->links_count);
 		client.input.error = 1;
 		return -1;
@@ -88,9 +89,10 @@ int gmi_goto(int id) {
 
 int gmi_goto_new(int id) {
 	id--;
-	struct gmi_page* page = &client.tabs[client.tab].page;
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	struct gmi_page* page = &tab->page;
 	if (id < 0 || id >= page->links_count) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid link number, %d/%d", id, page->links_count);
 		client.input.error = 1;
 		return -1;
@@ -151,7 +153,8 @@ int gmi_nextlink(char* url, char* link) {
 	}
 nextlink_overflow:
 	client.input.error = 1;
-	snprintf(client.error, sizeof(client.error),
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	snprintf(tab->error, sizeof(tab->error),
 	 "Link too long, above 1024 characters");
 	return -1;
 }
@@ -236,7 +239,7 @@ int gmi_render(struct gmi_tab* tab) {
 						&tab->page.img.channels, 3);
 			if (!tab->page.img.data) {
 				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
-					  "Failed to decode image: %s", tab->page.meta);
+					  "Failed to decode image: %s;", tab->page.meta);
 				tab->page.img.tried = 1;
 				return 1;
 			}
@@ -363,7 +366,8 @@ int gmi_render(struct gmi_tab* tab) {
 		if (size > 0)
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 
-		if (line-1>=(tab->scroll>=0?tab->scroll:0) && (line-tab->scroll <= tb_height()-2)) 
+		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
+		    (line-tab->scroll <= tb_height()-2)) 
 			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
 		x++;
 		start = 0;
@@ -563,7 +567,8 @@ skip_proto:;
 	return proto;
 parseurl_overflow:
 	client.input.error = 1;
-	snprintf(client.error, sizeof(client.error),
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	snprintf(tab->error, sizeof(tab->error),
 	 "Link too long, above 1024 characters");
 	return -1;
 }
@@ -584,7 +589,8 @@ struct conn conn;
 
 void conn_thread() {
 	if (pthread_mutex_init(&conn.mutex, NULL)) {
-		snprintf(client.error, sizeof(client.error), 
+		struct gmi_tab* tab = &client.tabs[client.tab];
+		snprintf(tab->error, sizeof(tab->error), 
 			"Failed to initialize connection mutex\n");
 		return;
 	}
@@ -613,7 +619,8 @@ struct dnsquery dnsquery;
 void dnsquery_thread(int signal) {
 	if (signal != 0 && signal != SIGUSR1) return;
 	if (pthread_mutex_init(&dnsquery.mutex, NULL)) {
-		snprintf(client.error, sizeof(client.error), 
+		struct gmi_tab* tab = &client.tabs[client.tab];
+		snprintf(tab->error, sizeof(tab->error), 
 			"Failed to initialize connection mutex\n");
 		return;
 	}
@@ -660,7 +667,7 @@ int gmi_request(const char* url) {
 		return 0;
 	}
 	if (proto != PROTO_GEMINI) {
-		snprintf(client.error, sizeof(client.error), "Invalid url: %s", url);
+		snprintf(tab->error, sizeof(tab->error), "Invalid url: %s", url);
 		client.input.error = 1;
 		return -1;
 	}
@@ -670,7 +677,7 @@ int gmi_request(const char* url) {
 	}
 	ctx = tls_client();
 	if (!ctx) {
-		snprintf(client.error, sizeof(client.error), "Failed to initialize TLS");
+		snprintf(tab->error, sizeof(tab->error), "Failed to initialize TLS");
 		client.input.error = 1;
 		return -1;
 	}
@@ -693,12 +700,12 @@ int gmi_request(const char* url) {
 
 	if (cert == 1 && tls_config_set_keypair_file(config, crt, key)) {
 		client.input.error = 1;
-		snprintf(client.error, sizeof(client.error), "%s", tls_config_error(config));
+		snprintf(tab->error, sizeof(tab->error), "%s", tls_config_error(config));
 		return -1;
 	}
 
 	if (tls_configure(ctx, config)) {
-		snprintf(client.error, sizeof(client.error), "Failed to configure TLS");
+		snprintf(tab->error, sizeof(tab->error), "Failed to configure TLS");
 		client.input.error = 1;
 		return -1;
 	}
@@ -718,7 +725,7 @@ int gmi_request(const char* url) {
 			pthread_join(dnsquery.tid, NULL);
 			pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL);
 		}
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown domain name: %s", gmi_host);
 		goto request_error;
 	}
@@ -730,7 +737,7 @@ int gmi_request(const char* url) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags |= AI_CANONNAME;
 	if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
-		snprintf(client.error, sizeof(client.error), "Unknown domain name: %s", gmi_host);
+		snprintf(tab->error, sizeof(tab->error), "Unknown domain name: %s", gmi_host);
 		goto request_error;
 	}
 #endif
@@ -758,7 +765,7 @@ int gmi_request(const char* url) {
 		addr6.sin6_port = htons(port);
 		addr = (struct sockaddr*)&addr6;
 	} else {
-		snprintf(client.error, sizeof(client.error), 
+		snprintf(tab->error, sizeof(tab->error), 
 			 "Unexpected error, invalid address family %s", gmi_host);
 		goto request_error;
 	}
@@ -785,18 +792,18 @@ int gmi_request(const char* url) {
 #else
 	if (connect(sockfd, addr, (family == AF_INET)?sizeof(addr4):sizeof(addr6)) != 0) {
 #endif
-		snprintf(client.error, sizeof(client.error), 
+		snprintf(tab->error, sizeof(tab->error), 
 			 "Connection to %s timed out", gmi_host);
 		goto request_error;
 	}
 
 	if (tls_connect_socket(ctx, sockfd, gmi_host)) {
-		snprintf(client.error, sizeof(client.error), 
+		snprintf(tab->error, sizeof(tab->error), 
 			 "Unable to connect to: %s", gmi_host);
 		goto request_error;
 	}
 	if (tls_handshake(ctx)) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to handshake: %s", gmi_host);
 		goto request_error;
 	}
@@ -804,12 +811,12 @@ int gmi_request(const char* url) {
 	ssize_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
 	if (len >= MAX_URL ||
 	    (len += strlcpy(&urlbuf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Url too long: %s", urlbuf);
 		goto request_error;
 	}
 	if (tls_write(ctx, urlbuf, len) < len) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to send data to: %s", gmi_host);
 		goto request_error;
 	}
@@ -817,7 +824,7 @@ int gmi_request(const char* url) {
 	time_t now = time(0);
 	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT) {
 		if (time(0) - now >= TIMEOUT) {
-			snprintf(client.error, sizeof(client.error),
+			snprintf(tab->error, sizeof(tab->error),
 				 "Connection to %s timed out (sent no data)", gmi_host);
 			goto request_error;
 		}
@@ -825,22 +832,21 @@ int gmi_request(const char* url) {
 	}
 	
 	if (recv <= 0 || recv == 1024) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "[%d] Invalid data from: %s", recv, gmi_host);
 		goto request_error;
 	}
 	if (!strstr(buf, "\r\n")) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid data from: %s (no CRLF)", gmi_host);
 		goto request_error;
 	}
 	char* ptr = strchr(buf, ' ');
 	if (!ptr) {
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid data from: %s", gmi_host);
 		goto request_error;
 	}
-	//*ptr = '\0';
 	int previous_code = tab->page.code;
 	tab->page.code = atoi(buf);
 
@@ -859,7 +865,7 @@ int gmi_request(const char* url) {
 		tab->page.img.tried = 0;
 		char* meta = strchr(++ptr, '\r');
 		if (!meta) {
-			snprintf(client.error, sizeof(client.error),
+			snprintf(tab->error, sizeof(tab->error),
 				 "Invalid data from: %s", gmi_host);
 			goto request_error;
 		}
@@ -873,59 +879,58 @@ int gmi_request(const char* url) {
 	case 30:
 		data_ptr = tab->page.data;	
 		tab->page.data = NULL;
-		snprintf(client.error, sizeof(client.error), "Redirect temporary");
+		snprintf(tab->error, sizeof(tab->error), "Redirect temporary");
 		break;
 	case 31:
 		data_ptr = tab->page.data;	
 		tab->page.data = NULL;
-		snprintf(client.error, sizeof(client.error), "Redirect permanent");
+		snprintf(tab->error, sizeof(tab->error), "Redirect permanent");
 		break;
 	case 40:
-		snprintf(client.error, sizeof(client.error), "Temporary failure");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Temporary failure");
+		goto request_error_msg;
 	case 41:
-		snprintf(client.error, sizeof(client.error), "Server unavailable");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Server unavailable");
+		goto request_error_msg;
 	case 42:
-		snprintf(client.error, sizeof(client.error), "CGI error");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "CGI error");
+		goto request_error_msg;
 	case 43:
-		snprintf(client.error, sizeof(client.error), "Proxy error");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Proxy error");
+		goto request_error_msg;
 	case 44:
-		snprintf(client.error, sizeof(client.error), "Slow down: server above rate limit");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Slow down: server above rate limit");
+		goto request_error_msg;
 	case 50:
-		snprintf(client.error, sizeof(client.error), "Permanent failure");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Permanent failure");
+		goto request_error_msg;
 	case 51:
-		snprintf(client.error, sizeof(client.error), "Not found");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Not found");
+		goto request_error_msg;
 	case 52:
-		snprintf(client.error, sizeof(client.error), "Resource gone");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Resource gone");
+		goto request_error_msg;
 	case 53:
-		snprintf(client.error, sizeof(client.error), "Proxy request refused");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Proxy request refused");
+		goto request_error_msg;
 	case 59:
-		snprintf(client.error, sizeof(client.error), "Bad request");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Bad request");
+		goto request_error_msg;
 	case 60:
-		snprintf(client.error, sizeof(client.error), "Client certificate required");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Client certificate required");
+		goto request_error_msg;
 	case 61:
-		snprintf(client.error, sizeof(client.error), "Client not authorised");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Client not authorised");
+		goto request_error_msg;
 	case 62:
-		snprintf(client.error, sizeof(client.error), "Client certificate not valid");
-		goto request_error;
+		snprintf(tab->error, sizeof(tab->error), "Client certificate not valid");
+		goto request_error_msg;
 	default:
-		snprintf(client.error, sizeof(client.error),
+		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown status code: %d", tab->page.code);
 		tab->page.code = previous_code;
 		goto request_error;
 	}
-	//*ptr = ' ';
 	if (tab->page.data) free(tab->page.data);
 	tab->page.data = malloc(recv+1);
 	if (!tab->page.data) return fatalI();
@@ -934,7 +939,7 @@ int gmi_request(const char* url) {
 	while (1) {
 		if (time(0) - now >= TIMEOUT) {
 			tab->page.data_len = recv;
-			snprintf(client.error, sizeof(client.error),
+			snprintf(tab->error, sizeof(tab->error),
 				 "Server %s stopped responding", gmi_host);
 			goto request_error;
 		}
@@ -942,7 +947,7 @@ int gmi_request(const char* url) {
 		if (bytes == 0) break;
 		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) continue;
 		if (bytes < 1) {
-			snprintf(client.error, sizeof(client.error),
+			snprintf(tab->error, sizeof(tab->error),
 				 "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
 		}
@@ -964,6 +969,16 @@ exit:
 			link->prev->next = tab->history;
 	}
 	if (0) {
+request_error_msg:;
+		char* cr = strchr(ptr+1, '\r');
+		if (cr) {
+			*cr = '\0';
+			char buf[256];
+			snprintf(buf, sizeof(buf),
+				 "%s (%s)", ptr+1, tab->error);
+			strlcpy(tab->error, buf, sizeof(tab->error));
+			*cr = '\r';
+		}
 request_error:
 		if (tab->history) {
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
@@ -1015,7 +1030,7 @@ int gmi_loadfile(char* path) {
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	FILE* f = fopen(path, "rb");
 	if (!f) {
-		snprintf(client.error, sizeof(client.error), "Failed to open %s", path);
+		snprintf(tab->error, sizeof(tab->error), "Failed to open %s", path);
 		client.input.error = 1;
 		return -1;
 	}
