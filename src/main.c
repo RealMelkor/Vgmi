@@ -25,10 +25,12 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 	tb_init();
-	if (unveil(certpath, "rwc") || 
+	if (
 #ifndef HIDE_HOME
 		unveil(path, "r") ||
 #endif
+		unveil(certpath, "rwc") || 
+		unveil("/etc/resolv.conf", "r") ||
 		unveil(NULL, NULL)) {
 		printf("Failed to unveil\n");
 		return -1;
