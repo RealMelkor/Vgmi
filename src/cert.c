@@ -60,14 +60,6 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 		return -1;
 	}
 	size_t len = ret;
-/*
-        struct stat _stat;
-        if (stat(path, &_stat) && mkdir(path, 0700)) {
-		snprintf(client.error, sizeof(client.error),
-		"Failed to create cache directory at %s", path);
-		return -1;
-        }
-*/
 	if (len+1 >= sizeof(path))
 		goto getpath_overflow;
 	path[len] = '/';
