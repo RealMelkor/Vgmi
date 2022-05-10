@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#include "input.h"
 #include "gemini.h"
 #include "display.h"
-#include "input.h"
 #include "cert.h"
 #include <stdio.h>
 #include <string.h>
