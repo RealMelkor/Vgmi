@@ -718,7 +718,7 @@ int gmi_request(const char* url) {
 			pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL);
 		}
 		snprintf(client.error, sizeof(client.error),
-			 "Unknown domain name: %s %d", gmi_host, dnsquery.resolved);
+			 "Unknown domain name: %s", gmi_host);
 		goto request_error;
 	}
 	struct addrinfo *result = dnsquery.result;
