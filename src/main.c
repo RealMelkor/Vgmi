@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#define TB_IMPL
+#include <signal.h>
+#include <termbox.h>
 #include "input.h"
 #include "gemini.h"
 #include "display.h"
@@ -6,9 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
-#include <unistd.h>
-#define TB_IMPL
-#include <termbox.h>
 
 int main(int argc, char* argv[]) {
 #ifdef __OpenBSD__

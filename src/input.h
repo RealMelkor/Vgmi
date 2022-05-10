@@ -2,8 +2,7 @@
 #ifndef _INPUT_H_
 #define _INPUT_H_
 
-#include <termbox.h>
-
+struct tb_event;
 int input(struct tb_event event);
 
 #endif

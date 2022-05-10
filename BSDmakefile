@@ -1,3 +1,4 @@
+# FreeBSD makefile
 SHELL = /bin/sh
 
 PREFIX = /usr/local
