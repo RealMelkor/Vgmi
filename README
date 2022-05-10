@@ -1,0 +1,44 @@
+# Vgmi
+
+Gemini client written in C with vim-like keybindings
+
+## Keybindings
+
+* k  - Scroll up
+* j  - Scroll down
+* h  - Switch to the previous tab
+* l  - Switch to the next tab
+* H  - Go back in the history
+* L  - Go forward in the history
+* gg - Go at the top of the page
+* G  - Go at the bottom of the page
+* :  - Open input mode
+* u  - Open input mode with the current url
+* f  - Show the history
+* r  - Reload the page
+* [number]Tab - Select link
+* Tab - Follow selected link
+* Shift+Tab - Open selected link in a new tab
+
+You can prefix a movement key with a number to repeat it.
+
+## Commands
+
+* :q		- Close the current tab
+* :qa		- Close all tabs, exit the program
+* :o [url]	- Open an url
+* :s [search]	- Search the Geminispace using geminispace.info
+* :nt [url]	- Open a new tab, the url is optional
+* :[number]	- Follow the link 
+* :gencert	- Generate a certificate for the current capsule
+
+## Dependencies
+
+=> https://git.causal.agency/libretls/about/ libtls - a new TLS library
+=> https://github.com/termbox/termbox2 termbox2 - terminal rendering library
+
+### Optional dependency
+=> https://github.com/nothings/stb/blob/master/stb_image.h stb-image - image loading library
+
+### On Linux
+=> https://libbsd.freedesktop.org/wiki/ libbsd - utility functions from BSD systems
