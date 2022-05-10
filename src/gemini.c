@@ -951,7 +951,8 @@ int gmi_request(const char* url) {
 		now = time(0);
 	}
 exit:
-	if (!tab->history || (tab->history && !tab->history->next)) {
+	if (tab->page.code == 20 && 
+	   ((!tab->history || (tab->history && !tab->history->next)))) {
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
 		if (!link) return fatalI();
 		link->next = NULL;

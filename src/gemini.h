@@ -87,6 +87,8 @@ void gmi_free();
 #define TB_BLUE 4
 #undef TB_RED
 #define TB_RED 9
+#undef TB_GREEN
+#define TB_GREEN 2
 #undef TB_CYAN
 #define TB_CYAN 14
 #undef TB_MAGENTA
