@@ -424,6 +424,7 @@ char* home_page =
 "* G - Go at the bottom of the page\n" \
 "* : - Open input mode\n" \
 "* u - Open input mode with the current url\n" \
+"* f - Show the history\n" \
 "* r - Reload the page\n" \
 "* [number]Tab - Select a link\n" \
 "* Tab - Follow the selected link\n" \
