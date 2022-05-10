@@ -113,15 +113,15 @@ void display_history() {
                 }
                 int y = 3;
                 for (struct gmi_link* link = tab->history->next; link; link = link->next) {
-                        tb_printf(0, y, TB_DEFAULT, TB_RED, "%s", link->url);
+                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", link->url);
                         y++;
                 }
 
-                tb_printf(0, y, TB_DEFAULT, TB_DEFAULT, "-> %s", tab->history->url);
+                tb_printf(4, y, TB_DEFAULT, TB_BLUE, "-> %s", tab->history->url);
                 y++;
 
                 for (struct gmi_link* link = tab->history->prev; link; link = link->prev) {
-                        tb_printf(0, y, TB_DEFAULT, TB_BLUE, "%s", link->url);
+                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", link->url);
                         y++;
                 }
 

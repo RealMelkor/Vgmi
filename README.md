@@ -14,6 +14,7 @@ Gemini client written in C with vim-like keybindings
 * G  - Go at the bottom of the page
 * :  - Open input mode
 * u  - Open input mode with the current url
+* f  - Show the history
 * r  - Reload the page
 * [number]Tab - Select link
 * Tab - Follow selected link

@@ -350,7 +350,7 @@ int input(struct tb_event ev) {
 			 < page->lines) tab->scroll++;
 		client.vim.g = 0;
 		break;
-	case 'U': // Show history
+	case 'f': // Show history
 		display_history();
 		break;
 	case 'g': // Start of file
