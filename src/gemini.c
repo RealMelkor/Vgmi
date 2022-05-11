@@ -857,6 +857,8 @@ int gmi_request(const char* url) {
 	int previous_code = tab->page.code;
 	tab->page.code = atoi(buf);
 
+	data_ptr = tab->page.data;	
+	tab->page.data = NULL;
 	switch (tab->page.code) {
 	case 10:
 	case 11:
@@ -884,13 +886,9 @@ int gmi_request(const char* url) {
 	}
 		break;
 	case 30:
-		data_ptr = tab->page.data;	
-		tab->page.data = NULL;
 		snprintf(tab->error, sizeof(tab->error), "Redirect temporary");
 		break;
 	case 31:
-		data_ptr = tab->page.data;	
-		tab->page.data = NULL;
 		snprintf(tab->error, sizeof(tab->error), "Redirect permanent");
 		break;
 	case 40:
@@ -938,14 +936,13 @@ int gmi_request(const char* url) {
 		tab->page.code = previous_code;
 		goto request_error;
 	}
-	if (tab->page.data) free(tab->page.data);
+	//free(tab->page.data);
 	tab->page.data = malloc(recv+1);
 	if (!tab->page.data) return fatalI();
 	memcpy(tab->page.data, buf, recv);
 	now = time(0);
 	while (1) {
 		if (time(0) - now >= TIMEOUT) {
-			tab->page.data_len = recv;
 			snprintf(tab->error, sizeof(tab->error),
 				 "Server %s stopped responding", gmi_host);
 			goto request_error;
@@ -988,6 +985,11 @@ request_error_msg:;
 			*cr = '\r';
 		}
 request_error:
+		if (data_ptr) {
+			free(tab->page.data);
+			tab->page.data = data_ptr;
+			data_ptr = NULL;
+		}
 		if (tab->history) {
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else {
@@ -1003,12 +1005,17 @@ request_error:
 		tls_free(ctx);
 		ctx = NULL;
 	}
-	if (tab->page.code == 11 || tab->page.code == 10) {
+	if (recv > 0 && (tab->page.code == 11 || tab->page.code == 10)) {
+		tab->page.data = data_ptr;
 		return tab->page.data_len;
 	}
-	if (tab->page.code == 31 || tab->page.code == 30) {
+	if (recv > 0 && (tab->page.code == 31 || tab->page.code == 30)) {
 		char* ptr = strchr(tab->page.data, ' ');
-		if (!ptr) return -1;
+		if (!ptr) {
+			free(tab->page.data);
+			tab->page.data = data_ptr;
+			return -1;
+		}
 		char* ln = strchr(ptr+1, ' ');
 		if (ln) *ln = '\0';
 		ln = strchr(ptr, '\n');
@@ -1016,8 +1023,7 @@ request_error:
 		ln = strchr(ptr, '\r');
 		if (ln) *ln = '\0';
 		int r = gmi_nextlink(tab->url, ptr+1);
-		if (r < 1) return r;
-		if (tab->page.code != 20) {
+		if (r < 1 || tab->page.code != 20) {
 			free(tab->page.data);
 			tab->page.data = data_ptr;
 		} else {
@@ -1031,6 +1037,7 @@ request_error:
 		tab->page.data_len = recv;
 		gmi_load(&tab->page);
 	}
+	free(data_ptr);
 	return recv;
 }
 

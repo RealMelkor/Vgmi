@@ -11,6 +11,9 @@
 #include <strings.h>
 
 int main(int argc, char* argv[]) {
+#ifdef MEM_CHECK
+	__init();
+#endif
 #ifdef __OpenBSD__
 #ifndef HIDE_HOME
 	char path[1024];
@@ -78,5 +81,8 @@ int main(int argc, char* argv[]) {
 	}
 	tb_shutdown();
 	gmi_free();
+#ifdef MEM_CHECK
+	__check();
+#endif
 	return 0;
 }
