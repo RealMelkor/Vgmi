@@ -325,14 +325,18 @@ int input(struct tb_event ev) {
 		if (!tab->history) break;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			if (!tab->history->prev) break;
+			tab->history->scroll = tab->scroll;
 			tab->history = tab->history->prev;
+			tab->scroll = tab->history->scroll;
 		} 
 		if (gmi_request(tab->history->url) < 0) break;
 		break;
 	case 'L': // Forward
 		if (!tab->history || !tab->history->next) break;
 		if (gmi_request(tab->history->next->url) < 0) break;
+		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
+		tab->scroll = tab->history->scroll;
 		break;
 	case 'k': // UP
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {

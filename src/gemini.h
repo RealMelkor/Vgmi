@@ -14,6 +14,7 @@ struct gmi_link {
 	char url[MAX_URL];
 	struct gmi_link* prev;
 	struct gmi_link* next;
+	int scroll;
 };
 
 struct gmi_page {
