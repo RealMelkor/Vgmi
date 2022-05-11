@@ -3,12 +3,19 @@ SHELL = /bin/sh
 
 PREFIX = /usr
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
-FLAGS = -DTERMINAL_IMG_VIEWER
+LDFLAGS = -ltls -lcrypto -lbsd -lm
+FLAGS = -DTERMINAL_IMG_VIEWER -DMEM_CHECK
 CC = cc
-LIBS = -ltls -lcrypto -lbsd -lm
+SRC = $(wildcard src/*.c)
+OBJ = ${SRC:.c=.o}
+OBJS = $(subst src,obj,$(OBJ))
 
-vgmi: src
-	${CC} $(wildcard src/*.c) ${FLAGS} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
+.c.o:
+#	mkdir -p obj
+	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
+
+vgmi: ${OBJ}
+	${CC} -o $@ ${OBJS} ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin
@@ -18,4 +25,4 @@ uninstall:
 	rm ${PREFIX}/bin/vgmi
 
 clean:
-	rm -f vgmi
+	rm vgmi ${OBJS}
