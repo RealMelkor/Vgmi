@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#ifdef __linux__
+#define OPENSSL_API_COMPAT 0x10101000L
+#endif
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>

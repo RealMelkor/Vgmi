@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <stddef.h>
+#include "memcheck.h"
 
 #define GMI 9
 #define P_FILE 7
