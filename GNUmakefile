@@ -4,14 +4,14 @@ SHELL = /bin/sh
 PREFIX = /usr
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
 LDFLAGS = -ltls -lcrypto -lbsd -lm
-FLAGS = -DTERMINAL_IMG_VIEWER -DMEM_CHECK
+FLAGS = -DTERMINAL_IMG_VIEWER
 CC = cc
 SRC = $(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}
 OBJS = $(subst src,obj,$(OBJ))
 
 .c.o:
-#	mkdir -p obj
+	mkdir -p obj
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
 
 vgmi: ${OBJ}
