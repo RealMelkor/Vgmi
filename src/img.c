@@ -1,11 +1,6 @@
 /* See LICENSE file for copyright and license details. */
-#ifdef TERMINAL_IMG_VIEWER
-#if defined(__has_include)
-#if __has_include(<stb_image.h>)
-#else
+#if defined(TERMINAL_IMG_VIEWER) && defined(__has_include) && !(__has_include(<stb_image.h>))
 #warning Unable to build built-in image viewer, stb_image header not found
-#endif
-#endif
 #endif
 #include "img.h"
 #ifdef TERMINAL_IMG_VIEWER
