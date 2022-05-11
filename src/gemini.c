@@ -28,6 +28,7 @@
 struct timespec timeout = {0, 50000000};
 
 struct tls_config* config;
+struct tls_config* config_empty;
 struct tls* ctx;
 struct gmi_client client;
 
@@ -254,10 +255,15 @@ int gmi_render(struct gmi_tab* tab) {
 		}
 	}
 #endif
+
+	int text = 0;
 	if (strcmp(tab->page.meta, "text/gemini")) {
-		tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
-			  "Unable to render format : %s", tab->page.meta);
-		return 1;
+		if (strncmp(tab->page.meta, "text/", 5)) {
+			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
+				  "Unable to render format : %s", tab->page.meta);
+			return 1;
+		}
+		text = 1;
 	}
 	int line = 0;
 	int x = 0;
@@ -276,11 +282,11 @@ int gmi_render(struct gmi_tab* tab) {
 			continue;
 		}
 		if (tab->page.data[c] == '\r') continue;
-		if (start && tab->page.data[c] == '`' &&
+		if (!text && start && tab->page.data[c] == '`' &&
 		    tab->page.data[c+1] == '`' && tab->page.data[c+2] == '`') 
 			ignore = !ignore;	
 		
-		if (!ignore) {
+		if (!ignore || text) {
 			for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
 				if (tab->page.data[c+i+1] == ' ') {
 					color = TB_RED + i;
@@ -658,6 +664,7 @@ int gmi_request(const char* url) {
 	int recv = TLS_WANT_POLLIN;
 	int sockfd = -1;
 	char gmi_host[256];
+	gmi_host[0] = '\0';
 	unsigned short port;
 	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host),
 				 tab->url, sizeof(tab->url), &port);
@@ -704,7 +711,7 @@ int gmi_request(const char* url) {
 		return -1;
 	}
 
-	if (tls_configure(ctx, config)) {
+	if (tls_configure(ctx, cert?config:config_empty)) {
 		snprintf(tab->error, sizeof(tab->error), "Failed to configure TLS");
 		client.input.error = 1;
 		return -1;
@@ -963,6 +970,7 @@ exit:
 		if (!link) return fatalI();
 		link->next = NULL;
 		link->prev = tab->history;
+		link->scroll = tab->scroll;
 		strlcpy(link->url, tab->url, sizeof(link->url));
 		tab->history = link;
 		if (link->prev)
@@ -1066,7 +1074,14 @@ int gmi_init() {
 		return -1;
 	}
 
+	config_empty = tls_config_new();
+	if (!config_empty) {
+		printf("Failed to initialize TLS config\n");
+		return -1;
+	}
+
 	tls_config_insecure_noverifycert(config);
+	tls_config_insecure_noverifycert(config_empty);
 	ctx = NULL;
 	bzero(&client, sizeof(client));
 
