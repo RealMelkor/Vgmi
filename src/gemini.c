@@ -172,14 +172,14 @@ void gmi_load(struct gmi_page* page) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
 			int nospace = c;
-			for (; page->data[c]==' '; c++) {
+			for (; page->data[c]==' ' || page->data[c]=='\t'; c++) {
 				if (page->data[c] == '\n' || page->data[c] == '\0') {
 					c = nospace;
 					break;
 				}
 			}
 			char* url = (char*)&page->data[c];
-			for (; page->data[c]!=' '; c++) {
+			for (; page->data[c]!=' ' && page->data[c]!='\t'; c++) {
 				if (page->data[c] == '\n' || page->data[c] == '\0') {
 					break;
 				}
@@ -305,24 +305,26 @@ int gmi_render(struct gmi_tab* tab) {
 					char buf[32];
 					snprintf(buf, sizeof(buf), "[%d]", links+1);
 					tb_print(x+2, line-1-tab->scroll,
-					links+1 == tab->selected?TB_RED:TB_BLUE,
-					TB_DEFAULT, buf);
+						 links+1 == tab->selected?TB_RED:TB_BLUE,
+						 TB_DEFAULT, buf);
 					x += strnlen(buf, sizeof(buf));
 				}
 				c += 2;
 
-				for (; tab->page.data[c]==' ' && 
+				while (
+				(tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
 				tab->page.data[c]!='\n' &&
-				tab->page.data[c]!='\0'; c++) ;
+				tab->page.data[c]!='\0') c++;
 
 				int initial = c;
-				for (; tab->page.data[c]!=' ' &&
+				while (tab->page.data[c]!=' ' &&
+				tab->page.data[c]!='\t' && 
 				tab->page.data[c]!='\n' &&
-				tab->page.data[c]!='\0'; c++) ;
+				tab->page.data[c]!='\0') c++;
 
-				for (; tab->page.data[c]==' ' && 
+				while ((tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
 				tab->page.data[c]!='\n' &&
-				tab->page.data[c]!='\0'; c++) ;
+				tab->page.data[c]!='\0') c++;
 
 				if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0')
 					c = initial;
@@ -373,7 +375,7 @@ int gmi_render(struct gmi_tab* tab) {
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
-		    (line-tab->scroll <= tb_height()-2)) 
+		    (line-tab->scroll <= tb_height()-2) && ch != '\t') 
 			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
 		x++;
 		start = 0;
@@ -382,16 +384,16 @@ int gmi_render(struct gmi_tab* tab) {
 }
 
 void gmi_cleanforward(struct gmi_tab* tab) {
-	struct gmi_link* ptr = tab->history;
-	while (ptr && ptr->next) {
-		struct gmi_link* next = ptr->next;
-		if (tab->history != ptr)
-			free(ptr);
-		if (!next) break;
-		ptr = next;
+	if (!tab->history)
+		return;
+	struct gmi_link* link = tab->history->next;
+	while (link) {
+		struct gmi_link* ptr = link->next;
+		bzero(link->url, sizeof(link->url));
+		free(link);
+		link = ptr;
 	}
-	if (tab->history)
-		tab->history->next = NULL;
+	tab->history->next = NULL;
 }
 
 void gmi_freetab(struct gmi_tab* tab) {
@@ -660,6 +662,7 @@ void signal_cb() {
 int gmi_request(const char* url) {
 	char* data_ptr = NULL;
 	struct gmi_tab* tab = &client.tabs[client.tab];
+	if (tab->history) tab->history->scroll = tab->scroll;
 	tab->selected = 0;
 	int recv = TLS_WANT_POLLIN;
 	int sockfd = -1;
@@ -936,7 +939,6 @@ int gmi_request(const char* url) {
 		tab->page.code = previous_code;
 		goto request_error;
 	}
-	//free(tab->page.data);
 	tab->page.data = malloc(recv+1);
 	if (!tab->page.data) return fatalI();
 	memcpy(tab->page.data, buf, recv);
@@ -963,6 +965,7 @@ int gmi_request(const char* url) {
 exit:
 	if (tab->page.code == 20 && 
 	   ((!tab->history || (tab->history && !tab->history->next)))) {
+		gmi_cleanforward(tab);
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
 		if (!link) return fatalI();
 		link->next = NULL;
@@ -1006,6 +1009,7 @@ request_error:
 		ctx = NULL;
 	}
 	if (recv > 0 && (tab->page.code == 11 || tab->page.code == 10)) {
+		free(tab->page.data);
 		tab->page.data = data_ptr;
 		return tab->page.data_len;
 	}
@@ -1118,7 +1122,8 @@ int gmi_init() {
 }
 
 void gmi_free() {
-	for (int i=0; i < client.tabs_count; i++) gmi_freetab(&client.tabs[i]);
+	for (int i=0; i < client.tabs_count; i++)
+		gmi_freetab(&client.tabs[i]);
 	free(client.tabs);
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	pthread_kill(conn.tid, SIGUSR1);
