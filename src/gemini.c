@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #endif
 #include "cert.h"
+#include "display.h"
 
 #define TIMEOUT 3
 struct timespec timeout = {0, 50000000};
@@ -661,6 +662,8 @@ void signal_cb() {
 
 int gmi_request(const char* url) {
 	char* data_ptr = NULL;
+	char meta_buf[1024];
+	int download = 0;
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	if (tab->history) tab->history->scroll = tab->scroll;
 	tab->selected = 0;
@@ -882,8 +885,25 @@ int gmi_request(const char* url) {
 			goto request_error;
 		}
 		*meta = '\0';
-		strlcpy(tab->page.meta, ptr, MAX_META);
+		strlcpy(meta_buf, ptr, MAX_META);
 		*meta = '\r';
+		if ((strstr(meta_buf, "charset=") && 
+		    !strstr(meta_buf, "charset=utf-8"))
+		   || ((strncmp(meta_buf, "text/", 5))
+#ifdef TERMINAL_IMG_VIEWER
+		   && (strncmp(meta_buf, "image/", 6))
+#endif
+		   )) {
+			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+			download = display_download(meta_buf);
+			if (!download) {
+				free(tab->page.data);
+				tab->page.data = data_ptr;
+				data_ptr = NULL;
+				recv = -1;
+				goto exit;
+			}
+		}
 		char* ptr_meta = strchr(tab->page.meta, ';');
 		if (ptr_meta) *ptr_meta = '\0';
 	}
@@ -963,8 +983,8 @@ int gmi_request(const char* url) {
 		now = time(0);
 	}
 exit:
-	if (tab->page.code == 20 && 
-	   ((!tab->history || (tab->history && !tab->history->next)))) {
+	if (!download && recv > 0 && tab->page.code == 20 && 
+	   (!tab->history || (tab->history && !tab->history->next))) {
 		gmi_cleanforward(tab);
 		struct gmi_link* link = malloc(sizeof(struct gmi_link));
 		if (!link) return fatalI();
@@ -1037,9 +1057,32 @@ request_error:
 		}
 		return r;
 	}
-	if (recv > 0) {
+	if (!download && recv > 0) {
+		strlcpy(tab->page.meta, meta_buf, sizeof(tab->page.meta));
 		tab->page.data_len = recv;
 		gmi_load(&tab->page);
+	}
+	if (download && recv > 0) {
+		FILE* f = fopen("output.dat", "wb");
+		if (!f) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "Failed to write the downloaded file");
+			client.input.error = 1;
+		} else {
+			char* ptr = strchr(tab->page.data, '\n')+1;
+			if (ptr) {
+				fwrite(ptr, 1, recv - (ptr-tab->page.data), f);
+				fclose(f);
+			} else {
+				client.input.error = 1;
+				snprintf(tab->error, sizeof(tab->error),
+					 "Server sent invalid data");
+			}
+		}
+		free(tab->page.data);
+		tab->page.data = data_ptr;
+		data_ptr = NULL;
+		recv = tab->page.data_len;
 	}
 	free(data_ptr);
 	return recv;
