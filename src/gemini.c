@@ -661,8 +661,9 @@ void signal_cb() {
 #endif
 
 int gmi_request(const char* url) {
-	char* data_ptr = NULL;
+	char* data_buf = NULL;
 	char meta_buf[1024];
+	char url_buf[1024];
 	int download = 0;
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	if (tab->history) tab->history->scroll = tab->scroll;
@@ -673,9 +674,9 @@ int gmi_request(const char* url) {
 	gmi_host[0] = '\0';
 	unsigned short port;
 	int proto = gmi_parseurl(url, gmi_host, sizeof(gmi_host),
-				 tab->url, sizeof(tab->url), &port);
+				 url_buf, sizeof(url_buf), &port);
 	if (proto == PROTO_FILE) {
-		if (gmi_loadfile(&tab->url[P_FILE]) > 0)
+		if (gmi_loadfile(&url_buf[P_FILE]) > 0)
 			gmi_load(&tab->page);
 		return 0;
 	}
@@ -820,20 +821,20 @@ int gmi_request(const char* url) {
 			 "Failed to handshake: %s", gmi_host);
 		goto request_error;
 	}
-	char urlbuf[MAX_URL];
-	ssize_t len = gmi_parseuri(tab->url, MAX_URL, urlbuf, MAX_URL);
+	char buf[MAX_URL];
+	ssize_t len = gmi_parseuri(url_buf, MAX_URL, buf, MAX_URL);
 	if (len >= MAX_URL ||
-	    (len += strlcpy(&urlbuf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
+	    (len += strlcpy(&buf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Url too long: %s", urlbuf);
+			 "Url too long: %s", buf);
 		goto request_error;
 	}
-	if (tls_write(ctx, urlbuf, len) < len) {
+	if (tls_write(ctx, buf, len) < len) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to send data to: %s", gmi_host);
 		goto request_error;
 	}
-	char buf[1024];
+	//char buf[1024];
 	time_t now = time(0);
 	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT) {
 		if (time(0) - now >= TIMEOUT) {
@@ -863,8 +864,6 @@ int gmi_request(const char* url) {
 	int previous_code = tab->page.code;
 	tab->page.code = atoi(buf);
 
-	data_ptr = tab->page.data;	
-	tab->page.data = NULL;
 	switch (tab->page.code) {
 	case 10:
 	case 11:
@@ -894,12 +893,9 @@ int gmi_request(const char* url) {
 		   && (strncmp(meta_buf, "image/", 6))
 #endif
 		   )) {
-			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+			//strlcpy(url, tab->history->url, sizeof(tab->url));
 			download = display_download(meta_buf);
 			if (!download) {
-				free(tab->page.data);
-				tab->page.data = data_ptr;
-				data_ptr = NULL;
 				recv = -1;
 				goto exit;
 			}
@@ -933,7 +929,7 @@ int gmi_request(const char* url) {
 		snprintf(tab->error, sizeof(tab->error), "Permanent failure");
 		goto request_error_msg;
 	case 51:
-		snprintf(tab->error, sizeof(tab->error), "Not found");
+		snprintf(tab->error, sizeof(tab->error), "Not found %s", url);
 		goto request_error_msg;
 	case 52:
 		snprintf(tab->error, sizeof(tab->error), "Resource gone");
@@ -959,9 +955,9 @@ int gmi_request(const char* url) {
 		tab->page.code = previous_code;
 		goto request_error;
 	}
-	tab->page.data = malloc(recv+1);
-	if (!tab->page.data) return fatalI();
-	memcpy(tab->page.data, buf, recv);
+	data_buf = malloc(recv+1);
+	if (!data_buf) return fatalI();
+	memcpy(data_buf, buf, recv);
 	now = time(0);
 	while (1) {
 		if (time(0) - now >= TIMEOUT) {
@@ -977,8 +973,8 @@ int gmi_request(const char* url) {
 				 "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
 		}
-		tab->page.data = realloc(tab->page.data, recv+bytes+1);
-		memcpy(&tab->page.data[recv], buf, bytes);
+		data_buf = realloc(data_buf, recv+bytes+1);
+		memcpy(&data_buf[recv], buf, bytes);
 		recv += bytes;
 		now = time(0);
 	}
@@ -991,7 +987,7 @@ exit:
 		link->next = NULL;
 		link->prev = tab->history;
 		link->scroll = tab->scroll;
-		strlcpy(link->url, tab->url, sizeof(link->url));
+		strlcpy(link->url, url_buf, sizeof(link->url));
 		tab->history = link;
 		if (link->prev)
 			link->prev->next = tab->history;
@@ -1003,21 +999,18 @@ request_error_msg:;
 			*cr = '\0';
 			char buf[256];
 			snprintf(buf, sizeof(buf),
-				 "%s (%s)", ptr+1, tab->error);
+				 "%s (%d : %s)", ptr+1, tab->page.code, tab->error);
 			strlcpy(tab->error, buf, sizeof(tab->error));
 			*cr = '\r';
 		}
 request_error:
-		if (data_ptr) {
-			free(tab->page.data);
-			tab->page.data = data_ptr;
-			data_ptr = NULL;
-		}
+		free(data_buf);
+		/*
 		if (tab->history) {
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else {
 			strlcpy(tab->url, "about:home", sizeof(tab->url));
-		}
+		}*/
 		client.input.error = 1;
 		recv = -1;
 	}
@@ -1029,15 +1022,14 @@ request_error:
 		ctx = NULL;
 	}
 	if (recv > 0 && (tab->page.code == 11 || tab->page.code == 10)) {
-		free(tab->page.data);
-		tab->page.data = data_ptr;
+		free(data_buf);
+		strlcpy(tab->url, url_buf, sizeof(tab->url));
 		return tab->page.data_len;
 	}
 	if (recv > 0 && (tab->page.code == 31 || tab->page.code == 30)) {
-		char* ptr = strchr(tab->page.data, ' ');
+		char* ptr = strchr(data_buf, ' ');
 		if (!ptr) {
-			free(tab->page.data);
-			tab->page.data = data_ptr;
+			free(data_buf);
 			return -1;
 		}
 		char* ln = strchr(ptr+1, ' ');
@@ -1046,45 +1038,69 @@ request_error:
 		if (ln) *ln = '\0';
 		ln = strchr(ptr, '\r');
 		if (ln) *ln = '\0';
+		strlcpy(tab->url, url_buf, sizeof(tab->url));
+		char* data_ptr = tab->page.data;
 		int r = gmi_nextlink(tab->url, ptr+1);
 		if (r < 1 || tab->page.code != 20) {
-			free(tab->page.data);
-			tab->page.data = data_ptr;
-		} else {
-			tab->page.data_len = r;
-			gmi_load(&tab->page);
-			tab->scroll = -1;
+			free(data_buf);
+			return tab->page.data_len;
 		}
+		tab->page.data_len = r;
+		free(data_ptr);
+		free(data_buf);
+		data_buf = NULL;
+		gmi_load(&tab->page);
+		tab->scroll = -1;
 		return r;
 	}
 	if (!download && recv > 0) {
 		strlcpy(tab->page.meta, meta_buf, sizeof(tab->page.meta));
+		strlcpy(tab->url, url_buf, sizeof(tab->url));
 		tab->page.data_len = recv;
+		free(tab->page.data); // should be cached
+		tab->page.data = data_buf;
 		gmi_load(&tab->page);
 	}
 	if (download && recv > 0) {
-		FILE* f = fopen("output.dat", "wb");
+		int len = strnlen(url_buf, sizeof(url_buf));
+		if (url_buf[len-1] == '/')
+			url_buf[len-1] = '\0';
+		char* ptr = strrchr(url_buf, '/');
+		FILE* f;
+		char path[1024];
+		int plen = getdownloadfolder(path, sizeof(path));	
+		if (plen < 0) plen = 0;
+		else {
+			path[plen] = '/';
+			plen++;
+		}
+		if (ptr)
+			strlcpy(&path[plen], ptr+1, sizeof(path)-plen);
+		else
+			strlcpy(&path[plen], "output.dat", sizeof(path)-plen);
+		f = fopen(path, "wb");
 		if (!f) {
 			snprintf(tab->error, sizeof(tab->error),
 				 "Failed to write the downloaded file");
 			client.input.error = 1;
 		} else {
-			char* ptr = strchr(tab->page.data, '\n')+1;
+			char* ptr = strchr(data_buf, '\n')+1;
 			if (ptr) {
-				fwrite(ptr, 1, recv - (ptr-tab->page.data), f);
+				fwrite(ptr, 1, recv - (ptr-data_buf), f);
 				fclose(f);
+				client.input.info = 1;
+				snprintf(tab->info, sizeof(tab->info),
+					"File downloaded to %s", path);
+					 
 			} else {
 				client.input.error = 1;
 				snprintf(tab->error, sizeof(tab->error),
 					 "Server sent invalid data");
 			}
 		}
-		free(tab->page.data);
-		tab->page.data = data_ptr;
-		data_ptr = NULL;
+		free(data_buf);
 		recv = tab->page.data_len;
 	}
-	free(data_ptr);
 	return recv;
 }
 

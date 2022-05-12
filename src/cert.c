@@ -34,6 +34,25 @@ int gethomefolder(char* path, size_t len) {
 	return length;
 }
 
+char downloadfolder[1024];
+int downloadpath_cached = 0;
+int getdownloadfolder(char* path, size_t len) {
+	if (downloadpath_cached)
+		return strlcpy(path, downloadfolder, len);
+	size_t length = 0;
+	if (!homepath_cached)
+		length = gethomefolder(downloadfolder, sizeof(downloadfolder));
+	else
+		length = strlcpy(downloadfolder, homefolder, sizeof(downloadfolder));
+	length += strlcpy(&downloadfolder[length], 
+			  "/Downloads", sizeof(downloadfolder) - length);
+        struct stat _stat;
+        if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
+	downloadpath_cached = 1;
+	strlcpy(path, downloadfolder, len);
+	return length;
+}
+
 char cachefolder[1024];
 int cachepath_cached = 0;
 int getcachefolder(char* path, size_t len) {

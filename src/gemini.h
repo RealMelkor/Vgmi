@@ -44,6 +44,7 @@ struct gmi_tab {
 	char selected_url[MAX_URL];
 	char url[MAX_URL];
 	char error[256];
+	char info[256];
 };
 
 struct gmi_client {
@@ -53,6 +54,7 @@ struct gmi_client {
 		char label[MAX_URL];
 		char field[MAX_URL];
 		int error;
+		int info;
 		int cursor;
 		int mode;
 	} input;
