@@ -81,6 +81,12 @@ void display() {
                 tb_print(0, tb_height()-1, TB_WHITE, TB_RED, tab->error);
                 client.input.field[0] = '\0';
                 client.input.error = 0;
+	} else if (client.input.info) {
+                tb_hide_cursor();
+                tb_colorline(0, tb_height()-1, TB_GREEN);
+                tb_print(0, tb_height()-1, TB_WHITE, TB_GREEN, tab->info);
+                client.input.field[0] = '\0';
+                client.input.info = 0;
         } else if (page->code == 10) {
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
 			 "%s: %s", client.input.label, client.input.field);
@@ -92,10 +98,11 @@ void display() {
                 input_buf[i] = '\0';
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
 			  "%s: %s", client.input.label, input_buf);
-        }
-        else tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", client.input.field);
+        } else {
+		tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", client.input.field);
+	}
 
-        tb_present();
+	tb_present();
 }
 
 void display_history() {
