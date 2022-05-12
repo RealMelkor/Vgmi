@@ -16,6 +16,7 @@ struct gmi_link {
 	struct gmi_link* prev;
 	struct gmi_link* next;
 	int scroll;
+	char* data;
 };
 
 struct gmi_page {
