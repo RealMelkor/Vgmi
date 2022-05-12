@@ -661,6 +661,7 @@ void signal_cb() {
 #endif
 
 int gmi_request(const char* url) {
+
 	char* data_buf = NULL;
 	char meta_buf[1024];
 	char url_buf[1024];
@@ -893,11 +894,15 @@ int gmi_request(const char* url) {
 		   && (strncmp(meta_buf, "image/", 6))
 #endif
 		   )) {
-			//strlcpy(url, tab->history->url, sizeof(tab->url));
+			if (tab->history) {
+				strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+			} else {
+				strlcpy(tab->url, "about:home", sizeof(tab->url));
+			}
 			download = display_download(meta_buf);
 			if (!download) {
 				recv = -1;
-				goto exit;
+				goto exit_download;
 			}
 		}
 		char* ptr_meta = strchr(tab->page.meta, ';');
@@ -1005,15 +1010,15 @@ request_error_msg:;
 		}
 request_error:
 		free(data_buf);
-		/*
 		if (tab->history) {
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else {
 			strlcpy(tab->url, "about:home", sizeof(tab->url));
-		}*/
+		}
 		client.input.error = 1;
 		recv = -1;
 	}
+exit_download:
 	if (sockfd != -1)
 		close(sockfd);
 	if (ctx) {
@@ -1053,7 +1058,7 @@ request_error:
 		tab->scroll = -1;
 		return r;
 	}
-	if (!download && recv > 0) {
+	if (!download && recv > 0 && tab->page.code == 20) {
 		strlcpy(tab->page.meta, meta_buf, sizeof(tab->page.meta));
 		strlcpy(tab->url, url_buf, sizeof(tab->url));
 		tab->page.data_len = recv;
@@ -1061,7 +1066,7 @@ request_error:
 		tab->page.data = data_buf;
 		gmi_load(&tab->page);
 	}
-	if (download && recv > 0) {
+	if (download && recv > 0 && tab->page.code == 20) {
 		int len = strnlen(url_buf, sizeof(url_buf));
 		if (url_buf[len-1] == '/')
 			url_buf[len-1] = '\0';

@@ -47,7 +47,8 @@ int getdownloadfolder(char* path, size_t len) {
 	length += strlcpy(&downloadfolder[length], 
 			  "/Downloads", sizeof(downloadfolder) - length);
         struct stat _stat;
-        if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
+        if (stat(downloadfolder, &_stat) && mkdir(downloadfolder, 0700))
+		return -1;
 	downloadpath_cached = 1;
 	strlcpy(path, downloadfolder, len);
 	return length;
