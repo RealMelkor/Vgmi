@@ -146,10 +146,7 @@ int input(struct tb_event ev) {
 		client.input.cursor = 0;
 		if (page->code == 11 || page->code == 10) {
 			page->code = 0;
-			if (tab->history->prev) {
-				tab->history = tab->history->prev;
-				gmi_request(tab->history->url);
-			}
+			gmi_request(tab->history->url);
 		}
 		client.input.field[0] = '\0';
 		tb_hide_cursor();
@@ -215,10 +212,16 @@ int input(struct tb_event ev) {
 		if (page->code == 10 || page->code == 11) {
 			char urlbuf[MAX_URL];
 			char* start = strstr(tab->url, "gemini://");
+			char* request = strrchr(tab->url, '?');
 			if (!(start?strchr(&start[GMI], '/'):strchr(tab->url, '/')))
 				snprintf(urlbuf, sizeof(urlbuf),
 					 "%s/?%s", tab->url, client.input.field);
-			else
+			else if (request && request > strrchr(tab->url, '/')) {
+				*request = '\0';
+				snprintf(urlbuf, sizeof(urlbuf),
+					 "%s?%s", tab->url, client.input.field);
+				*request = '?';
+			} else
 				snprintf(urlbuf, sizeof(urlbuf),
 					 "%s?%s", tab->url, client.input.field);
 			int bytes = gmi_request(urlbuf);
