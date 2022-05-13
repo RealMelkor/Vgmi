@@ -233,7 +233,10 @@ int gmi_render(struct gmi_tab* tab) {
 				return 1;
 			}
 			ptr++;
-			if (tab->page.img.data) stbi_image_free(tab->page.img.data);
+			if (tab->page.img.data) {
+				stbi_image_free(tab->page.img.data);
+				tab->page.img.data = NULL;
+			}
 			tab->page.img.data = 
 			stbi_load_from_memory((unsigned char*)ptr, 
 						tab->page.data_len-(int)(ptr-tab->page.data),
@@ -420,7 +423,9 @@ void gmi_freetab(struct gmi_tab* tab) {
 		free(tab->page.links[i]);
 	free(tab->page.links);
 	free(tab->page.data);
-	free(tab->page.img.data);
+#ifdef TERMINAL_IMG_VIEWER
+	stbi_image_free(tab->page.img.data);
+#endif
 }
 
 char* home_page = 
@@ -1044,14 +1049,12 @@ exit_download:
 		ln = strchr(ptr, '\r');
 		if (ln) *ln = '\0';
 		strlcpy(tab->url, url_buf, sizeof(tab->url));
-		char* data_ptr = tab->page.data;
 		int r = gmi_nextlink(tab->url, ptr+1);
 		if (r < 1 || tab->page.code != 20) {
 			free(data_buf);
 			return tab->page.data_len;
 		}
 		tab->page.data_len = r;
-		free(data_ptr);
 		free(data_buf);
 		data_buf = NULL;
 		gmi_load(&tab->page);

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <termbox.h>
 #define allocation (__allocation)
 #define allocationCount (__allocationCount)
 #define output (__output)
@@ -39,8 +40,15 @@ void __free(void* ptr, const char* file, int line, const char* func)
 	uint32_t i=0;
 	if(ptr) {
 		while(i!=allocationCount && ptr!=allocation[i].ptr) i++;
-		if(i==allocationCount) return;
-		else {
+		if(i==allocationCount) {
+			fprintf(output, "(WARNING Freeing non-allocated memory) free : %p, " \
+					"%s, Line %d : %s\n",
+				ptr, file, line, func);
+			fclose(output);
+			tb_shutdown();
+			printf("mem_check detected a fatal error\n");
+			exit(0);
+		} else {
 			for(uint32_t j=i; j!=allocationCount-1; j++)
 				allocation[j] = allocation[j+1];
 			allocationCount--;
@@ -96,13 +104,7 @@ void* __calloc(size_t num, size_t size, const char* file, int line, const char* 
 
 void* __realloc(void* ptr, size_t size, const char* file, int line, const char* func)
 {
-	if(ptr==NULL) {
-		fprintf(output, "(WARNING NULL REALLOC) realloc : %p, " \
-				"size : %ld | %s, Line %d : %s\n",
-			ptr, size, file, line, func);
-		fclose(output);
-		exit(0);
-	}
+	if (ptr==NULL) return __malloc(size, file, line, func);
 	void* _ptr = realloc(ptr, size);
 	if(_ptr != ptr) {
 		uint32_t i=0;
