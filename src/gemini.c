@@ -44,6 +44,44 @@ int fatalI() {
 	return -1;
 }
 
+int combining[][2] = {
+	{0x300,0x36F},
+	{0x483,0x489},
+	{0x7EB,0x7F3},
+	{0x135F,0x135F},
+	{0x1A7F,0x1A7F},
+	{0x1B6B,0x1B73},
+	{0x1DC0,0x1DE6},
+	{0x1DFD,0x1DFF},
+	{0x20D0,0x20F0},
+	{0x2CEF,0x2CF1},
+	{0x2DE0,0x2DFF},
+	{0x3099,0x309A},
+	{0xA66F,0xA672},
+	{0xA67C,0xA67D},
+	{0xA6F0,0xA6F1},
+	{0xA8E0,0xA8F1},
+	{0xFE20,0xFE26},
+	{0x101FD,0x101FD},
+	{0x1D165,0x1D169},
+	{0x1D16D,0x1D172},
+	{0x1D17B,0x1D182},
+	{0x1D185,0x1D18B},
+	{0x1D1AA,0x1D1AD},
+	{0x1D242,0x1D244},
+	{0x0E31,0x0ECD},//0x0E4E}
+	{0x0F18,0x0FC6},
+	{0x1A56,0x1A7F},
+	{0x0E01, 0x0E7F},
+};
+
+int is_combining(int code) {
+	for (size_t i=0; i < sizeof(combining)/sizeof(int)/2; i++)	
+		if (combining[i][0] <= code && combining[i][1] >= code)
+			return 1;
+	return 0;
+}
+
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 	int j = 0;
 	int inquery = 0;
@@ -129,6 +167,18 @@ int gmi_nextlink(char* url, char* link) {
 			goto nextlink_overflow;
 		int ret = gmi_request(urlbuf);
 		return ret;
+	} else if (strstr(link, "https://") || strstr(link, "http://")) {
+		if (client.xdg) {
+			char buf[1048];
+			snprintf(buf, sizeof(buf), "xdg-open %s", link);
+			system(buf);
+			return -1;
+		}
+		client.input.error = 1;
+		snprintf(client.tabs[client.tab].error,
+			 sizeof(client.tabs[client.tab].error), 
+			 "Can't open web link");
+		return -1;
 	} else if (strstr(link, "gemini://")) {
 		int ret = gmi_request(link);
 		return ret;
@@ -281,6 +331,11 @@ int gmi_render(struct gmi_tab* tab) {
 				line++;
 			continue;
 		}
+		if (is_combining(tab->page.data[c])) {
+			tb_shutdown();
+			exit(0);
+			continue;
+		}
 		if (tab->page.data[c] == '\t') {
 			x+=4;
 			continue;
@@ -343,7 +398,6 @@ int gmi_render(struct gmi_tab* tab) {
 		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
 			int end = 0;
 			if (x+4>=tb_width()) {
-				//c--;
 				end = 1;
 			}
 			int newline = (tab->page.data[c] == '\n' || x+4 >= tb_width());
@@ -377,6 +431,7 @@ int gmi_render(struct gmi_tab* tab) {
 		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 		if (size > 0)
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
+		if (is_combining(ch)) continue;
 
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
 		    (line-tab->scroll <= tb_height()-2) && ch != '\t') 
@@ -980,7 +1035,7 @@ int gmi_request(const char* url) {
 		if (bytes == TLS_WANT_POLLIN || bytes == TLS_WANT_POLLOUT) continue;
 		if (bytes < 1) {
 			snprintf(tab->error, sizeof(tab->error),
-				 "Invalid data to from %s: %s", gmi_host, tls_error(ctx));
+				 "Invalid data from %s: %s", gmi_host, tls_error(ctx));
 			goto request_error;
 		}
 		data_buf = realloc(data_buf, recv+bytes+1);
@@ -1096,6 +1151,11 @@ exit_download:
 			if (ptr) {
 				fwrite(ptr, 1, recv - (ptr-data_buf), f);
 				fclose(f);
+				if (client.xdg && display_open(path)) {
+					char buf[1048];
+					snprintf(buf, sizeof(buf), "xdg-open %s", path);
+					system(buf);
+				}
 				client.input.info = 1;
 				snprintf(tab->info, sizeof(tab->info),
 					"File downloaded to %s", path);
@@ -1162,6 +1222,9 @@ int gmi_init() {
 	tls_config_insecure_noverifycert(config_empty);
 	ctx = NULL;
 	bzero(&client, sizeof(client));
+
+	if (!system("which xdg-open > /dev/null 2>&1"))
+		client.xdg = 1;
 
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	bzero(&conn, sizeof(conn));

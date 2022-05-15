@@ -64,6 +64,7 @@ struct gmi_client {
 	} vim;
 	int tab;
 	int c256;
+	int xdg;
 };
 
 extern struct gmi_client client;

@@ -12,6 +12,13 @@ void display() {
         struct gmi_tab* tab = &client.tabs[client.tab];
         struct gmi_page* page = &tab->page;
         tb_clear();
+	
+	/*
+	for (int x = 0; x < tb_width(); x++)
+		for (int y = 0; y < tb_height(); y++)
+			tb_set_cell(x, y, ' ', TB_DEFAULT, TB_DEFAULT);
+	tb_present();*/
+	//printf("\e[1;1H\e[2J");
         if (client.input.mode) {
                 if (page->code == 11 || page->code == 10)
                         tb_set_cursor(client.input.cursor+strnlen(client.input.label,
@@ -150,6 +157,30 @@ int display_download(char* info) {
 		int w = tb_width();
 		int h = tb_height();
 		const char* line1 = "Press 'y' to download";
+		const char* line2 = "Press any other key to cancel";
+		int x = w/2-strlen(line1)/2;
+                tb_printf(x, h/2-1, TB_DEFAULT, TB_DEFAULT, line1);
+                tb_printf(x+7, h/2-1, TB_GREEN, TB_DEFAULT, "y");
+                tb_printf(w/2-strlen(line2)/2, h/2, TB_DEFAULT, TB_DEFAULT, line2);
+
+                tb_present();
+
+        } while(((ret = tb_poll_event(&ev)) == TB_OK && ev.type == TB_EVENT_RESIZE)
+		|| ret == -14);
+	return ev.ch == 'y' || ev.ch == 'Y';
+}
+
+int display_open(char* path) {
+        int ret = 0;
+        struct tb_event ev;
+        bzero(&ev, sizeof(ev));
+        do {
+
+                tb_clear();
+                tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s downloaded", path);
+		int w = tb_width();
+		int h = tb_height();
+		const char* line1 = "Press 'y' to open";
 		const char* line2 = "Press any other key to cancel";
 		int x = w/2-strlen(line1)/2;
                 tb_printf(x, h/2-1, TB_DEFAULT, TB_DEFAULT, line1);
