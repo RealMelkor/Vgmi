@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -906,7 +909,7 @@ int gmi_request(const char* url) {
 		recv = tls_read(ctx, buf, sizeof(buf));
 	}
 	
-	if (recv <= 0 || recv == 1024) {
+	if (recv <= 0) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "[%d] Invalid data from: %s", recv, gmi_host);
 		goto request_error;
@@ -947,8 +950,8 @@ int gmi_request(const char* url) {
 		*meta = '\0';
 		strlcpy(meta_buf, ptr, MAX_META);
 		*meta = '\r';
-		if ((strstr(meta_buf, "charset=") && 
-		    !strstr(meta_buf, "charset=utf-8"))
+		if ((strcasestr(meta_buf, "charset=") && 
+		    !strcasestr(meta_buf, "charset=utf-8"))
 		   || ((strncmp(meta_buf, "text/", 5))
 #ifdef TERMINAL_IMG_VIEWER
 		   && (strncmp(meta_buf, "image/", 6))
