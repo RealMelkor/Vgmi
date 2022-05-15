@@ -3,12 +3,12 @@
 #warning Unable to build built-in image viewer, stb_image header not found
 #endif
 #include "img.h"
-#ifdef TERMINAL_IMG_VIEWER
 
+#ifdef TERMINAL_IMG_VIEWER
 #define STB_IMAGE_IMPLEMENTATION
-#include "gemini.h"
 #include <stb_image.h>
 #include <termbox.h>
+#include "gemini.h"
 
 
 int color_abs(int c, int x, int i) {
