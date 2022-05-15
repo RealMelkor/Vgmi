@@ -2,15 +2,18 @@
 SHELL = /bin/sh
 
 PREFIX = /usr/local
-CFLAGS = -O2 -Wall -Wpedantic -Wextra
 CC = cc
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -I/usr/local/include
+LDFLAGS = -L/usr/local/lib -ltls -lcrypto -lpthread -lm
 FLAGS = -DTERMINAL_IMG_VIEWER
-LIBSPATH = -L/usr/local/lib
-INCLUDES = -I/usr/local/include
-LIBS = -ltls -lcrypto -lpthread -lm
+SRC = ${:!ls src/*.c!}
+OBJ = ${SRC:.c=.o}
 
-vgmi: src
-	${CC} ${:!ls src/*.c!} ${FLAGS} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
+.c.o:
+	${CC} -c ${CFLAGS} ${FLAGS} $< -o ${<:.c=.o}
+
+vgmi: ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin
@@ -21,3 +24,4 @@ uninstall:
 
 clean:
 	rm -f vgmi
+	rm ${OBJ}
