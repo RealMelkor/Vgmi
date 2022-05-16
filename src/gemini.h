@@ -62,9 +62,10 @@ struct gmi_client {
 		char counter[6];
 		int g;
 	} vim;
+	char** bookmarks;
 	int tab;
-	int c256;
 	int xdg;
+	int c256;
 };
 
 extern struct gmi_client client;
@@ -80,6 +81,9 @@ int gmi_nextlink(char* url, char* link);
 void gmi_newtab();
 void gmi_newtab_url(char* url);
 int gmi_loadfile(char* path);
+void gmi_addbookmark(char* url, char* title);
+int gmi_removebookmark(int index);
+void gmi_gohome(struct gmi_tab* tab);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
 
