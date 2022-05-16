@@ -13,12 +13,6 @@ void display() {
         struct gmi_page* page = &tab->page;
         tb_clear();
 	
-	/*
-	for (int x = 0; x < tb_width(); x++)
-		for (int y = 0; y < tb_height(); y++)
-			tb_set_cell(x, y, ' ', TB_DEFAULT, TB_DEFAULT);
-	tb_present();*/
-	//printf("\e[1;1H\e[2J");
         if (client.input.mode) {
                 if (page->code == 11 || page->code == 10)
                         tb_set_cursor(client.input.cursor+strnlen(client.input.label,
@@ -66,7 +60,7 @@ void display() {
                 }
         }
         urlbuf[posx] = '\0';
-        tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s", urlbuf);
+        tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s (%s)", urlbuf, tab->page.meta);
 
         // Show selected link url
         if (tab->selected != 0) {

@@ -95,6 +95,19 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
+	if (client.input.field[1] == 'a' && client.input.field[2] == 'd'
+	   && client.input.field[3] == 'd' && 
+	   (client.input.field[4] == ' ' || client.input.field[4] == '\0')) {
+		char* title = client.input.field[4] == '\0'?NULL:&client.input.field[5];
+		gmi_addbookmark(tab->url, title);
+		client.input.field[0] = '\0';
+		tab->selected = 0;
+		if (!strcmp("about:home", tab->url)) {
+			gmi_freetab(tab);
+			gmi_gohome(tab);
+		}
+		return 0;
+	}
 	if (strcmp(client.input.field, ":gencert") == 0) {
 		char host[256];
 		gmi_parseurl(client.tabs[client.tab].url, host, sizeof(host), NULL, 0, NULL);
@@ -158,6 +171,16 @@ int input(struct tb_event ev) {
 			strlcpy(&client.input.field[i-1],
 				&client.input.field[i], sizeof(client.input.field)-i);
 			client.input.cursor--;
+		}
+		return 0;
+	}
+	if (ev.key == TB_KEY_DELETE) {
+		if (strcmp(tab->url, "about:home")) return 0;
+		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
+			gmi_removebookmark(tab->selected);
+			tab->selected = 0;
+			gmi_freetab(tab);
+			gmi_gohome(tab);
 		}
 		return 0;
 	}
@@ -310,6 +333,12 @@ int input(struct tb_event ev) {
 		client.input.field[1] = '\0';
 		break;
 	case 'r': // Reload
+		if (!strcmp("about:home", tab->url)) {
+			gmi_freetab(tab);
+			gmi_gohome(tab);
+			break;
+		}
+		if (!tab->history) break;
 		gmi_request(tab->history->url);
 		struct gmi_link* prev = tab->history->prev;
 		prev->next = NULL;

@@ -16,9 +16,10 @@ Gemini client written in C with vim-like keybindings
 * u  - Open input mode with the current url
 * f  - Show the history
 * r  - Reload the page
-* [number]Tab - Select link
-* Tab - Follow selected link
-* Shift+Tab - Open selected link in a new tab
+* [number]Tab  - Select link
+* Tab  - Follow selected link
+* Shift+Tab  - Open selected link in a new tab
+* Del  - Delete the selected link from the bookmarks
 
 You can prefix a movement key with a number to repeat it.
 
@@ -29,6 +30,7 @@ You can prefix a movement key with a number to repeat it.
 * :o [url]	- Open an url
 * :s [search]	- Search the Geminispace using geminispace.info
 * :nt [url]	- Open a new tab, the url is optional
+* :add [name]   - Add the current url to the bookmarks, the is optional
 * :[number]	- Follow the link 
 * :gencert	- Generate a certificate for the current capsule
 

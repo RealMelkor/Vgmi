@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #endif
 #include "cert.h"
+#include "wcwidth.h"
 #include "display.h"
 
 #define TIMEOUT 3
@@ -35,6 +36,8 @@ struct tls_config* config;
 struct tls_config* config_empty;
 struct tls* ctx;
 struct gmi_client client;
+
+void tb_colorline(int x, int y, uintattr_t color);
 
 void fatal() {
 	tb_shutdown();
@@ -47,42 +50,16 @@ int fatalI() {
 	return -1;
 }
 
-int combining[][2] = {
-	{0x300,0x36F},
-	{0x483,0x489},
-	{0x7EB,0x7F3},
-	{0x135F,0x135F},
-	{0x1A7F,0x1A7F},
-	{0x1B6B,0x1B73},
-	{0x1DC0,0x1DE6},
-	{0x1DFD,0x1DFF},
-	{0x20D0,0x20F0},
-	{0x2CEF,0x2CF1},
-	{0x2DE0,0x2DFF},
-	{0x3099,0x309A},
-	{0xA66F,0xA672},
-	{0xA67C,0xA67D},
-	{0xA6F0,0xA6F1},
-	{0xA8E0,0xA8F1},
-	{0xFE20,0xFE26},
-	{0x101FD,0x101FD},
-	{0x1D165,0x1D169},
-	{0x1D16D,0x1D172},
-	{0x1D17B,0x1D182},
-	{0x1D185,0x1D18B},
-	{0x1D1AA,0x1D1AD},
-	{0x1D242,0x1D244},
-	{0x0E31,0x0ECD},//0x0E4E}
-	{0x0F18,0x0FC6},
-	{0x1A56,0x1A7F},
-	{0x0E01, 0x0E7F},
-};
+void* fatalP() {
+	fatal();
+	return NULL;
+}
 
-int is_combining(int code) {
-	for (size_t i=0; i < sizeof(combining)/sizeof(int)/2; i++)	
-		if (combining[i][0] <= code && combining[i][1] >= code)
-			return 1;
-	return 0;
+int getbookmark(char* path, size_t len) {
+	int length = getcachefolder(path, len);
+	const char bookmark[] = "/bookmarks.txt";
+	if (length + sizeof(bookmark) >= len) return -1;
+	return length + strlcpy(&path[length], bookmark, len - length);
 }
 
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
@@ -170,10 +147,12 @@ int gmi_nextlink(char* url, char* link) {
 			goto nextlink_overflow;
 		int ret = gmi_request(urlbuf);
 		return ret;
-	} else if (strstr(link, "https://") || strstr(link, "http://")) {
+	} else if (strstr(link, "https://") ||
+		   strstr(link, "http://") ||
+		   strstr(link, "gopher://")) {
 		if (client.xdg) {
 			char buf[1048];
-			snprintf(buf, sizeof(buf), "xdg-open %s", link);
+			snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", link);
 			system(buf);
 			return -1;
 		}
@@ -314,7 +293,7 @@ int gmi_render(struct gmi_tab* tab) {
 #endif
 
 	int text = 0;
-	if (strcmp(tab->page.meta, "text/gemini")) {
+	if (strncmp(tab->page.meta, "text/gemini", 11)) {
 		if (strncmp(tab->page.meta, "text/", 5)) {
 			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 				  "Unable to render format : %s", tab->page.meta);
@@ -328,15 +307,11 @@ int gmi_render(struct gmi_tab* tab) {
 	uintattr_t color = TB_DEFAULT;
 	int start = 1;
 	int ignore = 0;
+	int h = tb_height() - 2 - (client.tabs_count>1);
 	for (int c = 0; c < tab->page.data_len; c++) {
 		if (x == 0 && tab->page.data[c] == '\n') {
 			if (c+1 != tab->page.data_len)
 				line++;
-			continue;
-		}
-		if (is_combining(tab->page.data[c])) {
-			tb_shutdown();
-			exit(0);
 			continue;
 		}
 		if (tab->page.data[c] == '\t') {
@@ -348,7 +323,7 @@ int gmi_render(struct gmi_tab* tab) {
 		    tab->page.data[c+1] == '`' && tab->page.data[c+2] == '`') 
 			ignore = !ignore;	
 		
-		if (!ignore || text) {
+		if (!ignore && !text) {
 			for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
 				if (tab->page.data[c+i+1] == ' ') {
 					color = TB_RED + i;
@@ -398,7 +373,8 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 		}
 
-		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' || x+4 >= tb_width()) {
+		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' 
+		    || x+4 >= tb_width()) {
 			int end = 0;
 			if (x+4>=tb_width()) {
 				end = 1;
@@ -434,15 +410,32 @@ int gmi_render(struct gmi_tab* tab) {
 		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 		if (size > 0)
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
-		if (is_combining(ch)) continue;
 
+		int wc = mk_wcwidth(ch);
+		if (wc < 0) wc = 0;
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
-		    (line-tab->scroll <= tb_height()-2) && ch != '\t') 
+		    (line-tab->scroll <= tb_height() - 2) && ch != '\t') 
 			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
-		x++;
+
+		x += wc;
 		start = 0;
 	}
-	return line+1;
+	line++;
+	h += (client.tabs_count>1);
+	if (h > line) return line;
+	int size = h/(line-h); 
+	if (size < 1) size = 1;
+	int pos = (tab->scroll+(client.tabs_count<1))*h/(line-h+1+(client.tabs_count>1)) 
+		  + (client.tabs_count>1) ;
+	if (pos >= h) pos = h-1;
+	if (pos < 0) pos = 0;
+	int w = tb_width();
+	for (int y = (client.tabs_count>1); y < h+(client.tabs_count>1); y++)
+		if (y >= pos && y < pos + size)
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT, TB_CYAN);
+		else
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT, TB_BLACK);
+	return line;
 }
 
 void gmi_cleanforward(struct gmi_tab* tab) {
@@ -457,6 +450,7 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 	}
 	tab->history->next = NULL;
 }
+
 
 void gmi_freetab(struct gmi_tab* tab) {
 	if (tab->history) {
@@ -486,9 +480,12 @@ void gmi_freetab(struct gmi_tab* tab) {
 #endif
 }
 
-char* home_page = 
+
+char home_page[] = 
 "20 text/gemini\r\n# Vgmi\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
+"## Bookmarks\n\n" \
+"%s\n" \
 "## Keybindings\n\n" \
 "* k - Scroll up\n" \
 "* j - Scroll down\n" \
@@ -505,6 +502,7 @@ char* home_page =
 "* [number]Tab - Select a link\n" \
 "* Tab - Follow the selected link\n" \
 "* Shift+Tab - Open the selected link in a new tab\n" \
+"* Del - Delete the selected link from the bookmarks\n" \
 "\nYou can prefix a movement key with a number to repeat it.\n\n" \
 "## Commands\n\n" \
 "* :q - Close the current tab\n" \
@@ -512,11 +510,184 @@ char* home_page =
 "* :o [url] - Open an url\n" \
 "* :s [search] - Search the Geminispace using geminispace.info\n" \
 "* :nt [url] - Open a new tab, the url is optional\n" \
-"* :[number] - Follow the link\n\n"
-"## Links\n\n" \
-"=>gemini://geminispace.info Geminispace\n" \
-"=>gemini://gemini.rmf-dev.com Gemigit\n" \
+"* :add [name] - Add the current url to the bookmarks, the name is optional\n" \
+"* :[number] - Follow the link\n" \
+"* :gencert - Generate a certificate for the current capsule"
 ;
+
+void gmi_newbookmarks() {
+	int len;
+	const char geminispace[] = "gemini://geminispace.info Geminispace";
+	const char gemigit[] = "gemini://gemini.rmf-dev.com Gemigit";
+	client.bookmarks = malloc(sizeof(char*) * 3);
+
+	len = sizeof(geminispace);
+	client.bookmarks[0] = malloc(len);
+	strlcpy(client.bookmarks[0], geminispace, len);
+
+	len = sizeof(gemigit);
+	client.bookmarks[1] = malloc(len);
+	strlcpy(client.bookmarks[1], gemigit, len);
+
+	client.bookmarks[2] = NULL;
+}
+
+int gmi_loadbookmarks() {
+	char path[1024];
+	if (getbookmark(path, sizeof(path)) < 1) return -1;
+	FILE* f = fopen(path, "rb");
+	if (!f) {
+		return -1;
+	}
+	fseek(f, 0, SEEK_END);
+	size_t len = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char* data = malloc(len);
+	if (len != fread(data, 1, len, f)) {
+		return -1;
+	}
+	fclose(f);
+	char* ptr = data;
+	long n = 0;
+	while (++ptr && ptr < data+len) if (*ptr == '\n') n++;
+	client.bookmarks = malloc(sizeof(char*) * (n + 1));
+	client.bookmarks[n] = NULL;
+	n = 0;
+	ptr = data;
+	char* str = data;
+	while (++ptr && ptr < data+len) {
+		if (*ptr == '\n') {
+			*ptr = '\0';
+			client.bookmarks[n] = malloc(ptr-str+1);
+			strlcpy(client.bookmarks[n], str, ptr-str+1);
+			n++;
+			str = ptr+1;
+		}
+	}
+	free(data);
+	return 0;
+}
+
+char* gmi_gettitle(struct gmi_page page, int* len) {
+	int start = -1;
+	int end = -1;
+	for (int i=0; i < page.data_len; i++) {
+		if (start == -1 && page.data[i] == '#') {
+			for (int j = i+1; j < page.data_len; j++) {
+				if (j && page.data[j-1] == '#' && page.data[j] == '#')
+					break;
+				if (page.data[j] != ' ') {
+					start = j;
+					break;
+				}
+			}
+		}
+		if (start != -1 && page.data[i] == '\n') {
+			end = i;
+			break;
+		}
+	}
+	if (start == -1 || end == -1) return NULL;
+	char* title = malloc(end - start + 1);
+	strlcpy(title, &page.data[start], end - start + 1);
+	title[end - start] = '\0'; 
+	*len = end - start + 1;
+	return title;
+}
+
+int gmi_removebookmark(int index) {
+	index--;
+	if (index < 0) return -1;
+	int fail = -1;
+	for (int i = 0; client.bookmarks[i]; i++) {
+		if (i == index) {
+			free(client.bookmarks[i]);
+			fail = 0;
+		}
+		if (!fail)
+			client.bookmarks[i] = client.bookmarks[i+1];
+	}
+	return fail;
+}
+
+void gmi_addbookmark(char* url, char* title) {
+	struct gmi_tab* tab = &client.tabs[client.tab];
+	if (!strcmp(url, "about:home")) {
+		snprintf(tab->error,
+			 sizeof(client.tabs[client.tab].error),
+			 "Cannot add the new tab page to the bookmarks");
+		client.input.error = 1;
+		return;
+	}
+	int title_len = 0;
+	char* tmp_title = NULL;
+	if (!title) tmp_title = title = gmi_gettitle(tab->page, &title_len);
+	else title_len = strnlen(title, 128);
+	long n = 0;
+	while (client.bookmarks[n]) n++;
+	client.bookmarks = realloc(client.bookmarks, sizeof(char*) * (n + 2));
+	int len = strnlen(url, MAX_URL) + title_len + 2;
+	client.bookmarks[n] = malloc(len);
+	if (title)
+		snprintf(client.bookmarks[n], len, "%s %s", url, title);
+	else
+		snprintf(client.bookmarks[n], len, "%s", url);
+	client.bookmarks[n+1] = NULL;
+	free(tmp_title);
+}
+
+int gmi_savebookmarks() {
+	char path[1024];
+	if (getbookmark(path, sizeof(path)) < 1) return -1;
+	FILE* f = fopen(path, "wb");
+	if (!f) {
+		return -1;
+	}
+	for (int i = 0; client.bookmarks[i]; i++)
+		fprintf(f, "%s\n", client.bookmarks[i]);
+	fclose(f);
+	return 0;
+
+}
+
+char* gmi_getbookmarks(int* len) {
+	char* data = NULL;
+	int n = 0;
+	for (int i = 0; client.bookmarks[i]; i++) {
+		char line[2048];
+		long length = snprintf(line, sizeof(line), "=>%s\n ", client.bookmarks[i]);
+		data = realloc(data, n+length+1);
+		if (!data) return fatalP();
+		strlcpy(&data[n], line, length);
+		n += length-1;
+	}
+	*len = n;
+	return data;
+}
+
+void gmi_gohome(struct gmi_tab* tab) {
+	bzero(tab, sizeof(struct gmi_tab));
+	tab->scroll = -1;
+	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
+	tab->page.code = 20;
+	int bm;
+	char* data = gmi_getbookmarks(&bm);
+	tab->page.data = malloc(sizeof(home_page) + bm);
+	if (!tab->page.data) {
+		fatal();
+		return;
+	}
+
+	tab->page.data_len = 
+	snprintf(tab->page.data, sizeof(home_page) + bm, home_page, 
+		 data?data:"") + 1;
+	free(data);
+
+	strlcpy(tab->page.meta, "text/gemini",
+		sizeof(tab->page.meta));
+
+	gmi_load(&tab->page);
+}
 
 void gmi_newtab() {
 	int tab = client.tabs_count;
@@ -529,21 +700,7 @@ void gmi_newtab() {
 		fatal();
 		return;
 	}
-	bzero(&client.tabs[tab], sizeof(struct gmi_tab));
-	client.tabs[tab].scroll = -1;
-	strlcpy(client.tabs[tab].url, "about:home", sizeof(client.tabs[tab].url)); 
-	client.tabs[tab].page.code = 20;
-	int len = strlen(home_page);
-	client.tabs[tab].page.data = malloc(len + 1);
-	if (!client.tabs[tab].page.data) {
-		fatal();
-		return;
-	}
-	strlcpy(client.tabs[tab].page.data, home_page, len);
-	client.tabs[tab].page.data_len = len;
-	strlcpy(client.tabs[tab].page.meta, "text/gemini",
-		sizeof(client.tabs[tab].page.meta));
-	gmi_load(&client.tabs[tab].page);
+	gmi_gohome(&client.tabs[tab]);
 }
 
 #define PROTO_GEMINI 0
@@ -1229,6 +1386,10 @@ int gmi_init() {
 	if (!system("which xdg-open > /dev/null 2>&1"))
 		client.xdg = 1;
 
+	if (gmi_loadbookmarks()) {
+		gmi_newbookmarks();
+	}
+
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	bzero(&conn, sizeof(conn));
 	if (pthread_cond_init(&conn.cond, NULL)) {                                    
@@ -1257,6 +1418,10 @@ int gmi_init() {
 void gmi_free() {
 	for (int i=0; i < client.tabs_count; i++)
 		gmi_freetab(&client.tabs[i]);
+	gmi_savebookmarks();
+	for (int i = 0; client.bookmarks[i]; i++)
+		free(client.bookmarks[i]);
+	free(client.bookmarks);
 	free(client.tabs);
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	pthread_kill(conn.tid, SIGUSR1);
