@@ -128,8 +128,8 @@ int cert_create(char* host) {
 	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;
 
-	X509_gmtime_adj(X509_get_notBefore(x509), 0);
-	X509_gmtime_adj(X509_get_notAfter(x509), 157680000L);
+	X509_gmtime_adj(X509_getm_notBefore(x509), 0);
+	X509_gmtime_adj(X509_getm_notAfter(x509), 157680000L);
 
 	if (X509_set_pubkey(x509, pkey) != 1) goto failed;
 

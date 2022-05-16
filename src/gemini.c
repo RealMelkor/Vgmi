@@ -521,30 +521,36 @@ void gmi_newbookmarks() {
 	const char geminispace[] = "gemini://geminispace.info Geminispace";
 	const char gemigit[] = "gemini://gemini.rmf-dev.com Gemigit";
 	client.bookmarks = malloc(sizeof(char*) * 3);
+	if (!client.bookmarks) goto fail_malloc;
 
 	len = sizeof(geminispace);
 	client.bookmarks[0] = malloc(len);
+	if (!client.bookmarks[0]) goto fail_malloc;
 	strlcpy(client.bookmarks[0], geminispace, len);
 
 	len = sizeof(gemigit);
 	client.bookmarks[1] = malloc(len);
+	if (!client.bookmarks[1]) goto fail_malloc;
 	strlcpy(client.bookmarks[1], gemigit, len);
 
 	client.bookmarks[2] = NULL;
+	return;
+fail_malloc:
+	fatal();
 }
 
 int gmi_loadbookmarks() {
 	char path[1024];
 	if (getbookmark(path, sizeof(path)) < 1) return -1;
 	FILE* f = fopen(path, "rb");
-	if (!f) {
+	if (!f)
 		return -1;
-	}
 	fseek(f, 0, SEEK_END);
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* data = malloc(len);
 	if (len != fread(data, 1, len, f)) {
+		fclose(f);
 		return -1;
 	}
 	fclose(f);
