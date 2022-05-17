@@ -76,12 +76,12 @@ void display() {
         }
 
         // input
-        if (client.input.error) {
+        if (client.input.error/* && (tab->page.code == 10 || tab->page.code == 11)*/) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_RED);
                 tb_print(0, tb_height()-1, TB_WHITE, TB_RED, tab->error);
                 client.input.field[0] = '\0';
-                client.input.error = 0;
+                //client.input.error = 0;
 	} else if (client.input.info) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_GREEN);

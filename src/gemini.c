@@ -423,9 +423,11 @@ int gmi_render(struct gmi_tab* tab) {
 	line++;
 	h += (client.tabs_count>1);
 	if (h > line) return line;
-	int size = h/(line-h); 
+	int size = (h==line?(h-1):(h/(line-h))); 
+	if (size == h) size--;
 	if (size < 1) size = 1;
-	int pos = (tab->scroll+(client.tabs_count<1))*h/(line-h+1+(client.tabs_count>1)) 
+	int H = (line-h+1+(client.tabs_count>1));
+	int pos = (tab->scroll+(client.tabs_count<1))*h/(H?H:1) 
 		  + (client.tabs_count>1) ;
 	if (pos >= h) pos = h - size;
 	if (pos < 0) pos = 0;
@@ -433,9 +435,9 @@ int gmi_render(struct gmi_tab* tab) {
 	int w = tb_width();
 	for (int y = (client.tabs_count>1); y < h+(client.tabs_count>1); y++)
 		if (y >= pos && y < pos + size)
-			tb_set_cell(w-1, y, ' ', TB_DEFAULT, TB_CYAN);
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?246:TB_CYAN);
 		else
-			tb_set_cell(w-1, y, ' ', TB_DEFAULT, TB_BLACK);
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?233:TB_BLACK);
 	return line;
 }
 
@@ -890,7 +892,7 @@ void signal_cb() {
 #endif
 
 int gmi_request(const char* url) {
-
+	client.input.error = 0;
 	char* data_buf = NULL;
 	char meta_buf[1024];
 	char url_buf[1024];
