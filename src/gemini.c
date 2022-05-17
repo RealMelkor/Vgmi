@@ -150,12 +150,23 @@ int gmi_nextlink(char* url, char* link) {
 	} else if (strstr(link, "https://") ||
 		   strstr(link, "http://") ||
 		   strstr(link, "gopher://")) {
+#ifndef DISABLE_XDG
 		if (client.xdg) {
+#ifdef __OpenBSD__
 			char buf[1048];
 			snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", link);
+			if (fork() == 0) {
+				setsid();
+				char* argv[] = {"/bin/sh", "-c", buf, NULL};
+				execvp(argv[0], argv);
+				exit(0);
+			}
+#else
 			system(buf);
+#endif
 			return -1;
 		}
+#endif
 		client.input.error = 1;
 		snprintf(client.tabs[client.tab].error,
 			 sizeof(client.tabs[client.tab].error), 
@@ -1342,11 +1353,13 @@ exit_download:
 			if (ptr) {
 				fwrite(ptr, 1, recv - (ptr-data_buf), f);
 				fclose(f);
+#ifndef DISABLE_XDG
 				if (client.xdg && display_open(path)) {
 					char buf[1048];
 					snprintf(buf, sizeof(buf), "xdg-open %s", path);
 					system(buf);
 				}
+#endif
 				client.input.info = 1;
 				snprintf(tab->info, sizeof(tab->info),
 					"File downloaded to %s", path);
@@ -1415,8 +1428,10 @@ int gmi_init() {
 	ctx = NULL;
 	bzero(&client, sizeof(client));
 
+#ifndef DISABLE_XDG
 	if (!system("which xdg-open > /dev/null 2>&1"))
 		client.xdg = 1;
+#endif
 
 	if (gmi_loadbookmarks()) {
 		gmi_newbookmarks();
