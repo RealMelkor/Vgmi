@@ -33,12 +33,21 @@ int main(int argc, char* argv[]) {
 		unveil(path, "r") ||
 #endif
 		unveil(certpath, "rwc") || 
+#ifndef DISABLE_XDG
+		unveil("/bin/sh", "x") ||
+		unveil("/usr/bin/which", "x") ||
+		unveil("/usr/local/bin/xdg-open", "x") ||
+#endif
 		unveil("/etc/resolv.conf", "r") ||
 		unveil(NULL, NULL)) {
 		printf("Failed to unveil\n");
 		return -1;
 	}
+#ifndef DISABLE_XDG
+	if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
+#else
 	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
+#endif
 		printf("Failed to pledge\n");
 		return -1;
 	}
