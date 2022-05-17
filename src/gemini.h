@@ -64,7 +64,9 @@ struct gmi_client {
 	} vim;
 	char** bookmarks;
 	int tab;
+#ifndef DISABLE_XDG
 	int xdg;
+#endif
 	int c256;
 };
 
