@@ -152,9 +152,9 @@ int gmi_nextlink(char* url, char* link) {
 		   strstr(link, "gopher://")) {
 #ifndef DISABLE_XDG
 		if (client.xdg) {
-#ifdef __OpenBSD__
 			char buf[1048];
 			snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", link);
+#ifdef __OpenBSD__
 			if (fork() == 0) {
 				setsid();
 				char* argv[] = {"/bin/sh", "-c", buf, NULL};
