@@ -421,12 +421,17 @@ int gmi_render(struct gmi_tab* tab) {
 		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 		if (size > 0)
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
-
+		
 		int wc = mk_wcwidth(ch);
 		if (wc < 0) wc = 0;
 		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
-		    (line-tab->scroll <= tb_height() - 2) && ch != '\t') 
-			tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
+		    (line-tab->scroll <= tb_height() - 2) && ch != '\t') {
+			if (wc == 1)
+				tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
+			else
+				tb_set_cell_ex(x+2, line-1-tab->scroll, &ch,
+					       wc, color, TB_DEFAULT);
+		}
 
 		x += wc;
 		start = 0;
