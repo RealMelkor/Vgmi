@@ -53,11 +53,11 @@ int main(int argc, char* argv[]) {
 	}
 #endif
 	if (gmi_init()) return 0;
-	gmi_newtab();
+	struct gmi_tab* tab = gmi_newtab();
 	if (argc > 1) {
-		if (gmi_loadfile(argv[1]) > 0)
-			gmi_load(&client.tabs[client.tab].page);
-		else if (gmi_request(argv[1]) > 0) {
+		if (gmi_loadfile(tab, argv[1]) > 0)
+			gmi_load(&tab->page);
+		else if (gmi_request(tab, argv[1]) > 0) {
 			client.tabs[0].error[0] = '\0';
 			client.input.error = 0;
 		}
