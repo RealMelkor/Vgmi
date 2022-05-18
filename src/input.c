@@ -48,13 +48,12 @@ int command() {
 		client.input.cursor = 0;
 		int id = atoi(&client.input.field[4]);
 		if (id != 0 || (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
-			gmi_goto_new(id);
+			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
-			gmi_newtab();
+			struct gmi_tab* new_tab = gmi_newtab_url(&client.input.field[4]);
 			client.tab = client.tabs_count - 1;
 			client.input.field[0] = '\0';
-			gmi_request(&client.input.field[4]);
 		}
 		return 0;
 	}
@@ -67,14 +66,13 @@ int command() {
 		}
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
-		int bytes = gmi_request(urlbuf);
+		int bytes = gmi_request(tab, urlbuf);
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
 		if (page->code == 11 || page->code == 10) {
 			client.input.mode = 1;
 			client.input.cursor = 0;
-			client.input.error = 0;
 		}
 		tab->selected = 0;
 		return 0;
@@ -85,14 +83,13 @@ int command() {
 			 "gemini://geminispace.info/search?%s", &client.input.field[3]);
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
-		int bytes = gmi_request(urlbuf);
+		int bytes = gmi_request(tab, urlbuf);
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
 		if (page->code == 11 || page->code == 10) {
 			client.input.mode = 1;
 			client.input.cursor = 0;
-			client.input.error = 0;
 		}
 		tab->selected = 0;
 		return 0;
@@ -101,7 +98,7 @@ int command() {
 	   && client.input.field[3] == 'd' && 
 	   (client.input.field[4] == ' ' || client.input.field[4] == '\0')) {
 		char* title = client.input.field[4] == '\0'?NULL:&client.input.field[5];
-		gmi_addbookmark(tab->url, title);
+		gmi_addbookmark(tab, tab->url, title);
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		if (!strcmp("about:home", tab->url)) {
@@ -120,7 +117,7 @@ int command() {
 	}
 	if (atoi(&client.input.field[1]) ||
 	   (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
-		int bytes = gmi_goto(atoi(&client.input.field[1]));
+		int bytes = gmi_goto(tab, atoi(&client.input.field[1]));
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
@@ -143,7 +140,6 @@ int input(struct tb_event ev) {
 	if (page->code == 11 || page->code == 10) {
 		if (!client.input.mode) client.input.cursor = 0;
 		client.input.mode = 1;
-		client.input.error = 0;
 	}
 	if (ev.type == TB_EVENT_RESIZE) {
 		int lines = gmi_render(tab);
@@ -161,10 +157,10 @@ int input(struct tb_event ev) {
 	if (client.input.mode && ev.key == TB_KEY_ESC) {
 		client.input.mode = 0;
 		client.input.cursor = 0;
-		if (page->code == 11 || page->code == 10) {
-			page->code = 0;
-			gmi_request(tab->history->url);
-		}
+		if (page->code == 11 || page->code == 10)
+			page->code = 20;
+			//gmi_request(tab, tab->history?
+			//		 tab->history->url:"about:home");
 		client.input.field[0] = '\0';
 		tb_hide_cursor();
 		return 0;
@@ -192,7 +188,7 @@ int input(struct tb_event ev) {
 		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
 			int linkid = tab->selected;
 			tab->selected = 0;
-			gmi_goto_new(linkid);
+			gmi_goto_new(tab, linkid);
 		}
 		return 0;
 	}
@@ -216,7 +212,7 @@ int input(struct tb_event ev) {
 			}
 		}
 		else if (tab->selected) {
-			gmi_goto(tab->selected);
+			gmi_goto(tab, tab->selected);
 			tab->selected = 0;
 		}
 		client.vim.g = 0;
@@ -251,7 +247,7 @@ int input(struct tb_event ev) {
 			} else
 				snprintf(urlbuf, sizeof(urlbuf),
 					 "%s?%s", tab->url, client.input.field);
-			int bytes = gmi_request(urlbuf);
+			int bytes = gmi_request(tab, urlbuf);
 			if (bytes>0) {
 				tab = &client.tabs[client.tab];
 				tab->scroll = -1;
@@ -344,7 +340,7 @@ int input(struct tb_event ev) {
 			break;
 		}
 		if (!tab->history) break;
-		gmi_request(tab->history->url);
+		gmi_request(tab, tab->history->url);
 		struct gmi_link* prev = tab->history->prev;
 		prev->next = NULL;
 		free(tab->history);
@@ -366,11 +362,11 @@ int input(struct tb_event ev) {
 			tab->history = tab->history->prev;
 			tab->scroll = tab->history->scroll;
 		} 
-		if (gmi_request(tab->history->url) < 0) break;
+		if (gmi_request(tab, tab->history->url) < 0) break;
 		break;
 	case 'L': // Forward
 		if (!tab->history || !tab->history->next) break;
-		if (gmi_request(tab->history->next->url) < 0) break;
+		if (gmi_request(tab, tab->history->next->url) < 0) break;
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;

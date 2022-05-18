@@ -72,18 +72,19 @@ struct gmi_client {
 
 extern struct gmi_client client;
 int gmi_init();
-int gmi_goto(int id);
-int gmi_goto_new(int id);
-int gmi_request(const char* url);
+int gmi_goto(struct gmi_tab* tab, int id);
+int gmi_goto_new(struct gmi_tab* tab, int id);
+int gmi_request(struct gmi_tab* tab, const char* url);
 void gmi_load(struct gmi_page* page);
 int gmi_render(struct gmi_tab* tab);
 int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len, unsigned short* port);
 void gmi_cleanforward(struct gmi_tab* tab);
-int gmi_nextlink(char* url, char* link);
-void gmi_newtab();
-void gmi_newtab_url(char* url);
-int gmi_loadfile(char* path);
-void gmi_addbookmark(char* url, char* title);
+int gmi_nextlink(struct gmi_tab* tab, char* url, char* link);
+struct gmi_tab* gmi_newtab();
+struct gmi_tab* gmi_newtab_url(const char* url);
+int gmi_loadfile(struct gmi_tab* tab, char* path);
+void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title);
+void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
 void gmi_gohome(struct gmi_tab* tab);
 void gmi_freetab(struct gmi_tab* tab);
