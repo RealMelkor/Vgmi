@@ -51,7 +51,7 @@ int command() {
 			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
-			struct gmi_tab* new_tab = gmi_newtab_url(&client.input.field[4]);
+			gmi_newtab_url(&client.input.field[4]);
 			client.tab = client.tabs_count - 1;
 			client.input.field[0] = '\0';
 		}
@@ -159,8 +159,6 @@ int input(struct tb_event ev) {
 		client.input.cursor = 0;
 		if (page->code == 11 || page->code == 10)
 			page->code = 20;
-			//gmi_request(tab, tab->history?
-			//		 tab->history->url:"about:home");
 		client.input.field[0] = '\0';
 		tb_hide_cursor();
 		return 0;

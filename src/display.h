@@ -4,7 +4,6 @@
 
 void display();
 void display_history();
-int display_download(char* info);
-int display_open(char* path);
+int display_ask(char* info);
 
 #endif

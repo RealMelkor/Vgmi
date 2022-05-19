@@ -139,7 +139,7 @@ void display_history() {
 		|| ret == -14);
 }
 
-int display_download(char* info) {
+int display_ask(char* info) {
         int ret = 0;
         struct tb_event ev;
         bzero(&ev, sizeof(ev));
@@ -147,6 +147,7 @@ int display_download(char* info) {
 
                 tb_clear();
                 tb_printf(2, 1, TB_RED, TB_DEFAULT, "# Non-renderable meta-data : %s", info);
+                //tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s downloaded", path);
 		int w = tb_width();
 		int h = tb_height();
 		const char* line1 = "Press 'y' to download";
@@ -163,6 +164,7 @@ int display_download(char* info) {
 	return ev.ch == 'y' || ev.ch == 'Y';
 }
 
+/*
 int display_open(char* path) {
         int ret = 0;
         struct tb_event ev;
@@ -187,3 +189,4 @@ int display_open(char* path) {
 	return ev.ch == 'y' || ev.ch == 'Y';
 }
 
+*/
