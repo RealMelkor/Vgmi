@@ -44,10 +44,12 @@ void __free(void* ptr, const char* file, int line, const char* func)
 			fprintf(output, "(WARNING Freeing non-allocated memory) free : %p, " \
 					"%s, Line %d : %s\n",
 				ptr, file, line, func);
-			fclose(output);
-			tb_shutdown();
-			printf("mem_check detected a fatal error\n");
-			exit(0);
+			fflush(output);
+			return;
+			//fclose(output);
+			//tb_shutdown();
+			//printf("mem_check detected a fatal error\n");
+			//exit(0);
 		} else {
 			for(uint32_t j=i; j!=allocationCount-1; j++)
 				allocation[j] = allocation[j+1];

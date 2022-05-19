@@ -366,9 +366,10 @@ int input(struct tb_event ev) {
 			if (tab->history->cached)
 				tab->page = tab->history->page;
 		} 
-		if (tab->history->cached)
+		if (tab->history->cached) {
 			tab->page = tab->history->page;
-		else if (gmi_request(tab, tab->history->url) < 0) break;
+			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+		} else if (gmi_request(tab, tab->history->url) < 0) break;
 		break;
 	case 'L': // Forward
 		if (!tab->history || !tab->history->next) break;
