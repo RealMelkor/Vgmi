@@ -357,14 +357,28 @@ int input(struct tb_event ev) {
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			if (!tab->history->prev) break;
 			tab->history->scroll = tab->scroll;
+			if (!tab->history->next) {
+				tab->history->page = tab->page;
+				tab->history->cached = 1;
+			}
 			tab->history = tab->history->prev;
 			tab->scroll = tab->history->scroll;
+			if (tab->history->cached)
+				tab->page = tab->history->page;
 		} 
-		if (gmi_request(tab, tab->history->url) < 0) break;
+		if (tab->history->cached)
+			tab->page = tab->history->page;
+		else if (gmi_request(tab, tab->history->url) < 0) break;
 		break;
 	case 'L': // Forward
 		if (!tab->history || !tab->history->next) break;
-		if (gmi_request(tab, tab->history->next->url) < 0) break;
+		if (!tab->history->cached) {
+			tab->history->page = tab->page;
+			tab->history->cached = 1;
+		}
+		if (tab->history->next->cached)
+			tab->page = tab->history->next->page;
+		else if (gmi_request(tab, tab->history->next->url) < 0) break;
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
