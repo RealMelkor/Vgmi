@@ -183,3 +183,109 @@ skip_error:
 	if (ret) client.input.error = 1;
 	return ret;
 }
+
+int fatalI();
+void fatal();
+
+struct cert;
+struct cert {
+	struct cert* next;
+	char hash[256];
+	char host[1024];
+};
+struct cert* first_cert = NULL;
+struct cert* last_cert = NULL;
+
+void cert_add(char* host, const char* hash) {
+	struct cert* cert_ptr = malloc(sizeof(struct cert));
+	cert_ptr->next = NULL;
+	if (!cert_ptr) {
+		fatal();
+		return;
+	}
+	if (!first_cert) {
+		last_cert = first_cert = cert_ptr;
+	} else {
+		last_cert->next = cert_ptr;
+		last_cert = cert_ptr;
+	}
+	strlcpy(last_cert->hash, hash, sizeof(first_cert->hash));
+	strlcpy(last_cert->host, host, sizeof(first_cert->host));
+}
+
+int cert_load() {
+	char path[1024];
+	int len = getcachefolder(path, sizeof(path));
+	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
+	FILE* f = fopen(path, "r");
+	if (!f) {
+		return 0;
+	}
+	fseek(f, 0, SEEK_END);
+	size_t length = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char* data = malloc(length);
+	if (!data) return fatalI();
+	if (fread(data, 1, length, f) != length) {
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	char* ptr = data;
+	char* host = ptr;
+	char* hash = NULL;
+	while (ptr < data + length) {
+		if (*ptr == ' ' || *ptr == '\t' || (host?(*ptr == '\n'):0)) {
+			*ptr = '\0';
+			ptr++;
+			while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n') ptr++;
+			if (!hash) {
+				hash = ptr;
+				ptr++;
+				continue;
+			}
+
+			cert_add(host, hash);
+			host = ptr;
+			hash = NULL;
+		} else if (*ptr == '\n') {
+			host = ptr+1;
+			hash = NULL;
+		}
+		ptr++;
+	}
+	free(data);
+	return 0;
+}
+
+int cert_verify(char* host, const char* hash) {
+	struct cert* found = NULL;
+	for (struct cert* cert = first_cert; cert; cert = cert->next) {
+		if (!strcmp(host, cert->host)) {
+			found = cert;
+			break;
+		}
+	}
+	if (found)
+		return strcmp(found->hash, hash);
+	char path[1024];
+	int len = getcachefolder(path, sizeof(path));
+	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
+	FILE* f = fopen(path, "a");
+	if (!f)
+		return -1;
+	fprintf(f, "%s %s\n", host, hash);
+	fclose(f);
+	cert_add(host, hash);
+	return 0;
+}
+
+void cert_free() {
+	struct cert *cert, *next_cert;
+	cert = first_cert;
+	while (cert) {
+		next_cert = cert->next;
+		free(cert);
+		cert = next_cert;
+	}
+}

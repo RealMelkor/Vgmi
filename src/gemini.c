@@ -1098,6 +1098,12 @@ int gmi_request(struct gmi_tab* tab, const char* url) {
 			 "Failed to handshake: %s", gmi_host);
 		goto request_error;
 	}
+	if (cert_verify(gmi_host, tls_peer_cert_hash(ctx))) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Failed to verify server certificate for %s (Diffrent hash)",
+			 gmi_host);
+		goto request_error;
+	}
 	char buf[MAX_URL];
 	ssize_t len = gmi_parseuri(url_buf, MAX_URL, buf, MAX_URL);
 	if (len >= MAX_URL ||
@@ -1174,7 +1180,11 @@ int gmi_request(struct gmi_tab* tab, const char* url) {
 			} else {
 				strlcpy(tab->url, "about:home", sizeof(tab->url));
 			}
-			download = display_download(meta_buf);
+			char info[2048];
+			snprintf(info, sizeof(info), 
+				 "# Non-renderable meta-data %s : ",
+				 meta_buf);
+			download = display_ask(info);
 			if (!download) {
 				recv = -1;
 				goto exit_download;
@@ -1374,7 +1384,11 @@ exit_download:
 				fwrite(ptr, 1, recv - (ptr-data_buf), f);
 				fclose(f);
 #ifndef DISABLE_XDG
-				if (client.xdg && display_open(path)) {
+				char info[2048];
+				snprintf(info, sizeof(info), 
+					 "# %s downloaded",
+					 path);
+				if (client.xdg && display_ask(info)) {
 					char buf[1048];
 					snprintf(buf, sizeof(buf), "xdg-open %s", path);
 					system(buf);
@@ -1456,6 +1470,11 @@ int gmi_init() {
 		gmi_newbookmarks();
 	}
 
+	if (cert_load()) {
+		printf("Failed to load known hosts\n");
+		return -1;
+	}
+
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	bzero(&conn, sizeof(conn));
 	if (pthread_cond_init(&conn.cond, NULL)) {                                    
@@ -1495,5 +1514,6 @@ void gmi_free() {
 	pthread_kill(dnsquery.tid, SIGUSR1);
 	pthread_join(dnsquery.tid, NULL);
 #endif
+	cert_free();
 }
 
