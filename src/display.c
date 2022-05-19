@@ -147,7 +147,6 @@ int display_ask(char* info) {
 
                 tb_clear();
                 tb_printf(2, 1, TB_RED, TB_DEFAULT, "# Non-renderable meta-data : %s", info);
-                //tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s downloaded", path);
 		int w = tb_width();
 		int h = tb_height();
 		const char* line1 = "Press 'y' to download";
@@ -163,30 +162,3 @@ int display_ask(char* info) {
 		|| ret == -14);
 	return ev.ch == 'y' || ev.ch == 'Y';
 }
-
-/*
-int display_open(char* path) {
-        int ret = 0;
-        struct tb_event ev;
-        bzero(&ev, sizeof(ev));
-        do {
-
-                tb_clear();
-                tb_printf(2, 1, TB_RED, TB_DEFAULT, "# %s downloaded", path);
-		int w = tb_width();
-		int h = tb_height();
-		const char* line1 = "Press 'y' to open";
-		const char* line2 = "Press any other key to cancel";
-		int x = w/2-strlen(line1)/2;
-                tb_printf(x, h/2-1, TB_DEFAULT, TB_DEFAULT, line1);
-                tb_printf(x+7, h/2-1, TB_GREEN, TB_DEFAULT, "y");
-                tb_printf(w/2-strlen(line2)/2, h/2, TB_DEFAULT, TB_DEFAULT, line2);
-
-                tb_present();
-
-        } while(((ret = tb_poll_event(&ev)) == TB_OK && ev.type == TB_EVENT_RESIZE)
-		|| ret == -14);
-	return ev.ch == 'y' || ev.ch == 'Y';
-}
-
-*/

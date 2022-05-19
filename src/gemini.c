@@ -211,6 +211,12 @@ void gmi_load(struct gmi_page* page) {
 	page->links = NULL;
 	page->links_count = 0;
 	page->lines = 0;
+	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini"))) {
+		page->links = NULL;
+		page->links_count = 0;
+		page->lines = 0;
+		return;
+	}
 	int x = 0;
 	for (int c = 0; c < page->data_len; c++) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
@@ -502,37 +508,34 @@ void gmi_freepage(struct gmi_page* page) {
 	bzero(page, sizeof(struct gmi_page));
 }
 
+extern FILE* __output;
 void gmi_freetab(struct gmi_tab* tab) {
 	if (tab->history) {
 		struct gmi_link* link = tab->history->next;
 		while (link) {
 			struct gmi_link* ptr = link->next;
-			bzero(link->url, sizeof(link->url));
 			if (link->cached) {
 				gmi_freepage(&link->page);
 				link->cached = 0;
 			}
+			bzero(link->url, sizeof(link->url));
 			free(link);
 			link = ptr;
 		}
-		link = tab->history->prev;
+		link = tab->history;
 		while (link) {
 			struct gmi_link* ptr = link->prev;
-			bzero(link->url, sizeof(link->url));
 			if (link->cached) {
 				gmi_freepage(&link->page);
 				link->cached = 0;
 			}
+			bzero(link->url, sizeof(link->url));
 			free(link);
 			link = ptr;
 		}
-		bzero(tab->history->url, sizeof(tab->history->url));
-		free(tab->history);
 	}
-	gmi_freepage(&tab->page);
 	bzero(tab, sizeof(struct gmi_tab));
 }
-
 
 char home_page[] = 
 "20 text/gemini\r\n# Vgmi\n\n" \
@@ -723,7 +726,7 @@ char* gmi_getbookmarks(int* len) {
 }
 
 void gmi_gohome(struct gmi_tab* tab) {
-	free(tab->page.data);
+	bzero(&tab->page, sizeof(struct gmi_page));
 	tab->scroll = -1;
 	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
 	tab->page.code = 20;
@@ -745,6 +748,9 @@ void gmi_gohome(struct gmi_tab* tab) {
 
 	gmi_load(&tab->page);
 	gmi_addtohistory(tab);
+
+	tab->history->page = tab->page;
+	tab->history->cached = 1;
 }
 
 struct gmi_tab* gmi_newtab() {
@@ -1373,6 +1379,8 @@ exit_download:
 		while (link_ptr) {
 			if (link_ptr->cached) {
 				gmi_freepage(&link_ptr->page);
+				fprintf(__output, "freeing cache : %p, %p\n",
+					(void*)link_ptr, (void*)link_ptr->page.links);
 				link_ptr->cached = 0;
 			}
 			link_ptr = link_ptr->prev;
@@ -1387,6 +1395,8 @@ exit_download:
 		tab->page.data = data_buf;
 		gmi_load(&tab->page);
 		gmi_addtohistory(tab);
+		tab->history->page = tab->page;
+		tab->history->cached = 1;
 	}
 	if (download && recv > 0 && tab->page.code == 20) {
 		int len = strnlen(url_buf, sizeof(url_buf));
