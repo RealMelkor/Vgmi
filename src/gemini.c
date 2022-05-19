@@ -29,6 +29,7 @@
 #include "wcwidth.h"
 #include "display.h"
 
+#define MAX_CACHE 10
 #define TIMEOUT 3
 struct timespec timeout = {0, 50000000};
 
@@ -480,12 +481,26 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 	while (link) {
 		struct gmi_link* ptr = link->next;
 		bzero(link->url, sizeof(link->url));
+		if (link->cached) {
+			gmi_freepage(&link->page);
+			link->cached = 0;
+		}
 		free(link);
 		link = ptr;
 	}
 	tab->history->next = NULL;
 }
 
+void gmi_freepage(struct gmi_page* page) {
+	free(page->data);
+	for (int i=0; i<page->links_count; i++)
+		free(page->links[i]);
+	free(page->links);
+#ifdef TERMINAL_IMG_VIEWER
+	stbi_image_free(page->img.data);
+#endif
+	bzero(page, sizeof(struct gmi_page));
+}
 
 void gmi_freetab(struct gmi_tab* tab) {
 	if (tab->history) {
@@ -493,6 +508,10 @@ void gmi_freetab(struct gmi_tab* tab) {
 		while (link) {
 			struct gmi_link* ptr = link->next;
 			bzero(link->url, sizeof(link->url));
+			if (link->cached) {
+				gmi_freepage(&link->page);
+				link->cached = 0;
+			}
 			free(link);
 			link = ptr;
 		}
@@ -500,19 +519,17 @@ void gmi_freetab(struct gmi_tab* tab) {
 		while (link) {
 			struct gmi_link* ptr = link->prev;
 			bzero(link->url, sizeof(link->url));
+			if (link->cached) {
+				gmi_freepage(&link->page);
+				link->cached = 0;
+			}
 			free(link);
 			link = ptr;
 		}
 		bzero(tab->history->url, sizeof(tab->history->url));
 		free(tab->history);
 	}
-	for (int i=0; i < tab->page.links_count; i++)
-		free(tab->page.links[i]);
-	free(tab->page.links);
-	free(tab->page.data);
-#ifdef TERMINAL_IMG_VIEWER
-	stbi_image_free(tab->page.img.data);
-#endif
+	gmi_freepage(&tab->page);
 	bzero(tab, sizeof(struct gmi_tab));
 }
 
@@ -1348,10 +1365,25 @@ exit_download:
 		return r;
 	}
 	if (!download && recv > 0 && tab->page.code == 20) {
+		struct gmi_link* link_ptr = tab->history?tab->history->prev:NULL;
+		for (int i = 0; i < MAX_CACHE; i++) {
+			if (!link_ptr) break;
+			link_ptr = link_ptr->prev;
+		}
+		while (link_ptr) {
+			if (link_ptr->cached) {
+				gmi_freepage(&link_ptr->page);
+				link_ptr->cached = 0;
+			}
+			link_ptr = link_ptr->prev;
+		}
+		tab->history->page = tab->page;
+		tab->history->cached = 1;
+		bzero(&tab->page, sizeof(struct gmi_page));
+		tab->page.code = 20;
 		strlcpy(tab->page.meta, meta_buf, sizeof(tab->page.meta));
 		strlcpy(tab->url, url_buf, sizeof(tab->url));
 		tab->page.data_len = recv;
-		free(tab->page.data); // should be cached
 		tab->page.data = data_buf;
 		gmi_load(&tab->page);
 		gmi_addtohistory(tab);

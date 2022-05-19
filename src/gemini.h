@@ -11,14 +11,6 @@
 #define MAX_URL 1024
 #define MAX_META 1024
 
-struct gmi_link {
-	char url[MAX_URL];
-	struct gmi_link* prev;
-	struct gmi_link* next;
-	int scroll;
-	char* data;
-};
-
 struct gmi_page {
 	char** links;
 	int links_count;
@@ -34,6 +26,15 @@ struct gmi_page {
 		int h;
 		int channels;
 	} img;
+};
+
+struct gmi_link {
+	char url[MAX_URL];
+	struct gmi_link* prev;
+	struct gmi_link* next;
+	int scroll;
+	struct gmi_page page;
+	int cached;
 };
 
 struct gmi_tab {
@@ -87,6 +88,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title);
 void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
 void gmi_gohome(struct gmi_tab* tab);
+void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
 
