@@ -66,7 +66,7 @@ int command() {
 		}
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
-		int bytes = gmi_request(tab, urlbuf);
+		int bytes = gmi_request(tab, urlbuf, 1);
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
@@ -83,7 +83,7 @@ int command() {
 			 "gemini://geminispace.info/search?%s", &client.input.field[3]);
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
-		int bytes = gmi_request(tab, urlbuf);
+		int bytes = gmi_request(tab, urlbuf, 1);
 		if (bytes > 0) {
 			tab->scroll = -1;
 		}
@@ -103,7 +103,7 @@ int command() {
 		tab->selected = 0;
 		if (!strcmp("about:home", tab->url)) {
 			gmi_freetab(tab);
-			gmi_gohome(tab);
+			gmi_gohome(tab, 1);
 		}
 		return 0;
 	}
@@ -178,7 +178,7 @@ int input(struct tb_event ev) {
 			gmi_removebookmark(tab->selected);
 			tab->selected = 0;
 			gmi_freetab(tab);
-			gmi_gohome(tab);
+			gmi_gohome(tab, 1);
 		}
 		return 0;
 	}
@@ -245,7 +245,7 @@ int input(struct tb_event ev) {
 			} else
 				snprintf(urlbuf, sizeof(urlbuf),
 					 "%s?%s", tab->url, client.input.field);
-			int bytes = gmi_request(tab, urlbuf);
+			int bytes = gmi_request(tab, urlbuf, 1);
 			if (bytes>0) {
 				tab = &client.tabs[client.tab];
 				tab->scroll = -1;
@@ -332,17 +332,11 @@ int input(struct tb_event ev) {
 		client.input.field[1] = '\0';
 		break;
 	case 'r': // Reload
-		if (!strcmp("about:home", tab->url)) {
-			gmi_freetab(tab);
-			gmi_gohome(tab);
-			break;
-		}
 		if (!tab->history) break;
-		gmi_request(tab, tab->history->url);
-		struct gmi_link* prev = tab->history->prev;
-		prev->next = NULL;
-		free(tab->history);
-		tab->history = prev;
+		gmi_freepage(&tab->page);
+		gmi_request(tab, tab->history->url, 0);
+		tab->history->page = tab->page;
+		tab->history->cached = 1;
 		break;
 	case 'h': // Tab left
 		client.tab--;
@@ -353,9 +347,8 @@ int input(struct tb_event ev) {
 		if (client.tab >= client.tabs_count) client.tab = 0;
 		break;
 	case 'H': // Back
-		if (!tab->history) break;
+		if (!tab->history || !tab->history->prev) break;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
-			if (!tab->history->prev) break;
 			tab->history->scroll = tab->scroll;
 			if (!tab->history->next) {
 				tab->history->page = tab->page;
@@ -369,7 +362,7 @@ int input(struct tb_event ev) {
 		if (tab->history->cached) {
 			tab->page = tab->history->page;
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
-		} else if (gmi_request(tab, tab->history->url) < 0) break;
+		} else if (gmi_request(tab, tab->history->url, 1) < 0) break;
 		break;
 	case 'L': // Forward
 		if (!tab->history || !tab->history->next) break;
@@ -379,7 +372,7 @@ int input(struct tb_event ev) {
 		}
 		if (tab->history->next->cached)
 			tab->page = tab->history->next->page;
-		else if (gmi_request(tab, tab->history->next->url) < 0) break;
+		else if (gmi_request(tab, tab->history->next->url, 1) < 0) break;
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
@@ -421,6 +414,8 @@ int input(struct tb_event ev) {
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
 			break;
+		client.input.error = 0;
+		client.input.info = 0;
 		unsigned int len = strnlen(client.vim.counter, sizeof(client.vim.counter));
 		if (len == 0 && ev.ch == '0') break;
 		if (len >= sizeof(client.vim.counter)) break;

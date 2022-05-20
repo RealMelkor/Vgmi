@@ -27,6 +27,7 @@ struct __allocation {
 struct __allocation* __allocation;
 uint64_t __allocationCount;
 FILE* __output = NULL;
+int __warnings = 0;
 
 void __init()
 {
@@ -45,11 +46,15 @@ void __free(void* ptr, const char* file, int line, const char* func)
 					"%s, Line %d : %s\n",
 				ptr, file, line, func);
 			fflush(output);
+#ifndef EXIT_ON_ERROR
+			__warnings++;
 			return;
-			//fclose(output);
-			//tb_shutdown();
-			//printf("mem_check detected a fatal error\n");
-			//exit(0);
+#else
+			fclose(output);
+			tb_shutdown();
+			printf("mem_check detected a fatal error\n");
+			exit(0);
+#endif
 		} else {
 			for(uint32_t j=i; j!=allocationCount-1; j++)
 				allocation[j] = allocation[j+1];
@@ -133,6 +138,10 @@ void __check()
 	else {
 		fprintf(output, "%ld memory leaks detected\n", allocationCount);
 		printf("WARNING: Memory leaks detected (%ld)\n", allocationCount);
+	}
+	if (__warnings) {
+		fprintf(output, "%d invalid memory operations detected\n", __warnings);
+		printf("WARNING: %d invalid memory operations detected\n", __warnings);
 	}
 	for(uint32_t i=0; i!=allocationCount; i++)
     		fprintf(output, "Leak : %p, size : %ld | %s, Line %d : %s\n",
