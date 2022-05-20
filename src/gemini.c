@@ -1318,12 +1318,11 @@ request_error_msg:;
 		}
 request_error:
 		free(data_buf);
-		/*
 		if (tab->history) {
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else {
 			strlcpy(tab->url, "about:home", sizeof(tab->url));
-		}*/
+		}
 		client.input.error = 1;
 		recv = -1;
 		tab->page.code = 20;
@@ -1363,8 +1362,8 @@ exit_download:
 		free(data_buf);
 		data_buf = NULL;
 		gmi_load(&tab->page);
-		if (add)
-			gmi_addtohistory(tab);
+		tab->history->page = tab->page;
+		tab->history->cached = 1;
 		tab->scroll = -1;
 		return r;
 	}
@@ -1470,10 +1469,19 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	if (tab->page.data) free(tab->page.data);
 	tab->page.data = data;
 	snprintf(tab->url, sizeof(tab->url), "file://%s/", path);
-	// should check if it's gmi or text using file extension
-	strlcpy(tab->page.meta, "text/gemini", sizeof(tab->page.meta));
+	int i = strnlen(path, 1024);
+	int gmi = 0;
+	if (i > 4 && path[i - 1] == '/') i--;
+	if (i > 4 && path[i - 4] == '.' &&
+	    path[i - 3] == 'g' &&
+	    path[i - 2] == 'm' &&
+	    path[i - 1] == 'i') 
+		gmi = 1;
+	if (gmi)
+		strlcpy(tab->page.meta, "text/gemini", sizeof(tab->page.meta));
+	else
+		strlcpy(tab->page.meta, "text/text", sizeof(tab->page.meta));
 	gmi_load(&tab->page);
-	//
 	gmi_addtohistory(tab);
 	return len;
 }

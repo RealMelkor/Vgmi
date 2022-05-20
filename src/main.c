@@ -55,8 +55,11 @@ int main(int argc, char* argv[]) {
 	if (gmi_init()) return 0;
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
-		if (gmi_loadfile(tab, argv[1]) > 0) gmi_gohome(tab, 1);
-		else if (gmi_request(tab, argv[1], 1) <= 0) gmi_gohome(tab, 1);
+		if (gmi_loadfile(tab, argv[1]) <= 0) {//gmi_gohome(tab, 1);
+			gmi_gohome(tab, 1);
+		//if (gmi_request(tab, argv[1], 1) < 0) ;
+			gmi_request(tab, argv[1], 1);
+		}
 	} else gmi_gohome(tab, 1);
 	
 #ifndef __OpenBSD__
