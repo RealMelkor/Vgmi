@@ -198,6 +198,10 @@ struct cert* last_cert = NULL;
 
 void cert_add(char* host, const char* hash) {
 	struct cert* cert_ptr = malloc(sizeof(struct cert));
+	if (!cert_ptr) {
+		fatal();
+		return;
+	}
 	cert_ptr->next = NULL;
 	if (!cert_ptr) {
 		fatal();
