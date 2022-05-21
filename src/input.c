@@ -145,6 +145,7 @@ int input(struct tb_event ev) {
 		int lines = gmi_render(tab);
 		tab->scroll -= page->lines - lines;
 		if (tab->scroll+tb_height()-2 > lines) tab->scroll = lines - tb_height() + 2;
+		if (tab->scroll < -1) tab->scroll = -1;
 		tb_clear();
 		return 0;
 	}
