@@ -29,7 +29,7 @@
 #include "wcwidth.h"
 #include "display.h"
 
-#define MAX_CACHE 3
+#define MAX_CACHE 10
 #define TIMEOUT 3
 struct timespec timeout = {0, 50000000};
 
@@ -147,9 +147,9 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 			goto nextlink_overflow;
 		int ret = gmi_request(tab, urlbuf, 1);
 		return ret;
-	} else if (strstr(link, "https://") ||
-		   strstr(link, "http://") ||
-		   strstr(link, "gopher://")) {
+	} else if (strstr(link, "https://") == link ||
+		   strstr(link, "http://") == link ||
+		   strstr(link, "gopher://") == link) {
 #ifndef DISABLE_XDG
 		if (client.xdg) {
 			char buf[1048];
@@ -171,7 +171,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Can't open web link");
 		return -1;
-	} else if (strstr(link, "gemini://")) {
+	} else if (strstr(link, "gemini://") == link) {
 		int ret = gmi_request(tab, link, 1);
 		return ret;
 	} else {
@@ -209,7 +209,7 @@ void gmi_load(struct gmi_page* page) {
 	page->links = NULL;
 	page->links_count = 0;
 	page->lines = 0;
-	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini"))) {
+	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini")-1)) {
 		page->links = NULL;
 		page->links_count = 0;
 		page->lines = 0;
