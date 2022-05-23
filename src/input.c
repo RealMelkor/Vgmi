@@ -6,6 +6,7 @@
 #include <strings.h>
 #define TB_IMPL
 #include "wcwidth.h"
+#undef wcwidth
 #define wcwidth(x) mk_wcwidth(x)
 #include <termbox.h>
 #include "input.h"

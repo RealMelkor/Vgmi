@@ -1001,9 +1001,11 @@ int gmi_request_dns(struct gmi_tab* tab) {
         hints.ai_family = PF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags |= AI_CANONNAME;
-        if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
-                snprintf(tab->error, sizeof(tab->error), "Unknown domain name: %s", gmi_host);
-                goto request_error;
+        if (getaddrinfo(tab->request.host, NULL, &hints, &result)) {
+                snprintf(tab->error, sizeof(tab->error),
+			 "Unknown domain name: %s", tab->request.host);
+		tab->show_error = 1;
+		return -1;
         }
 #endif
 
