@@ -4,6 +4,6 @@
 
 void display();
 void display_history();
-int display_ask(char* info);
+int display_ask(char* info, char* action);
 
 #endif

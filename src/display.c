@@ -2,6 +2,7 @@
 #include <strings.h>
 #include <termbox.h>
 #include "gemini.h"
+#include "display.h"
 
 void tb_colorline(int x, int y, uintattr_t color) {
         for (int i=x; i<tb_width(); i++)
@@ -11,6 +12,9 @@ void tb_colorline(int x, int y, uintattr_t color) {
 void display() {
         struct gmi_tab* tab = &client.tabs[client.tab];
         struct gmi_page* page = &tab->page;
+	if (tab->request.ask == 2) {
+		tab->request.ask = display_ask(tab->request.info, tab->request.action);
+	}
         tb_clear();
 	
         if (client.input.mode) {
@@ -67,7 +71,11 @@ void display() {
                 int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
                 tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE,
 			  " => %s ", tab->selected_url);
-        }
+        } else if (tab->request.state != STATE_DONE) {
+                int llen = strnlen(tab->request.url, sizeof(tab->request.url));
+                tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, TB_WHITE,
+			  " [%s] ", tab->request.url);
+	} 
 
         int count = atoi(client.vim.counter);
         if (count) {
@@ -76,17 +84,17 @@ void display() {
         }
 
         // input
-        if (client.input.error) {
+        if (tab->show_error) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_RED);
                 tb_print(0, tb_height()-1, TB_WHITE, TB_RED, tab->error);
                 client.input.field[0] = '\0';
-	} else if (client.input.info) {
+	} else if (tab->show_info) {
                 tb_hide_cursor();
                 tb_colorline(0, tb_height()-1, TB_GREEN);
                 tb_print(0, tb_height()-1, TB_WHITE, TB_GREEN, tab->info);
                 client.input.field[0] = '\0';
-                client.input.info = 0;
+		tab->show_info = 0;
         } else if (page->code == 10) {
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
 			 "%s: %s", client.input.label, client.input.field);
@@ -139,22 +147,23 @@ void display_history() {
 		|| ret == -14);
 }
 
-int display_ask(char* info) {
+int display_ask(char* info, char* action) {
         int ret = 0;
         struct tb_event ev;
         bzero(&ev, sizeof(ev));
         do {
 
                 tb_clear();
-                tb_printf(2, 1, TB_RED, TB_DEFAULT, "# Non-renderable meta-data : %s", info);
+                tb_printf(2, 1, TB_RED, TB_DEFAULT, "%s", info);
 		int w = tb_width();
 		int h = tb_height();
-		const char* line1 = "Press 'y' to download";
+		const char* line1 = "Press 'y' to %s";
 		const char* line2 = "Press any other key to cancel";
-		int x = w/2-strlen(line1)/2;
-                tb_printf(x, h/2-1, TB_DEFAULT, TB_DEFAULT, line1);
-                tb_printf(x+7, h/2-1, TB_GREEN, TB_DEFAULT, "y");
-                tb_printf(w/2-strlen(line2)/2, h/2, TB_DEFAULT, TB_DEFAULT, line2);
+		int x1 = w/2-(strlen(line1)+strnlen(action, w/2))/2;
+		int x2	 = w/2-strlen(line2)/2;
+                tb_printf(x1, h/2-1, TB_DEFAULT, TB_DEFAULT, line1, action);
+                tb_printf(x1+7, h/2-1, TB_GREEN, TB_DEFAULT, "y");
+                tb_printf(x2, h/2, TB_DEFAULT, TB_DEFAULT, line2);
 
                 tb_present();
 

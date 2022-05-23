@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <strings.h>
+#define TB_IMPL
 #include <termbox.h>
 #include "input.h"
 #include "gemini.h"
@@ -47,7 +48,8 @@ int command() {
 	   && client.input.field[3] == ' ') {
 		client.input.cursor = 0;
 		int id = atoi(&client.input.field[4]);
-		if (id != 0 || (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
+		if (id != 0 || 
+		    (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
 			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
@@ -60,7 +62,7 @@ int command() {
 	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
 		char urlbuf[MAX_URL];
 		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) >= sizeof(urlbuf)) {
-			client.input.error = 1;
+			tab->show_error = 1;
 			snprintf(tab->error, sizeof(tab->error), "Url too long");
 			return 0;
 		}
@@ -117,23 +119,21 @@ int command() {
 	}
 	if (atoi(&client.input.field[1]) ||
 	   (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
-		int bytes = gmi_goto(tab, atoi(&client.input.field[1]));
-		if (bytes > 0) {
-			tab->scroll = -1;
-		}
+		gmi_goto(tab, atoi(&client.input.field[1]));
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;
 	}
 	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
-		client.input.error = -1;
+		tab->show_error = -1;
 		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown input: %s", &client.input.field[1]);
 	}
 	return 0;
 }
 
+int last_height = -1; 
 int input(struct tb_event ev) {
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	struct gmi_page* page = &tab->page;
@@ -142,8 +142,10 @@ int input(struct tb_event ev) {
 		client.input.mode = 1;
 	}
 	if (ev.type == TB_EVENT_RESIZE) {
+		if (last_height == -1) last_height = tb_height(); 
+		if (tb_height() == last_height) return 0;
 		int lines = gmi_render(tab);
-		tab->scroll -= page->lines - lines;
+		tab->scroll -= page->lines - lines - 1;
 		if (tab->scroll+tb_height()-2 > lines) tab->scroll = lines - tb_height() + 2;
 		if (tab->scroll < -1) tab->scroll = -1;
 		tb_clear();
@@ -199,7 +201,7 @@ int input(struct tb_event ev) {
 				snprintf(tab->error, sizeof(tab->error),
 					 "Invalid link number");
 				tab->selected = 0;
-				client.input.error = 1;
+				tab->show_error = 1;
 			}
 			else if (strlcpy(tab->selected_url, page->links[tab->selected - 1],
 			sizeof(tab->selected_url)) >= sizeof(tab->selected_url)) {
@@ -207,7 +209,7 @@ int input(struct tb_event ev) {
 					 "Invalid link, above %lu characters",
 					 sizeof(tab->selected_url));
 				tab->selected = 0;
-				client.input.error = 1;
+				tab->show_error = 1;
 			}
 		}
 		else if (tab->selected) {
@@ -326,7 +328,7 @@ int input(struct tb_event ev) {
 		client.input.cursor = strnlen(client.input.field, sizeof(client.input.field));
 		break;
 	case ':':
-		client.input.error = 0;
+		tab->show_error = 0;
 		client.input.mode = 1;
 		client.input.cursor = 1;
 		client.input.field[0] = ':';
@@ -334,10 +336,7 @@ int input(struct tb_event ev) {
 		break;
 	case 'r': // Reload
 		if (!tab->history) break;
-		gmi_freepage(&tab->page);
 		gmi_request(tab, tab->history->url, 0);
-		tab->history->page = tab->page;
-		tab->history->cached = 1;
 		break;
 	case 'h': // Tab left
 		client.tab--;
@@ -415,8 +414,8 @@ int input(struct tb_event ev) {
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
 			break;
-		client.input.error = 0;
-		client.input.info = 0;
+		tab->show_error = 0;
+		tab->show_info = 0;
 		unsigned int len = strnlen(client.vim.counter, sizeof(client.vim.counter));
 		if (len == 0 && ev.ch == '0') break;
 		if (len >= sizeof(client.vim.counter)) break;
@@ -424,4 +423,9 @@ int input(struct tb_event ev) {
 		client.vim.counter[len+1] = '\0';
 	}
 	return 0;
+}
+
+int tb_interupt() {
+	int sig = 0;
+	return write(global.resize_pipefd[1], &sig, sizeof(sig))==sizeof(sig)?0:-1;
 }

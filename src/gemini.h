@@ -4,6 +4,8 @@
 
 #include <unistd.h>
 #include <stddef.h>
+#include <pthread.h>
+#include <poll.h>
 #include "memcheck.h"
 
 #define GMI 9
@@ -37,6 +39,17 @@ struct gmi_link {
 	int cached;
 };
 
+#define STATE_DONE 0
+#define STATE_REQUESTED 1
+#define STATE_DNS 2
+#define STATE_CONNECTING 3
+#define STATE_CONNECTED 4
+#define STATE_RECV_HEADER 5
+#define STATE_RECV_BODY 6
+#define STATE_CANCEL 7
+#define STATE_STARTED 8
+#include <netdb.h>
+
 struct gmi_tab {
 	struct gmi_link* history;
 	struct gmi_page page;
@@ -45,17 +58,52 @@ struct gmi_tab {
 	char selected_url[MAX_URL];
 	char url[MAX_URL];
 	char error[256];
+	int show_error;
 	char info[256];
+	int show_info;
+	// async
+	int pair[2];
+	struct request { 
+		pthread_t thread;
+		pthread_mutex_t mutex;
+		int loaded;
+		int socket;
+		struct tls* tls;
+		int state;
+		int ask;
+		char info[1024];
+		char action[128];
+		unsigned short port;
+		char host[256];
+		union {
+			struct sockaddr_in addr4;
+			struct sockaddr_in6 addr6;
+		} _addr;
+		struct sockaddr* addr;
+		int family;
+		char url[1024];
+		char meta[1024];
+		char* data;
+		int recv;
+		int download;
+		char* error_ptr;
+	} request;
+	struct thread {
+		pthread_t thread;
+		int pair[2];
+		char url[1024];
+		int add;
+	} thread;
 };
 
 struct gmi_client {
 	struct gmi_tab* tabs;
+	struct pollfd* tabs_fds;
+	int tabs_changed;
 	int tabs_count;
 	struct input {
 		char label[MAX_URL];
 		char field[MAX_URL];
-		int error;
-		int info;
 		int cursor;
 		int mode;
 	} input;
@@ -69,6 +117,7 @@ struct gmi_client {
 	int xdg;
 #endif
 	int c256;
+	int shutdown;
 };
 
 extern struct gmi_client client;
@@ -87,6 +136,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path);
 void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title);
 void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
+void gmi_polling();
 void gmi_gohome(struct gmi_tab* tab, int add);
 void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
