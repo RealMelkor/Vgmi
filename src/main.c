@@ -29,12 +29,18 @@ int main(int argc, char* argv[]) {
 		printf("Failed to get cache folder\n");
 		return -1;
 	}
+	char downloadpath[1024];
+	if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
+		printf("Failed to get download folder\n");
+		return -1;
+	}
 	tb_init();
 	if (
 #ifndef HIDE_HOME
 		unveil(path, "r") ||
 #endif
 		unveil(certpath, "rwc") || 
+		unveil(downloadpath, "rwc") || 
 #ifndef DISABLE_XDG
 		unveil("/bin/sh", "x") ||
 		unveil("/usr/bin/which", "x") ||
