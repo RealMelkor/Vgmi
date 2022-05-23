@@ -2,6 +2,7 @@
 #ifndef _GEMINI_H_
 #define _GEMINI_H_
 
+#include <netdb.h>
 #include <unistd.h>
 #include <stddef.h>
 #include <pthread.h>
@@ -49,7 +50,6 @@ struct gmi_link {
 #define STATE_RECV_BODY 6
 #define STATE_CANCEL 7
 #define STATE_STARTED 8
-#include <netdb.h>
 
 struct gmi_tab {
 	struct gmi_link* history;
@@ -65,6 +65,10 @@ struct gmi_tab {
 	// async
 	int pair[2];
 	struct request { 
+#ifdef __linux__
+		struct gaicb* gaicb_ptr;
+		int resolved;
+#endif
 		pthread_t thread;
 		pthread_mutex_t mutex;
 		int loaded;

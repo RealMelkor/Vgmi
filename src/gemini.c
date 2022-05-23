@@ -881,50 +881,6 @@ parseurl_overflow:
 	return -2;
 }
 
-struct dnsquery {
-	struct addrinfo* result;
-	int resolved;
-	char* host;
-	pthread_t tid;
-	pthread_cond_t cond;
-	pthread_mutex_t mutex;
-};
-struct dnsquery dnsquery;
-
-void* dnsquery_thread(void* _signal) {
-	int signal = (long)_signal;
-	if (signal != 0 && signal != SIGUSR1) return NULL;
-	if (pthread_mutex_init(&dnsquery.mutex, NULL)) {
-		struct gmi_tab* tab = &client.tabs[client.tab];
-		snprintf(tab->error, sizeof(tab->error), 
-			"Failed to initialize connection mutex\n");
-		return NULL;
-	}
-	pthread_mutex_lock(&dnsquery.mutex);
-	while (1) {
-		pthread_cond_wait(&dnsquery.cond, &dnsquery.mutex);
-		struct addrinfo hints;
-		memset (&hints, 0, sizeof (hints));
-		hints.ai_family = PF_UNSPEC;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_flags |= AI_CANONNAME|SOCK_NONBLOCK;
-		if (getaddrinfo(dnsquery.host, NULL, &hints, &dnsquery.result)) {
-			dnsquery.resolved = -1;
-			continue;
-		}
-		dnsquery.resolved = 1;
-	}
-	return NULL;
-}
-
-void signal_cb() {
-	//pthread_mutex_unlock(&dnsquery.mutex);
-	//pthread_mutex_destroy(&dnsquery.mutex);
-	pthread_exit(pthread_self());
-	pthread_exit(NULL);
-	exit(0);
-}
-
 int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	if (!strcmp(url, "about:home")) {
 		gmi_gohome(tab, add);
@@ -996,31 +952,60 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	return 0;
 }
 
+#ifdef __linux
+void dns_async(union sigval sv) {
+	struct gmi_tab* tab = sv.sival_ptr;
+	tab->request.resolved = 1;
+	
+}
+#endif
+
 int gmi_request_dns(struct gmi_tab* tab) {
-	dnsquery.host = tab->request.host;
-	dnsquery.resolved = 0;
-	pthread_cond_signal(&dnsquery.cond);
+#ifdef __linux__
+	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
+	bzero(tab->request.gaicb_ptr, sizeof(struct gaicb));
+        tab->request.gaicb_ptr->ar_name = tab->request.host;
+	tab->request.resolved = 0;
+        struct sigevent sevp;
+	bzero(&sevp, sizeof(sevp));
+        sevp.sigev_notify = SIGEV_THREAD;
+        sevp.sigev_notify_function = dns_async;
+	sevp.sigev_value.sival_ptr = tab;
+        int ret = getaddrinfo_a(GAI_NOWAIT, &tab->request.gaicb_ptr, 1, &sevp);
+	if (ret) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Unable request domain name: %s", tab->request.host);
+		tab->show_error = 1;
+		return -1;
+	}
+
 	long start = time(NULL);
-	for (int i=0; !dnsquery.resolved; i++) {
+	for (int i=0; !tab->request.resolved; i++) {
 		if (tab->request.state == STATE_CANCEL) break;
 		if (time(NULL) - start > TIMEOUT) break;
 		nanosleep(&timeout, NULL);
 	}
 	
-	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
-		if (!dnsquery.resolved) {
-			//pthread_cancel(dnsquery.tid);
-			pthread_kill(dnsquery.tid, SIGUSR1);
-			pthread_join(dnsquery.tid, NULL);
-			pthread_create(&dnsquery.tid, NULL,
-				       (void *(*)(void *))dnsquery_thread, NULL);
-		}
+	if (tab->request.resolved != 1 || tab->request.gaicb_ptr->ar_result == NULL) {
+		gai_cancel(tab->request.gaicb_ptr);
+		free(tab->request.gaicb_ptr);
 		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown domain name: %s", tab->request.host);
 		tab->show_error = 1;
 		return -1;
 	}
-	struct addrinfo *result = dnsquery.result;
+	struct addrinfo *result = tab->request.gaicb_ptr->ar_result;
+#else
+	struct addrinfo hints, *result;
+        memset (&hints, 0, sizeof (hints));
+        hints.ai_family = PF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags |= AI_CANONNAME;
+        if (getaddrinfo(gmi_host, NULL, &hints, &result)) {
+                snprintf(tab->error, sizeof(tab->error), "Unknown domain name: %s", gmi_host);
+                goto request_error;
+        }
+#endif
 
 	struct sockaddr_in addr4;
 	struct sockaddr_in6 addr6;
@@ -1048,6 +1033,9 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	}
 	tab->request.family = result->ai_family;
 	freeaddrinfo(result);
+#ifdef __linux__
+	free(tab->request.gaicb_ptr);
+#endif
 
 	tab->request.state = STATE_DNS;
 	return 0;
@@ -1089,8 +1077,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	}
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Connection to %s timed out %s",
-			 tab->request.host, strerror(errno));
+			 "Connection to %s timed out",
+			 tab->request.host);
 		return -1;
 	}
 
@@ -1658,17 +1646,6 @@ int gmi_init() {
 		printf("Failed to load known hosts\n");
 		return -1;
 	}
-
-	bzero(&dnsquery, sizeof(dnsquery));
-	if (pthread_cond_init(&dnsquery.cond, NULL)) {                                    
-		printf("Failed to initialize thread condition\n");
-		return -1;
-	}
-	if (pthread_create(&dnsquery.tid, NULL, (void *(*)(void *))dnsquery_thread, NULL)) {
-		printf("Failed to initialize dns query thread\n");
-		return -1;
-	}
-	signal(SIGUSR1, signal_cb);
 		
 	return 0;
 }
@@ -1681,7 +1658,5 @@ void gmi_free() {
 		free(client.bookmarks[i]);
 	free(client.bookmarks);
 	free(client.tabs);
-	pthread_kill(dnsquery.tid, SIGUSR1);
-	pthread_join(dnsquery.tid, NULL);
 	cert_free();
 }
