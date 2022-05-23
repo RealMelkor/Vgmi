@@ -63,7 +63,7 @@ int getcachefolder(char* path, size_t len) {
 	if (ret == -1) return -1;
 	size_t length = ret;
 	if (length >= len) return -1;
-	length += strlcpy(&path[length], "/.cache/vgmi", len - length);
+	length += strlcpy(&path[length], "/.config/vgmi", len - length);
         if (length >= len) return -1;
         struct stat _stat;
         if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
@@ -180,7 +180,7 @@ skip_error:
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
 	//RSA_free(rsa);
-	if (ret) client.input.error = 1;
+	//if (ret) client.input.error = 1;
 	return ret;
 }
 

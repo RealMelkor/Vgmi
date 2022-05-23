@@ -1,5 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#define TB_IMPL
 #include <signal.h>
 #include <termbox.h>
 #include "input.h"
@@ -55,9 +54,8 @@ int main(int argc, char* argv[]) {
 	if (gmi_init()) return 0;
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
-		if (gmi_loadfile(tab, argv[1]) <= 0) {//gmi_gohome(tab, 1);
+		if (gmi_loadfile(tab, argv[1]) <= 0) {
 			gmi_gohome(tab, 1);
-		//if (gmi_request(tab, argv[1], 1) < 0) ;
 			gmi_request(tab, argv[1], 1);
 		}
 	} else gmi_gohome(tab, 1);
@@ -80,7 +78,7 @@ int main(int argc, char* argv[]) {
 	int ret = 0;
 	client.tabs[client.tab].scroll = -1;
 
-	while (1) {
+	while (!client.shutdown) {
 		display();
 		if (!((ret = tb_poll_event(&ev)) == TB_OK || ret == -14)) {
 			break;
