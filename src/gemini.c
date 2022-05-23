@@ -31,7 +31,7 @@
 #include "input.h"
 
 #define MAX_CACHE 10
-#define TIMEOUT 6
+#define TIMEOUT 3
 struct timespec timeout = {0, 10000000};
 
 struct tls_config* config;
@@ -907,7 +907,7 @@ void* dnsquery_thread(void* _signal) {
 		memset (&hints, 0, sizeof (hints));
 		hints.ai_family = PF_UNSPEC;
 		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_flags |= AI_CANONNAME;
+		hints.ai_flags |= AI_CANONNAME|SOCK_NONBLOCK;
 		if (getaddrinfo(dnsquery.host, NULL, &hints, &dnsquery.result)) {
 			dnsquery.resolved = -1;
 			continue;
@@ -918,10 +918,11 @@ void* dnsquery_thread(void* _signal) {
 }
 
 void signal_cb() {
-	pthread_t thread = pthread_self();
-	if (thread == dnsquery.tid)
-		pthread_mutex_destroy(&dnsquery.mutex);
+	//pthread_mutex_unlock(&dnsquery.mutex);
+	//pthread_mutex_destroy(&dnsquery.mutex);
+	pthread_exit(pthread_self());
 	pthread_exit(NULL);
+	exit(0);
 }
 
 int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
@@ -1000,7 +1001,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	dnsquery.resolved = 0;
 	pthread_cond_signal(&dnsquery.cond);
 	long start = time(NULL);
-	for (int i=0; i < TIMEOUT * 20 && !dnsquery.resolved; i++) {
+	for (int i=0; !dnsquery.resolved; i++) {
 		if (tab->request.state == STATE_CANCEL) break;
 		if (time(NULL) - start > TIMEOUT) break;
 		nanosleep(&timeout, NULL);
@@ -1008,7 +1009,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	
 	if (dnsquery.resolved != 1 || dnsquery.result == NULL) {
 		if (!dnsquery.resolved) {
-			pthread_cancel(dnsquery.tid);
+			//pthread_cancel(dnsquery.tid);
 			pthread_kill(dnsquery.tid, SIGUSR1);
 			pthread_join(dnsquery.tid, NULL);
 			pthread_create(&dnsquery.tid, NULL,
@@ -1016,6 +1017,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 		}
 		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown domain name: %s", tab->request.host);
+		tab->show_error = 1;
 		return -1;
 	}
 	struct addrinfo *result = dnsquery.result;
@@ -1076,6 +1078,7 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	while (!connected) {
 		errno = 0;
 		connected = !connect(tab->request.socket, tab->request.addr, addr_size);
+		if (errno == EISCONN) connected = 1;
 		if (connected) break;
 		if (errno != EAGAIN && errno != EWOULDBLOCK &&
 		    errno != EINPROGRESS && errno != EALREADY)
@@ -1086,8 +1089,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	}
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Connection to %s timed out",
-			 tab->request.host);
+			 "Connection to %s timed out %s",
+			 tab->request.host, strerror(errno));
 		return -1;
 	}
 

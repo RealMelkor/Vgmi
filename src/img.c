@@ -53,7 +53,7 @@ int average_pixel(uint8_t* data, int x, int y, int w, int h, float ratio, int c1
 }
 
 int img_display(uint8_t* data, int w, int h, int offsety) {
-	int c16 = !client.c256;
+	int c16 = 0;//!client.c256;
 
 	double w_ratio = (double)w/(tb_width());
 	double h_ratio = (double)h/((tb_height()-offsety-2)*2);

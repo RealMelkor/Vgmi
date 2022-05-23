@@ -2,6 +2,7 @@
 #include <string.h>
 #include <strings.h>
 #define TB_IMPL
+#define wcwidth(x) mk_wcwidth(x)
 #include <termbox.h>
 #include "input.h"
 #include "gemini.h"
