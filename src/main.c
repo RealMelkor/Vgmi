@@ -1,4 +1,7 @@
 /* See LICENSE file for copyright and license details. */
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 #include <signal.h>
 #include <termbox.h>
 #include "input.h"

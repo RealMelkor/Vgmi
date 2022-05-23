@@ -1,7 +1,11 @@
 /* See LICENSE file for copyright and license details. */
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 #include <string.h>
 #include <strings.h>
 #define TB_IMPL
+#include "wcwidth.h"
 #define wcwidth(x) mk_wcwidth(x)
 #include <termbox.h>
 #include "input.h"
