@@ -250,10 +250,6 @@ int mk_wcwidth(wchar_t ucs)
       (ucs >= 0x30000 && ucs <= 0x3fffd)));
 }
 
-int wcwidth(wchar_t ucs) {
-	return mk_wcwidth(ucs);
-}
-
 int mk_wcswidth(const wchar_t *pwcs, size_t n)
 {
   int w, width = 0;

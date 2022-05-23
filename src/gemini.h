@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <pthread.h>
 #include <poll.h>
+#include <netinet/in.h>
 #include "memcheck.h"
 
 #define GMI 9
