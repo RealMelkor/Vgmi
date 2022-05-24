@@ -1,7 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#ifdef __linux__
-#define _GNU_SOURCE
-#endif
 #include <string.h>
 #include <strings.h>
 #define TB_IMPL
