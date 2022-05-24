@@ -34,7 +34,10 @@ int main(int argc, char* argv[]) {
 		printf("Failed to get download folder\n");
 		return -1;
 	}
-	tb_init();
+	if (tb_init()) {
+		printf("Failed to initialize termbox\n");
+		return -1;
+	}
 	if (
 #ifndef HIDE_HOME
 		unveil(path, "r") ||
@@ -70,7 +73,10 @@ int main(int argc, char* argv[]) {
 	} else gmi_gohome(tab, 1);
 	
 #ifndef __OpenBSD__
-	tb_init();
+	if (tb_init()) {
+		printf("Failed to initialize termbox\n");
+		return -1;
+	}
 #endif
 	
 #ifdef TERMINAL_IMG_VIEWER
