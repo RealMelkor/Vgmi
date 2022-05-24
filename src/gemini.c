@@ -74,6 +74,7 @@ int xdg_open(char* str) {
 
 int getbookmark(char* path, size_t len) {
 	int length = getcachefolder(path, len);
+	if (length < 1) return -1;
 	const char bookmark[] = "/bookmarks.txt";
 	if (length + sizeof(bookmark) >= len) return -1;
 	return length + strlcpy(&path[length], bookmark, len - length);

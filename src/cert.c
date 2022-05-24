@@ -28,7 +28,7 @@ int gethomefolder(char* path, size_t len) {
 	struct passwd *pw = getpwuid(geteuid());
 	if (!pw) return 0;
 	size_t length = strlcpy(path, pw->pw_dir, len);
-       	if (length >= len) return -1;
+       	if (length >= len || length <= 0) return -1;
 	homepath_cached = 1;
 	strlcpy(homefolder, path, sizeof(homefolder));
 	return length;
@@ -44,6 +44,7 @@ int getdownloadfolder(char* path, size_t len) {
 		length = gethomefolder(downloadfolder, sizeof(downloadfolder));
 	else
 		length = strlcpy(downloadfolder, homefolder, sizeof(downloadfolder));
+	if (length <= 0) return -1;
 	length += strlcpy(&downloadfolder[length], 
 			  "/Downloads", sizeof(downloadfolder) - length);
         struct stat _stat;
@@ -224,6 +225,7 @@ void cert_add(char* host, const char* hash, time_t start, time_t end) {
 int cert_load() {
 	char path[1024];
 	int len = getcachefolder(path, sizeof(path));
+	if (len < 1) return -1;
 	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
 	FILE* f = fopen(path, "r");
 	if (!f) {
@@ -291,6 +293,7 @@ int cert_verify(char* host, const char* hash, time_t start, time_t end) {
 		return strcmp(found->hash, hash);
 	char path[1024];
 	int len = getcachefolder(path, sizeof(path));
+	if (len < 1) return -1;
 	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
 	FILE* f = fopen(path, "a");
 	if (!f)
