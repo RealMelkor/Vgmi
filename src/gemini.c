@@ -61,16 +61,12 @@ int xdg_open(char* str) {
 	if (client.xdg) {
 		char buf[1048];
 		snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", str);
-#ifdef __OpenBSD__
 		if (fork() == 0) {
 			setsid();
 			char* argv[] = {"/bin/sh", "-c", buf, NULL};
 			execvp(argv[0], argv);
 			exit(0);
 		}
-#else
-		return system(buf);
-#endif
 	}
 #endif
 	return 0;
@@ -1117,7 +1113,9 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
-	if (cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls))) {
+	if (cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
+			tls_peer_cert_notbefore(tab->request.tls),
+			tls_peer_cert_notafter(tab->request.tls))) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to verify server certificate for %s (Diffrent hash)",
 			 tab->request.host);

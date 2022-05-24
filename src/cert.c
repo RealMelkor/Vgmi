@@ -1,7 +1,6 @@
 /* See LICENSE file for copyright and license details. */
 #ifdef __linux__
 #define OPENSSL_API_COMPAT 0x10101000L
-#define _GNU_SOURCE
 #endif
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -193,11 +192,13 @@ struct cert {
 	struct cert* next;
 	char hash[256];
 	char host[1024];
+	time_t start;
+	time_t end;
 };
 struct cert* first_cert = NULL;
 struct cert* last_cert = NULL;
 
-void cert_add(char* host, const char* hash) {
+void cert_add(char* host, const char* hash, time_t start, time_t end) {
 	struct cert* cert_ptr = malloc(sizeof(struct cert));
 	if (!cert_ptr) {
 		fatal();
@@ -216,6 +217,8 @@ void cert_add(char* host, const char* hash) {
 	}
 	strlcpy(last_cert->hash, hash, sizeof(first_cert->hash));
 	strlcpy(last_cert->host, host, sizeof(first_cert->host));
+	last_cert->start = start;
+	last_cert->end = end;
 }
 
 int cert_load() {
@@ -239,6 +242,8 @@ int cert_load() {
 	char* ptr = data;
 	char* host = ptr;
 	char* hash = NULL;
+	char* start = NULL;
+	char* end = NULL;
 	while (ptr < data + length) {
 		if (*ptr == ' ' || *ptr == '\t' || (host?(*ptr == '\n'):0)) {
 			*ptr = '\0';
@@ -249,8 +254,18 @@ int cert_load() {
 				ptr++;
 				continue;
 			}
+			if (!start) {
+				start = ptr;
+				ptr++;
+				continue;
+			}
+			if (!end) {
+				end = ptr;
+				ptr++;
+				continue;
+			}
 
-			cert_add(host, hash);
+			cert_add(host, hash, atoi(start), atoi(end));
 			host = ptr;
 			hash = NULL;
 		} else if (*ptr == '\n') {
@@ -263,7 +278,7 @@ int cert_load() {
 	return 0;
 }
 
-int cert_verify(char* host, const char* hash) {
+int cert_verify(char* host, const char* hash, time_t start, time_t end) {
 	struct cert* found = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		if (!strcmp(host, cert->host)) {
@@ -271,7 +286,8 @@ int cert_verify(char* host, const char* hash) {
 			break;
 		}
 	}
-	if (found)
+	time_t now = time(NULL);
+	if (found && found->start < now && found->end > now)
 		return strcmp(found->hash, hash);
 	char path[1024];
 	int len = getcachefolder(path, sizeof(path));
@@ -279,9 +295,9 @@ int cert_verify(char* host, const char* hash) {
 	FILE* f = fopen(path, "a");
 	if (!f)
 		return -1;
-	fprintf(f, "%s %s\n", host, hash);
+	fprintf(f, "%s %s %ld %ld\n", host, hash, start, end);
 	fclose(f);
-	cert_add(host, hash);
+	cert_add(host, hash, start, end);
 	return 0;
 }
 

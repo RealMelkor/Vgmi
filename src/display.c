@@ -1,7 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#ifdef __linux__
-#define _GNU_SOURCE
-#endif
 #include <strings.h>
 #include <termbox.h>
 #include "gemini.h"
