@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 		}
 	} else gmi_gohome(tab, 1);
 	
-	if (tb_init()) {
+	if (tb_init() == TB_ERR_INIT_OPEN) {
 		printf("Failed to initialize termbox\n");
 		return -1;
 	}
