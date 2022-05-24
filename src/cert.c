@@ -193,13 +193,13 @@ struct cert {
 	struct cert* next;
 	char hash[256];
 	char host[1024];
-	time_t start;
-	time_t end;
+	unsigned long long start;
+	unsigned long long end;
 };
 struct cert* first_cert = NULL;
 struct cert* last_cert = NULL;
 
-void cert_add(char* host, const char* hash, time_t start, time_t end) {
+void cert_add(char* host, const char* hash, unsigned long long start, unsigned long long end) {
 	struct cert* cert_ptr = malloc(sizeof(struct cert));
 	if (!cert_ptr) {
 		fatal();
@@ -280,7 +280,7 @@ int cert_load() {
 	return 0;
 }
 
-int cert_verify(char* host, const char* hash, time_t start, time_t end) {
+int cert_verify(char* host, const char* hash, unsigned long long start, unsigned long long end) {
 	struct cert* found = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		if (!strcmp(host, cert->host)) {
@@ -288,7 +288,7 @@ int cert_verify(char* host, const char* hash, time_t start, time_t end) {
 			break;
 		}
 	}
-	time_t now = time(NULL);
+	unsigned long long now = time(NULL);
 	if (found && found->start < now && found->end > now)
 		return strcmp(found->hash, hash);
 	char path[1024];
@@ -298,7 +298,7 @@ int cert_verify(char* host, const char* hash, time_t start, time_t end) {
 	FILE* f = fopen(path, "a");
 	if (!f)
 		return -1;
-	fprintf(f, "%s %s %ld %ld\n", host, hash, start, end);
+	fprintf(f, "%s %s %lld %lld\n", host, hash, start, end);
 	fclose(f);
 	cert_add(host, hash, start, end);
 	return 0;
