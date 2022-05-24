@@ -56,8 +56,8 @@ void* fatalP() {
 	return NULL;
 }
 
-int xdg_open(char* str) {
 #ifndef DISABLE_XDG
+int xdg_open(char* str) {
 	if (client.xdg) {
 		char buf[1048];
 		snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", str);
@@ -68,9 +68,9 @@ int xdg_open(char* str) {
 			exit(0);
 		}
 	}
-#endif
 	return 0;
 }
+#endif
 
 int getbookmark(char* path, size_t len) {
 	int length = getcachefolder(path, len);
@@ -164,7 +164,9 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 	} else if (strstr(link, "https://") == link ||
 		   strstr(link, "http://") == link ||
 		   strstr(link, "gopher://") == link) {
+#ifndef DISABLE_XDG
 		if (client.xdg && !xdg_open(link)) return -1;
+#endif
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Can't open web link");
@@ -1533,12 +1535,14 @@ void* gmi_request_thread(void* ptr) {
 						if (tab->request.ask)
 							fail = xdg_open(path);
 					}
-#endif
 					if (fail) {
 						tab->show_error = 1;
 						snprintf(tab->error, sizeof(tab->info),
 							"Failed to open %s", path);
 					} else {
+#else
+					{
+#endif
 						tab->show_info = 1;
 						snprintf(tab->info, sizeof(tab->info),
 							"File downloaded to %s", path);
