@@ -1117,7 +1117,7 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 			tls_peer_cert_notbefore(tab->request.tls),
 			tls_peer_cert_notafter(tab->request.tls))) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to verify server certificate for %s (Diffrent hash)",
+			 "Failed to verify server certificate for %s (The certificate changed)",
 			 tab->request.host);
 		return -1;
 	}
