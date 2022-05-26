@@ -20,5 +20,9 @@ int makefd_writeseek(int fd);
 
 #endif
 #else
-#define make_readonly(x) ;
+#define make_readonly(x)
+#define makefd_readonly(x)
+#define make_writeonly(x)
+#define makefd_writeonly(x)
+#define makefd_writeseek(x)
 #endif

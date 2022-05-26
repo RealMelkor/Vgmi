@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <stdlib.h>
 #ifdef __linux__
 #define OPENSSL_API_COMPAT 0x10101000L
 #endif
@@ -289,6 +290,67 @@ int cert_load() {
 	return 0;
 }
 
+int cert_getcert(char* host) {
+
+	int index = 0;
+	while (client.certs && index < client.certs_size) {
+		if (!strcmp(client.certs[index].host, host)) return index;
+		index++;
+	}
+
+        char crt[1024];
+        char key[1024];
+        if (cert_getpath(host, crt, sizeof(crt), key, sizeof(key)) == -1) {
+		return -1;
+        }
+        size_t crt_pos = 0;
+        size_t key_pos = 0;
+	int crt_fd = openat(config_folder, crt, 0);
+	if (crt_fd < 0) {
+		return -2;
+	}
+	int key_fd = openat(config_folder, key, 0);
+	if (key_fd < 0) {
+		close(key_fd);
+		return -2;
+	}
+	FILE* crt_f = fdopen(crt_fd, "rb");
+	FILE* key_f = fdopen(key_fd, "rb");
+	if (!crt_f || !key_f) {
+		close(crt_fd);
+		close(key_fd);
+		return -3;
+	}
+	fseek(crt_f, 0, SEEK_END);
+	crt_pos = ftell(crt_f);
+	fseek(key_f, 0, SEEK_END);
+	key_pos = ftell(key_f);
+
+	client.certs = realloc(client.certs, sizeof(*client.certs) * (index + 1));
+	if (!client.certs) return fatalI();
+	bzero(&client.certs[index], sizeof(*client.certs));
+	client.certs[index].crt = malloc(crt_pos);
+	if (!client.certs[index].crt) return fatalI();
+	client.certs[index].key = malloc(key_pos);
+	if (!client.certs[index].key) return fatalI();
+
+	fseek(crt_f, 0, SEEK_SET);
+	fseek(key_f, 0, SEEK_SET);
+	if (fread(client.certs[index].crt, 1, crt_pos, crt_f) != crt_pos ||
+	    fread(client.certs[index].key, 1, key_pos, key_f) != key_pos) {
+		fclose(crt_f);
+		fclose(key_f);
+		return -3;
+	}
+
+	fclose(crt_f);
+	fclose(key_f);
+	client.certs[index].crt_len = crt_pos;
+	client.certs[index].key_len = key_pos;
+	client.certs_size++;
+	return index;
+}
+
 int cert_verify(char* host, const char* hash, unsigned long long start, unsigned long long end) {
 	struct cert* found = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
@@ -330,4 +392,9 @@ void cert_free() {
 		free(cert);
 		cert = next_cert;
 	}
+	for (int i = 0; i < client.certs_size; i++) {
+		free(client.certs[i].crt);
+		free(client.certs[i].key);
+	}
+	free(client.certs);
 }

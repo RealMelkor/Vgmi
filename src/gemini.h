@@ -116,6 +116,14 @@ struct gmi_client {
 		char counter[6];
 		int g;
 	} vim;
+	struct cert_cache {
+		char host[1024];
+		char* crt;
+		size_t crt_len;
+		char* key;
+		size_t key_len;
+	} *certs;
+	int certs_size;
 	char** bookmarks;
 	int tab;
 #ifndef DISABLE_XDG
