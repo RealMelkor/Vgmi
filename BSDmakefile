@@ -4,7 +4,7 @@ SHELL = /bin/sh
 PREFIX = /usr/local
 CC = cc
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -I/usr/local/include
-LDFLAGS = -L/usr/local/lib -ltls -lcrypto -lpthread -lm
+LDFLAGS = -lcasper -lcap_net -L/usr/local/lib -ltls -lcrypto -lpthread -lm 
 FLAGS = -DTERMINAL_IMG_VIEWER
 SRC = ${:!ls src/*.c!}
 OBJ = ${SRC:.c=.o}
