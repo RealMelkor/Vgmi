@@ -701,7 +701,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 }
 
 int gmi_savebookmarks() {
-	int fd = openat(config_folder, "bookmarks.txt", O_CREAT|O_WRONLY, 0600);
+	int fd = openat(config_folder, "bookmarks.txt", O_CREAT|O_WRONLY|O_TRUNC, 0600);
 	if (fd < 0)
 		return -1;
 	FILE* f = fdopen(fd, "wb");
@@ -736,29 +736,34 @@ char* gmi_getbookmarks(int* len) {
 }
 
 void gmi_gohome(struct gmi_tab* tab, int add) {
-	bzero(&tab->page, sizeof(struct gmi_page));
 	tab->scroll = -1;
 	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
-	tab->page.code = 20;
 	int bm;
 	char* data = gmi_getbookmarks(&bm);
-	tab->page.data = malloc(sizeof(home_page) + bm);
-	if (!tab->page.data) {
+	tab->request.data = malloc(sizeof(home_page) + bm);
+	if (!tab->request.data) {
 		fatal();
 		return;
 	}
 
-	tab->page.data_len = 
-	snprintf(tab->page.data, sizeof(home_page) + bm, home_page, 
+	tab->request.recv = 
+	snprintf(tab->request.data, sizeof(home_page) + bm, home_page, 
 		 data?data:"") + 1;
 	free(data);
 
-	strlcpy(tab->page.meta, "text/gemini",
-		sizeof(tab->page.meta));
+	strlcpy(tab->request.meta, "text/gemini",
+		sizeof(tab->request.meta));
 
+	if (!add) gmi_freepage(&tab->page);
+	tab->page.data = tab->request.data;
+	tab->page.data_len = tab->request.recv;
+	tab->page.code = 20;
+	strlcpy(tab->page.meta, tab->request.meta, sizeof(tab->page.meta));
 	gmi_load(&tab->page);
 	if (add)
 		gmi_addtohistory(tab);
+	else if (tab->history)
+		tab->history->page = tab->page;
 }
 
 struct gmi_tab* gmi_newtab() {

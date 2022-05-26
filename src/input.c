@@ -183,8 +183,7 @@ int input(struct tb_event ev) {
 		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
 			gmi_removebookmark(tab->selected);
 			tab->selected = 0;
-			gmi_freetab(tab);
-			gmi_gohome(tab, 1);
+			gmi_request(tab, tab->url, 0);
 		}
 		return 0;
 	}
