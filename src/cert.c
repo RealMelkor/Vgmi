@@ -19,6 +19,8 @@
 #include <bsd/string.h>
 #endif
 #include "gemini.h"
+#include "sandbox.h"
+int config_folder = -1;
 
 char homefolder[1024];
 int homepath_cached = 0;
@@ -55,11 +57,11 @@ int getdownloadfolder(char* path, size_t len) {
 	return length;
 }
 
-char cachefolder[1024];
-int cachepath_cached = 0;
-int getcachefolder(char* path, size_t len) {
-	if (cachepath_cached)
-		return strlcpy(path, cachefolder, len);
+char configfolder[1024];
+int configpath_cached = 0;
+int getconfigfolder(char* path, size_t len) {
+	if (configpath_cached)
+		return strlcpy(path, configfolder, len);
 	int ret = gethomefolder(path, len);
 	if (ret == -1) return -1;
 	size_t length = ret;
@@ -68,33 +70,18 @@ int getcachefolder(char* path, size_t len) {
         if (length >= len) return -1;
         struct stat _stat;
         if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
-	cachepath_cached = 1;
-	strlcpy(cachefolder, path, sizeof(cachefolder));
+	configpath_cached = 1;
+	strlcpy(configfolder, path, sizeof(configfolder));
+	config_folder = open(path, 0);
+	if (config_folder < 0) return -1;
         return length;
 }
 
 int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_len) {
-	char path[1024];
-        int ret = getcachefolder(path, sizeof(path));
-	if (ret < 1) {
-		snprintf(client.tabs[client.tab].error, 
-			 sizeof(client.tabs[client.tab].error),
-			 "Failed to get cache directory");
-		return -1;
-	}
-	size_t len = ret;
-	if (len+1 >= sizeof(path))
+	int len = strnlen(host, 1024);
+	if (strlcpy(crt, host, crt_len) >= crt_len - 4)
 		goto getpath_overflow;
-	path[len] = '/';
-	path[++len] = '\0';
-        len += strlcpy(&path[len], host, sizeof(path) - len);
-	if (len >= sizeof(path))
-		goto getpath_overflow;
-	if (strlcpy(crt, path, crt_len) >= crt_len)
-		goto getpath_overflow;
-	if (strlcpy(key, path, key_len) >= key_len)
-		goto getpath_overflow;
-	if (crt_len - len < 4 || key_len - len < 4)
+	if (strlcpy(key, host, key_len) >= key_len - 4)
 		goto getpath_overflow;
         if (strlcpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
 		goto getpath_overflow;
@@ -104,12 +91,13 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 getpath_overflow:
 	snprintf(client.tabs[client.tab].error,
 		 sizeof(client.tabs[client.tab].error),
-		 "The cache folder path is too long %s", path);
+		 "The hostname is too long %s", host);
 	return -1;
 }
 
-int cert_create(char* host) {
-	FILE *f = NULL;
+int cert_create(char* host, char* error, int errlen) {
+	FILE* f = NULL;
+	int fd = -1;
 	int ret = 1;
 	EVP_PKEY* pkey;
 	pkey = EVP_PKEY_new();
@@ -147,34 +135,54 @@ int cert_create(char* host) {
 	if (cert_getpath(host, crt, sizeof(crt), key, sizeof(key)) == -1)
 		goto skip_error;
 
-	f = fopen(key, "wb");
+	// Key
+	fd = openat(config_folder, key, O_CREAT|O_WRONLY, 0600);
+	if (fd < 0) {
+		snprintf(error, errlen, "Failed to open %s : %s", key, strerror(errno));
+		goto skip_error;
+	}
+	f = fdopen(fd, "wb");
+#ifdef __FreeBSD__
+	if (makefd_writeonly(fd)) {
+		snprintf(error, errlen, "Failed to limit %s", key);
+		goto skip_error;
+	}
+#endif
 	if (!f) {
-		snprintf(client.tabs[client.tab].error,
-			 sizeof(client.tabs[client.tab].error),
-			 "Failed to write to %s", key);
+		snprintf(error, errlen, "Failed to write to %s : %s",
+			 key, strerror(errno));
 		goto skip_error;
 	}
 	if (PEM_write_PrivateKey(f, pkey, NULL, NULL, 0, NULL, NULL) != 1)
 		goto failed;
 	fclose(f);
 
-	f = fopen(crt, "wb");
+	// Certificate
+	fd = openat(config_folder, crt, O_CREAT|O_WRONLY, 0600);
+	if (fd < 0) {
+		snprintf(error, errlen, "Failed to open %s", crt);
+		goto skip_error;
+	}
+	f = fdopen(fd, "wb");
+#ifdef __FreeBSD__
+	if (makefd_writeonly(fd)) {
+		snprintf(error, errlen, "Failed to limit %s", crt);
+		goto skip_error;
+	}
+#endif
 	if (!f) {
-		snprintf(client.tabs[client.tab].error,
-			 sizeof(client.tabs[client.tab].error),
-			 "Failed to write to %s", crt);
+		snprintf(error, errlen, "Failed to write to %s", crt);
 		goto skip_error;
 	}
 	if (PEM_write_X509(f, x509) != 1)
 		goto failed;
 	fclose(f);
+
 	f = NULL;
 	ret = 0;
 	goto skip_error;
 failed:
-	snprintf(client.tabs[client.tab].error,
-		 sizeof(client.tabs[client.tab].error),
-		 "Failed to generate certificate");
+	snprintf(error, errlen, "Failed to generate certificate");
 skip_error:
 	if (f) fclose(f);
 	BN_free(bne);
@@ -224,7 +232,7 @@ void cert_add(char* host, const char* hash, unsigned long long start, unsigned l
 
 int cert_load() {
 	char path[1024];
-	int len = getcachefolder(path, sizeof(path));
+	int len = getconfigfolder(path, sizeof(path));
 	if (len < 1) return -1;
 	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
 	FILE* f = fopen(path, "r");
@@ -292,14 +300,23 @@ int cert_verify(char* host, const char* hash, unsigned long long start, unsigned
 	if (found && found->start < now && found->end > now)
 		return strcmp(found->hash, hash);
 	char path[1024];
-	int len = getcachefolder(path, sizeof(path));
+	int len = getconfigfolder(path, sizeof(path));
 	if (len < 1) return -1;
 	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
-	FILE* f = fopen(path, "a");
-	if (!f)
-		return -1;
-	fprintf(f, "%s %s %lld %lld\n", host, hash, start, end);
-	fclose(f);
+
+	int fd = openat(config_folder, "known_hosts", O_CREAT|O_APPEND|O_WRONLY, 0600);
+	if (fd == -1)
+		return -2;
+	if (!fdopen(fd, "a")) return -3;
+#ifdef __FreeBSD__
+        if (makefd_writeonly(fd))
+                return -3;
+#endif
+	char buf[2048];
+	len = sprintf(buf, "%s %s %lld %lld\n", host, hash, start, end);
+	if (write(fd, buf, len) != len) return -4;
+
+	close(fd);
 	cert_add(host, hash, start, end);
 	return 0;
 }

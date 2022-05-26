@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <strings.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <string.h>
 #include <netdb.h>
 #include <tls.h>
@@ -22,13 +23,11 @@
 #ifdef __linux__
 #include <bsd/string.h>
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-#include <sys/socket.h>
-#endif
 #include "cert.h"
 #include "wcwidth.h"
 #include "display.h"
 #include "input.h"
+#include "sandbox.h"
 
 #define MAX_CACHE 10
 #define TIMEOUT 3
@@ -71,14 +70,6 @@ int xdg_open(char* str) {
 	return 0;
 }
 #endif
-
-int getbookmark(char* path, size_t len) {
-	int length = getcachefolder(path, len);
-	if (length < 1) return -1;
-	const char bookmark[] = "/bookmarks.txt";
-	if (length + sizeof(bookmark) >= len) return -1;
-	return length + strlcpy(&path[length], bookmark, len - length);
-}
 
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 	int j = 0;
@@ -601,11 +592,18 @@ fail_malloc:
 }
 
 int gmi_loadbookmarks() {
-	char path[1024];
-	if (getbookmark(path, sizeof(path)) < 1) return -1;
-	FILE* f = fopen(path, "rb");
+	int fd = openat(config_folder, "bookmarks.txt", O_RDONLY);
+	if (fd < 0)
+		return -1;
+	FILE* f = fdopen(fd, "rb");
 	if (!f)
 		return -1;
+#ifdef __FreeBSD__
+	if (makefd_readonly(fd)) {
+		fclose(f);
+		return -1;
+	}
+#endif
 	fseek(f, 0, SEEK_END);
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
@@ -703,12 +701,18 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 }
 
 int gmi_savebookmarks() {
-	char path[1024];
-	if (getbookmark(path, sizeof(path)) < 1) return -1;
-	FILE* f = fopen(path, "wb");
-	if (!f) {
+	int fd = openat(config_folder, "bookmarks.txt", O_CREAT|O_WRONLY, 0600);
+	if (fd < 0)
+		return -1;
+	FILE* f = fdopen(fd, "wb");
+	if (!f)
+		return -1;
+#ifdef __FreeBSD__
+	if (makefd_writeonly(fd)) {
+		fclose(f);
 		return -1;
 	}
+#endif
 	for (int i = 0; client.bookmarks[i]; i++)
 		fprintf(f, "%s\n", client.bookmarks[i]);
 	fclose(f);
@@ -996,13 +1000,15 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	struct addrinfo *result = tab->request.gaicb_ptr->ar_result;
 #else
 	struct addrinfo hints, *result;
-        memset (&hints, 0, sizeof (hints));
-        hints.ai_family = PF_UNSPEC;
+        bzero(&hints, sizeof(hints));
+        hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags |= AI_CANONNAME;
-        if (getaddrinfo(tab->request.host, NULL, &hints, &result)) {
+	errno = 0;
+	int ret;
+        if ((ret = getaddrinfo(tab->request.host, NULL, &hints, &result))) {
                 snprintf(tab->error, sizeof(tab->error),
-			 "Unknown domain name: %s", tab->request.host);
+			 "Unknown domain name: %s %s!!!", tab->request.host, gai_strerror(ret));
 		tab->show_error = 1;
 		return -1;
         }
@@ -1078,8 +1084,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	}
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Connection to %s timed out",
-			 tab->request.host);
+			 "Connection to %s timed out : %s",
+			 tab->request.host, strerror(errno));
 		return -1;
 	}
 
@@ -1116,12 +1122,14 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
-	if (cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
-			tls_peer_cert_notbefore(tab->request.tls),
-			tls_peer_cert_notafter(tab->request.tls))) {
+	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
+			      tls_peer_cert_notbefore(tab->request.tls),
+			      tls_peer_cert_notafter(tab->request.tls));
+	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to verify server certificate for %s (The certificate changed)",
-			 tab->request.host);
+			 ret==-1?"Failed to verify server certificate for %s (The certificate changed) %s":
+			 	 "Failed to write %s certificate information : %s",
+			 tab->request.host, ret==-1?"":strerror(errno));
 		return -1;
 	}
 
@@ -1513,6 +1521,12 @@ void* gmi_request_thread(void* ptr) {
 					 "Failed to write the downloaded file");
 				tab->show_error = 1;
 			} else {
+#ifdef __FreeBSD__
+				if (make_writeonly(f)) {
+					client.shutdown = 1;
+					break;
+				}
+#endif
 				char* ptr = strchr(tab->request.data, '\n')+1;
 				if (ptr) {
 					fwrite(ptr, 1, 
@@ -1582,6 +1596,13 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		tab->show_error = 1;
 		return -1;
 	}
+#ifdef __FreeBSD__
+	if (make_readonly(f)) {
+		fclose(f);
+		client.shutdown = 1;
+		return -1;
+	}
+#endif
 	fseek(f, 0, SEEK_END);
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
@@ -1642,6 +1663,8 @@ int gmi_init() {
 	if (!system("which xdg-open > /dev/null 2>&1"))
 		client.xdg = 1;
 #endif
+	char path[1024];
+	getconfigfolder(path, sizeof(path));
 
 	if (gmi_loadbookmarks()) {
 		gmi_newbookmarks();

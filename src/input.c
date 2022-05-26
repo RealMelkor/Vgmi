@@ -1,4 +1,3 @@
-/* See LICENSE file for copyright and license details. */
 #include <string.h>
 #include <strings.h>
 #define TB_IMPL
@@ -6,7 +5,6 @@
 #undef wcwidth
 #define wcwidth(x) mk_wcwidth(x)
 #include <termbox.h>
-#include "input.h"
 #include "gemini.h"
 #include "display.h"
 #include "cert.h"
@@ -114,8 +112,10 @@ int command() {
 	}
 	if (strcmp(client.input.field, ":gencert") == 0) {
 		char host[256];
-		gmi_parseurl(client.tabs[client.tab].url, host, sizeof(host), NULL, 0, NULL);
-		cert_create(host);
+		gmi_parseurl(tab->url, host, sizeof(host), NULL, 0, NULL);
+		if (cert_create(host, tab->error, sizeof(tab->error))) {
+			tab->show_error = 1;
+		}
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;

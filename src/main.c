@@ -8,11 +8,13 @@
 #include "gemini.h"
 #include "display.h"
 #include "cert.h"
+#include "sandbox.h"
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
 
 int main(int argc, char* argv[]) {
+
 #ifdef MEM_CHECK
 	__init();
 #endif
@@ -59,7 +61,23 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 #endif
+
+	int ttyfd = open("/dev/tty", O_RDWR);
+	if (ttyfd < 0) {
+		printf("Failed to open tty\n");
+		return -1;
+	}
+
+#ifdef __FreeBSD__
+	if (casper_init()) {
+		printf("Failed to enter capacity mode\n");
+		return -1;
+	}
+#endif
+
 	if (gmi_init()) return 0;
+	tb_init_fd(ttyfd);
+
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
 		if (gmi_loadfile(tab, argv[1]) <= 0) {
@@ -68,14 +86,10 @@ int main(int argc, char* argv[]) {
 		}
 	} else gmi_gohome(tab, 1);
 	
-	if (tb_init() == TB_ERR_INIT_OPEN) {
-		printf("Failed to initialize termbox\n");
-		return -1;
-	}
-	
 #ifdef TERMINAL_IMG_VIEWER
 	if (tb_set_output_mode(TB_OUTPUT_256)) {
 		gmi_free();
+		close(ttyfd);
 		printf("Terminal doesn't support 256 colors mode\n");
 		return -1;
 	}
@@ -95,6 +109,7 @@ int main(int argc, char* argv[]) {
 		if (input(ev)) break;
 	}
 	tb_shutdown();
+	close(ttyfd);
 	gmi_free();
 #ifdef MEM_CHECK
 	__check();
