@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 	}
 #endif
 	char certpath[1024];
-	if (getcachefolder(certpath, sizeof(certpath)) < 1) {
+	if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
 		printf("Failed to get cache folder\n");
 		return -1;
 	}
