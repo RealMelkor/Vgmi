@@ -14,6 +14,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #ifdef __linux__
 #include <sys/random.h>
 #include <bsd/string.h>

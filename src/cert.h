@@ -14,5 +14,6 @@ int getconfigfolder(char* path, size_t len);
 int getdownloadfolder(char* path, size_t len);
 void cert_free();
 int cert_load();
+extern int config_folder;
 
 #endif
