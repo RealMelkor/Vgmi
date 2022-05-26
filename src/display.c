@@ -9,6 +9,29 @@ void tb_colorline(int x, int y, uintattr_t color) {
                 tb_set_cell(i, y, ' ', color, color);
 }
 
+void hide_query(char* url, char* urlbuf) {
+	int hide = 0;
+        int posx = 0;
+        for (int i=0; url[i] && i < 1024; i++) {
+                if (hide && (url[i] == '/')) {
+                        hide = 0;
+                }
+                if (!hide) {
+                        urlbuf[posx] = url[i];
+                        posx++;
+                }
+                if (!hide && url[i] == '?') {
+                        hide = 1;
+                        urlbuf[posx] = '<';
+                        urlbuf[posx+1] = '*';
+                        urlbuf[posx+2] = '>';
+                        posx+=3;
+                }
+        }
+        urlbuf[posx] = '\0';
+
+}
+
 void display() {
         struct gmi_tab* tab = &client.tabs[client.tab];
         struct gmi_page* page = &tab->page;
@@ -44,27 +67,9 @@ void display() {
 
         // current url
         tb_colorline(0, tb_height()-2, TB_WHITE);
-        char urlbuf[MAX_URL];
-        int hide = 0;
-        int posx = 0;
-        for (int i=0; tab->url[i]; i++) {
-                if (hide && (tab->url[i] == '/')) {
-                        hide = 0;
-                }
-                if (!hide) {
-                        urlbuf[posx] = tab->url[i];
-                        posx++;
-                }
-                if (!hide && tab->url[i] == '?') {
-                        hide = 1;
-                        urlbuf[posx] = '<';
-                        urlbuf[posx+1] = '*';
-                        urlbuf[posx+2] = '>';
-                        posx+=3;
-                }
-        }
-        urlbuf[posx] = '\0';
-        tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s (%s)", urlbuf, tab->page.meta);
+	char urlbuf[MAX_URL];
+	hide_query(tab->url, urlbuf);
+	tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s (%s)", urlbuf, tab->page.meta);
 
         // Show selected link url
         if (tab->selected != 0) {
@@ -72,9 +77,10 @@ void display() {
                 tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE,
 			  " => %s ", tab->selected_url);
         } else if (tab->request.state != STATE_DONE) {
+		hide_query(tab->request.url, urlbuf);
                 int llen = strnlen(tab->request.url, sizeof(tab->request.url));
                 tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, TB_WHITE,
-			  " [%s] ", tab->request.url);
+			  " [%s] ", urlbuf);
 	} 
 
         int count = atoi(client.vim.counter);
