@@ -316,6 +316,10 @@ int cert_getcert(char* host) {
 	}
 	FILE* crt_f = fdopen(crt_fd, "rb");
 	FILE* key_f = fdopen(key_fd, "rb");
+#ifdef __FreeBSD__
+	makefd_readonly(crt_fd);
+	makefd_readonly(key_fd);
+#endif
 	if (!crt_f || !key_f) {
 		close(crt_fd);
 		close(key_fd);
