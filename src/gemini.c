@@ -30,7 +30,7 @@
 #include "sandbox.h"
 
 #define MAX_CACHE 10
-#define TIMEOUT 3
+#define TIMEOUT 8
 struct timespec timeout = {0, 10000000};
 
 struct tls_config* config;
@@ -927,23 +927,14 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 		return -1;
 	}
 
-	int cert = 0;
-	char crt[1024];
-	char key[1024];
-	if (cert_getpath(tab->request.host, crt, sizeof(crt), key, sizeof(key)) == -1) {
-		tab->show_error = 1;
-		cert = -1;
-	}
-
-	if (cert == 0) {
-		FILE* f = fopen(crt, "rb");
-		if (f) {
-			cert = 1;
-			fclose(f);
-		}
-	}
-
-	if (cert == 1 && tls_config_set_keypair_file(config, crt, key)) {
+	int cert = cert_getcert(tab->request.host);
+	if (cert >= 0 && 
+	    tls_config_set_keypair_mem(config,
+		    		       (unsigned char*)client.certs[cert].crt,
+				       client.certs[cert].crt_len,
+				       (unsigned char*)client.certs[cert].key,
+				       client.certs[cert].key_len))
+	{
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error), "%s", 
 			 tls_config_error(config));
@@ -964,7 +955,6 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 void dns_async(union sigval sv) {
 	struct gmi_tab* tab = sv.sival_ptr;
 	tab->request.resolved = 1;
-	
 }
 #endif
 
