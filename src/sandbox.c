@@ -26,8 +26,39 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
         return cap_getaddrinfo(_capnet, hostname, servname, hints, res);
 }
 
+int xdg_pipe[2];
+int xdg_open(char*);
+
+#include <string.h>
+int xdg_request(char* str) {
+	int len = strnlen(str, 1024);
+	return write(xdg_pipe[0], str, len) != len;
+}
+
+void xdg_listener() {
+	char buf[4096];
+	while (1) {
+		int len = read(xdg_pipe[1], buf, sizeof(buf));
+		if (len <= 0)
+			break;
+		xdg_open(buf);
+	}
+}
+
 extern int config_folder;
 int sandbox_init() {
+#ifndef XDG_DISABLE
+	if (pipe(xdg_pipe)) {
+                printf("pipe failed\n");
+                return -1;
+	}
+	if (fork() == 0) {
+		close(xdg_pipe[0]);
+		xdg_listener();
+		exit(0);
+	}
+	close(xdg_pipe[1]);
+#endif
 	char path[1024];
 	getconfigfolder(path, sizeof(path));
 
@@ -70,6 +101,12 @@ int sandbox_init() {
 	return 0;
 }
 
+int sandbox_close() {
+	close(xdg_pipe[0]);
+	close(xdg_pipe[1]);
+	return 0;
+}
+
 int makefd_readonly(int fd) {
 	cap_rights_t rights;
         cap_rights_init(&rights, CAP_SEEK, CAP_READ);
@@ -107,52 +144,60 @@ int make_writeonly(FILE* f) {
 #include <unistd.h>
 #include "cert.h"
 
-	int sandbox_init() {
+int sandbox_init() {
 #ifndef HIDE_HOME
-		char path[1024];
-		if (gethomefolder(path, sizeof(path)) < 1) {
-			printf("Failed to get home folder\n");
-			return -1;
-		}
-#endif
-		char certpath[1024];
-		if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
-			printf("Failed to get cache folder\n");
-			return -1;
-		}
-		char downloadpath[1024];
-		if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
-			printf("Failed to get download folder\n");
-			return -1;
-		}
-		if (
-#ifndef HIDE_HOME
-			unveil(path, "r") ||
-#endif
-			unveil(certpath, "rwc") || 
-			unveil(downloadpath, "rwc") || 
-#ifndef DISABLE_XDG
-			unveil("/bin/sh", "x") ||
-			unveil("/usr/bin/which", "x") ||
-			unveil("/usr/local/bin/xdg-open", "x") ||
-#endif
-			unveil("/etc/resolv.conf", "r") ||
-			unveil(NULL, NULL)) {
-			printf("Failed to unveil\n");
-			return -1;
-		}
-#ifndef DISABLE_XDG
-		if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
-#else
-		if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
-#endif
-			printf("Failed to pledge\n");
-			return -1;
-		}
-		return 0;
+	char path[1024];
+	if (gethomefolder(path, sizeof(path)) < 1) {
+		printf("Failed to get home folder\n");
+		return -1;
 	}
+#endif
+	char certpath[1024];
+	if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
+		printf("Failed to get cache folder\n");
+		return -1;
+	}
+	char downloadpath[1024];
+	if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
+		printf("Failed to get download folder\n");
+		return -1;
+	}
+	if (
+#ifndef HIDE_HOME
+		unveil(path, "r") ||
+#endif
+		unveil(certpath, "rwc") || 
+		unveil(downloadpath, "rwc") || 
+#ifndef DISABLE_XDG
+		unveil("/bin/sh", "x") ||
+		unveil("/usr/bin/which", "x") ||
+		unveil("/usr/local/bin/xdg-open", "x") ||
+#endif
+		unveil("/etc/resolv.conf", "r") ||
+		unveil(NULL, NULL)) {
+		printf("Failed to unveil\n");
+		return -1;
+	}
+#ifndef DISABLE_XDG
+	if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
+#else
+	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
+#endif
+		printf("Failed to pledge\n");
+		return -1;
+	}
+	return 0;
+}
+
+int sandbox_close() {
+	return 0;
+}
 #else
 int sandbox_init() {
+	return 0;
+}
+
+int sandbox_close() {
 	return 0;
 }
 #endif

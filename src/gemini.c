@@ -58,7 +58,7 @@ void* fatalP() {
 #ifndef DISABLE_XDG
 int xdg_open(char* str) {
 	if (client.xdg) {
-		char buf[1048];
+		char buf[4096];
 		snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", str);
 		if (fork() == 0) {
 			setsid();
