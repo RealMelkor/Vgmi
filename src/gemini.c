@@ -1356,7 +1356,6 @@ void* gmi_request_thread(void* ptr) {
 	struct gmi_tab* tab = ptr;
 	unsigned int signal = 0;
 	while (!client.shutdown) {
-		bzero(&tab->request, sizeof(tab->request));
 		tab->selected = 0;
 		tab->scroll = -1;
 		tab->request.state = STATE_DONE;
@@ -1366,6 +1365,7 @@ void* gmi_request_thread(void* ptr) {
 			tb_interupt();
 		if (recv(tab->thread.pair[0], &signal, 4, 0) != 4 ||
 		    client.shutdown || signal == 0xFFFFFFFF) break;
+		bzero(&tab->request, sizeof(tab->request));
 		tab->request.state = STATE_STARTED;
 		int ret = gmi_request_init(tab, tab->thread.url, tab->thread.add);
 		if (tab->request.state == STATE_CANCEL || ret || gmi_request_dns(tab)) {
@@ -1410,6 +1410,7 @@ void* gmi_request_thread(void* ptr) {
 		}
 		if (ret == -1 || ret == -2) {
 			free(tab->request.data);
+			tab->request.data = NULL;
 			if (tab->history) {
 				strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 			} else {
@@ -1429,6 +1430,7 @@ void* gmi_request_thread(void* ptr) {
 		}
 		if (tab->request.recv > 0 && (tab->page.code == 11 || tab->page.code == 10)) {
 			free(tab->request.data);
+			tab->request.data = NULL;
 			strlcpy(tab->url, tab->request.url, sizeof(tab->url));
 			continue;
 		}
