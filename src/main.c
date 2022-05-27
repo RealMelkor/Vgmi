@@ -80,6 +80,7 @@ int main(int argc, char* argv[]) {
 	close(ttyfd);
 #endif
 	gmi_free();
+	sandbox_close();
 #ifdef MEM_CHECK
 	__check();
 #endif

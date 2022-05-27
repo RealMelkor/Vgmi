@@ -2,8 +2,12 @@
 #ifndef _CAPSICUM_H_
 #define _CAPSICUM_H_
 int sandbox_init();
+int sandbox_close();
 #ifdef __FreeBSD__
 
+#ifndef XDG_DISABLE
+#define xdg_open(x) xdg_request(x)
+#endif
 extern int config_folder;
 #include <netdb.h>
 #include <fcntl.h>
