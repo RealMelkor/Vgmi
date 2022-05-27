@@ -120,6 +120,7 @@ void display() {
 }
 
 void display_history() {
+	char urlbuf[1024];
         int ret = 0;
         struct tb_event ev;
         bzero(&ev, sizeof(ev));
@@ -135,15 +136,18 @@ void display_history() {
                 }
                 int y = 3;
                 for (struct gmi_link* link = tab->history->next; link; link = link->next) {
-                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", link->url);
+			hide_query(link->url, urlbuf);
+                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", urlbuf);
                         y++;
                 }
 
-                tb_printf(4, y, TB_DEFAULT, TB_BLUE, "-> %s", tab->history->url);
+		hide_query(tab->history->url, urlbuf);
+                tb_printf(4, y, TB_DEFAULT, TB_BLUE, "-> %s", urlbuf);
                 y++;
 
                 for (struct gmi_link* link = tab->history->prev; link; link = link->prev) {
-                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", link->url);
+			hide_query(link->url, urlbuf);
+                        tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", urlbuf);
                         y++;
                 }
 

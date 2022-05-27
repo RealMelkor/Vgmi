@@ -43,14 +43,6 @@ int main(int argc, char* argv[]) {
 
 	if (gmi_init()) return 0;
 
-	struct gmi_tab* tab = gmi_newtab_url(NULL);
-	if (argc > 1) {
-		if (gmi_loadfile(tab, argv[1]) <= 0) {
-			gmi_gohome(tab, 1);
-			gmi_request(tab, argv[1], 1);
-		}
-	} else gmi_gohome(tab, 1);
-	
 #ifdef TERMINAL_IMG_VIEWER
 	if (tb_set_output_mode(TB_OUTPUT_256)) {
 		gmi_free();
@@ -62,6 +54,14 @@ int main(int argc, char* argv[]) {
 	}
 	client.c256 = 1;
 #endif
+
+	struct gmi_tab* tab = gmi_newtab_url(NULL);
+	if (argc > 1) {
+		if (gmi_loadfile(tab, argv[1]) <= 0) {
+			gmi_gohome(tab, 1);
+			gmi_request(tab, argv[1], 1);
+		}
+	} else gmi_gohome(tab, 1);
 
 	struct tb_event ev;
 	bzero(&ev, sizeof(ev));
