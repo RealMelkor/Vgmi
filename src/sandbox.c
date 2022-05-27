@@ -27,7 +27,7 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 }
 
 extern int config_folder;
-int casper_init() {
+int sandbox_init() {
 	char path[1024];
 	getconfigfolder(path, sizeof(path));
 
@@ -101,9 +101,60 @@ int makefd_writeseek(int fd) {
 int make_writeonly(FILE* f) {
 	return makefd_writeonly(fileno(f));
 }
+#elif __OpenBSD__
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "cert.h"
 
+	int sandbox_init() {
+#ifndef HIDE_HOME
+		char path[1024];
+		if (gethomefolder(path, sizeof(path)) < 1) {
+			printf("Failed to get home folder\n");
+			return -1;
+		}
+#endif
+		char certpath[1024];
+		if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
+			printf("Failed to get cache folder\n");
+			return -1;
+		}
+		char downloadpath[1024];
+		if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
+			printf("Failed to get download folder\n");
+			return -1;
+		}
+		if (
+#ifndef HIDE_HOME
+			unveil(path, "r") ||
+#endif
+			unveil(certpath, "rwc") || 
+			unveil(downloadpath, "rwc") || 
+#ifndef DISABLE_XDG
+			unveil("/bin/sh", "x") ||
+			unveil("/usr/bin/which", "x") ||
+			unveil("/usr/local/bin/xdg-open", "x") ||
+#endif
+			unveil("/etc/resolv.conf", "r") ||
+			unveil(NULL, NULL)) {
+			printf("Failed to unveil\n");
+			return -1;
+		}
+#ifndef DISABLE_XDG
+		if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
 #else
-typedef int remove_iso_warning;
+		if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
+#endif
+			printf("Failed to pledge\n");
+			return -1;
+		}
+		return 0;
+	}
+#else
+int sandbox_init() {
+	return 0;
+}
 #endif
 
 

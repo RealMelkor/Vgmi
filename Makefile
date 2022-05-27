@@ -8,7 +8,7 @@ FLAGS = -DTERMINAL_IMG_VIEWER -DDISABLE_XDG
 LIBSPATH = -L/usr/local/lib -L/usr/pkg/lib
 INCLUDES = -I/usr/local/include -I/usr/pkg/include
 LIBS = -l:libtls.a -lssl -lcrypto -lpthread -lm
-SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c
+SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c src/sandbox.c
 
 vgmi: src/*
 	${CC} ${SRC} ${FLAGS} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
