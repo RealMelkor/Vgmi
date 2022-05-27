@@ -1,12 +1,12 @@
 /* See LICENSE file for copyright and license details. */
-#ifdef __FreeBSD__
 #ifndef _CAPSICUM_H_
 #define _CAPSICUM_H_
+int sandbox_init();
+#ifdef __FreeBSD__
 
 extern int config_folder;
 #include <netdb.h>
 #include <fcntl.h>
-int casper_init();
 int sandbox_getaddrinfo(const char *hostname, const char *servname, 
 			const struct addrinfo *hints, struct addrinfo **res);
 int sandbox_connect(int s, const struct sockaddr *name, socklen_t namelen);
@@ -19,10 +19,4 @@ int makefd_writeseek(int fd);
 #define connect(a, b, c) sandbox_connect(a, b, c)
 
 #endif
-#else
-#define make_readonly(x)
-#define makefd_readonly(x)
-#define make_writeonly(x)
-#define makefd_writeonly(x)
-#define makefd_writeseek(x)
 #endif

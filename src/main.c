@@ -18,65 +18,30 @@ int main(int argc, char* argv[]) {
 #ifdef MEM_CHECK
 	__init();
 #endif
-#ifdef __OpenBSD__
-#ifndef HIDE_HOME
-	char path[1024];
-	if (gethomefolder(path, sizeof(path)) < 1) {
-		printf("Failed to get home folder\n");
-		return -1;
-	}
-#endif
-	char certpath[1024];
-	if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
-		printf("Failed to get cache folder\n");
-		return -1;
-	}
-	char downloadpath[1024];
-	if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
-		printf("Failed to get download folder\n");
-		return -1;
-	}
-	if (
-#ifndef HIDE_HOME
-		unveil(path, "r") ||
-#endif
-		unveil(certpath, "rwc") || 
-		unveil(downloadpath, "rwc") || 
-#ifndef DISABLE_XDG
-		unveil("/bin/sh", "x") ||
-		unveil("/usr/bin/which", "x") ||
-		unveil("/usr/local/bin/xdg-open", "x") ||
-#endif
-		unveil("/etc/resolv.conf", "r") ||
-		unveil(NULL, NULL)) {
-		printf("Failed to unveil\n");
-		return -1;
-	}
-#ifndef DISABLE_XDG
-	if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
-#else
-	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
-#endif
-		printf("Failed to pledge\n");
-		return -1;
-	}
-#endif
 
+#ifdef __FreeBSD__
 	int ttyfd = open("/dev/tty", O_RDWR);
 	if (ttyfd < 0) {
 		printf("Failed to open tty\n");
 		return -1;
 	}
-
-#ifdef __FreeBSD__
-	if (casper_init()) {
-		printf("Failed to enter capacity mode\n");
-		return -1;
-	}
 #endif
 
+	if (sandbox_init()) {
+		printf("Failed to sandbox\n");
+		return -1;
+	}
+
+#ifdef __FreeBSD__
+	if (tb_init_fd(ttyfd) == TB_ERR_INIT_OPEN) {
+#else
+	if (tb_init() == TB_ERR_INIT_OPEN) {
+#endif
+		printf("Failed to initialize termbox\n");
+		return -1;
+	}
+
 	if (gmi_init()) return 0;
-	tb_init_fd(ttyfd);
 
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
@@ -89,7 +54,9 @@ int main(int argc, char* argv[]) {
 #ifdef TERMINAL_IMG_VIEWER
 	if (tb_set_output_mode(TB_OUTPUT_256)) {
 		gmi_free();
+#ifdef __FreeBSD__
 		close(ttyfd);
+#endif
 		printf("Terminal doesn't support 256 colors mode\n");
 		return -1;
 	}
@@ -109,7 +76,9 @@ int main(int argc, char* argv[]) {
 		if (input(ev)) break;
 	}
 	tb_shutdown();
+#ifdef __FreeBSD__
 	close(ttyfd);
+#endif
 	gmi_free();
 #ifdef MEM_CHECK
 	__check();
