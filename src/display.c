@@ -33,6 +33,7 @@ void hide_query(char* url, char* urlbuf) {
 }
 
 void display() {
+	int bg = client.c256?252:TB_WHITE;
         struct gmi_tab* tab = &client.tabs[client.tab];
         struct gmi_page* page = &tab->page;
 	if (tab->request.ask == 2) {
@@ -60,26 +61,26 @@ void display() {
 
 	// current tab
 	if (client.tabs_count > 1) {
-		tb_colorline(0, 0, TB_WHITE);
-		tb_printf(0, 0, TB_BLACK, TB_WHITE,
+		tb_colorline(0, 0, bg);
+		tb_printf(0, 0, TB_BLACK, bg,
 			  "Tabs : %d/%d", client.tab+1, client.tabs_count);
 	}
 
         // current url
-        tb_colorline(0, tb_height()-2, TB_WHITE);
+        tb_colorline(0, tb_height()-2, bg);
 	char urlbuf[MAX_URL];
 	hide_query(tab->url, urlbuf);
-	tb_printf(0, tb_height()-2, TB_BLACK, TB_WHITE, "%s (%s)", urlbuf, tab->page.meta);
+	tb_printf(0, tb_height()-2, TB_BLACK, bg, "%s (%s)", urlbuf, tab->page.meta);
 
         // Show selected link url
         if (tab->selected != 0) {
                 int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
-                tb_printf(tb_width()-llen-5, tb_height()-2, TB_WHITE, TB_BLUE,
+                tb_printf(tb_width()-llen-5, tb_height()-2, bg, TB_BLUE,
 			  " => %s ", tab->selected_url);
         } else if (tab->request.state != STATE_DONE) {
 		hide_query(tab->request.url, urlbuf);
                 int llen = strnlen(tab->request.url, sizeof(tab->request.url));
-                tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, TB_WHITE,
+                tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, bg,
 			  " [%s] ", urlbuf);
 	} 
 

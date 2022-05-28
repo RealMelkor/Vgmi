@@ -27,12 +27,23 @@ int main(int argc, char* argv[]) {
 	}
 #endif
 
+	const char* term = getenv("TERM");
+	if (!term) {
+		printf("Failed to detect terminal\n");
+		return -1;
+	}
+
+	// fix for st
+	if (strcmp("st-256color", term) == 0) {
+		setenv("TERM", "screen-256color", 1);
+	}
+
 	if (sandbox_init()) {
 		printf("Failed to sandbox\n");
 		return -1;
 	}
 
-#ifdef __FreeBSD__
+	#ifdef __FreeBSD__
 	if (tb_init_fd(ttyfd) == TB_ERR_INIT_OPEN) {
 #else
 	if (tb_init() == TB_ERR_INIT_OPEN) {
