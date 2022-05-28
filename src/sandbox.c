@@ -12,8 +12,6 @@
 #include <casper/cap_net.h>
 #include <capsicum_helpers.h>
 
-#include "cert.h"
-
 cap_channel_t *_capnet;
 cap_net_limit_t* limit;
 
@@ -31,7 +29,7 @@ int xdg_open(char*);
 
 #include <string.h>
 int xdg_request(char* str) {
-	int len = strnlen(str, 1024);
+	int len = strnlen(str, 1024)+1;
 	return write(xdg_pipe[0], str, len) != len;
 }
 
@@ -45,6 +43,7 @@ void xdg_listener() {
 	}
 }
 
+#include "cert.h"
 extern int config_folder;
 int sandbox_init() {
 #ifndef XDG_DISABLE
