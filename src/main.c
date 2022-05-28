@@ -37,13 +37,20 @@ int main(int argc, char* argv[]) {
 	if (strcmp("st-256color", term) == 0) {
 		setenv("TERM", "screen-256color", 1);
 	}
+	if (strcmp("st", term) == 0) {
+		setenv("TERM", "screen", 1);
+	}
+#ifndef DISABLE_XDG
+	if (!system("which xdg-open > /dev/null 2>&1"))
+		client.xdg = 1;
+#endif
 
 	if (sandbox_init()) {
 		printf("Failed to sandbox\n");
 		return -1;
 	}
 
-	#ifdef __FreeBSD__
+#ifdef __FreeBSD__
 	if (tb_init_fd(ttyfd) == TB_ERR_INIT_OPEN) {
 #else
 	if (tb_init() == TB_ERR_INIT_OPEN) {
@@ -54,18 +61,6 @@ int main(int argc, char* argv[]) {
 
 	if (gmi_init()) return 0;
 
-#ifdef TERMINAL_IMG_VIEWER
-	if (tb_set_output_mode(TB_OUTPUT_256)) {
-		gmi_free();
-#ifdef __FreeBSD__
-		close(ttyfd);
-#endif
-		printf("Terminal doesn't support 256 colors mode\n");
-		return -1;
-	}
-	client.c256 = 1;
-#endif
-
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
 		if (gmi_loadfile(tab, argv[1]) <= 0) {
@@ -73,6 +68,18 @@ int main(int argc, char* argv[]) {
 			gmi_request(tab, argv[1], 1);
 		}
 	} else gmi_gohome(tab, 1);
+
+#ifdef TERMINAL_IMG_VIEWER
+	if (tb_set_output_mode(TB_OUTPUT_256)) {
+		printf("Terminal doesn't support 256 colors mode\n");
+		gmi_free();
+#ifdef __FreeBSD__
+		close(ttyfd);
+#endif
+		return -1;
+	}
+	client.c256 = 1;
+#endif
 
 	struct tb_event ev;
 	bzero(&ev, sizeof(ev));

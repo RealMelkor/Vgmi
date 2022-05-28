@@ -69,6 +69,12 @@ int xdg_open(char* str) {
 	}
 	return 0;
 }
+
+#ifdef __FreeBSD__
+int xdg_request(char*);
+#define xdg_open(x) xdg_request(x)
+#endif
+
 #endif
 
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
@@ -1654,12 +1660,10 @@ int gmi_init() {
 
 	tls_config_insecure_noverifycert(config);
 	tls_config_insecure_noverifycert(config_empty);
+	int xdg = client.xdg;
 	bzero(&client, sizeof(client));
+	client.xdg = xdg;
 
-#ifndef DISABLE_XDG
-	if (!system("which xdg-open > /dev/null 2>&1"))
-		client.xdg = 1;
-#endif
 	char path[1024];
 	getconfigfolder(path, sizeof(path));
 
