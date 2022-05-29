@@ -1,5 +1,5 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 #if defined(__FreeBSD__) || defined(__OpenBSD__)
 
 int xdg_pipe[2];
@@ -83,7 +83,7 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 #include "cert.h"
 extern int config_folder;
 int sandbox_init() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
 		return -1;
@@ -132,8 +132,10 @@ int sandbox_init() {
 }
 
 int sandbox_close() {
+#ifndef DISABLE_XDG
 	close(xdg_pipe[0]);
 	close(xdg_pipe[1]);
+#endif
 	return 0;
 }
 
