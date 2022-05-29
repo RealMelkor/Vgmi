@@ -102,6 +102,10 @@ int sandbox_init() {
                 printf("Unable to open/create config folder\n");
                 return -1;
 	}
+	if (chdir("/var/empty")) {
+		printf("chdir failure\n");
+		return -1;
+	}
 
 	cap_rights_t rights;
 	cap_rights_init(&rights, CAP_WRITE, CAP_LOOKUP, CAP_READ,
