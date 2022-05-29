@@ -1660,9 +1660,13 @@ int gmi_init() {
 
 	tls_config_insecure_noverifycert(config);
 	tls_config_insecure_noverifycert(config_empty);
+#ifndef DISABLE_XDG
 	int xdg = client.xdg;
+#endif
 	bzero(&client, sizeof(client));
+#ifndef DISABLE_XDG
 	client.xdg = xdg;
+#endif
 
 	char path[1024];
 	getconfigfolder(path, sizeof(path));
