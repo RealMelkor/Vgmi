@@ -70,7 +70,7 @@ int xdg_open(char* str) {
 	return 0;
 }
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
 int xdg_request(char*);
 #define xdg_open(x) xdg_request(x)
 #endif

@@ -1,4 +1,60 @@
 /* See LICENSE file for copyright and license details. */
+#ifndef XDG_DISABLE
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+
+int xdg_pipe[2];
+int xdg_open(char*);
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+int xdg_request(char* str) {
+	int len = strnlen(str, 1024)+1;
+	return write(xdg_pipe[0], str, len) != len;
+}
+
+void xdg_listener() {
+	char buf[4096];
+	while (1) {
+		int len = read(xdg_pipe[1], buf, sizeof(buf));
+		if (len <= 0)
+			break;
+		xdg_open(buf);
+	}
+}
+
+int xdg_init() {
+	if (pipe(xdg_pipe)) {
+                printf("pipe failed\n");
+                return -1;
+	}
+	
+	if (fork() != 0) {
+		close(xdg_pipe[1]);
+		return 0;
+	}
+	close(xdg_pipe[0]);
+#ifdef __OpenBSD__
+	if (unveil("/bin/sh", "x") ||
+	    unveil("/usr/bin/which", "x") ||
+	    unveil("/usr/local/bin/xdg-open", "x") ||
+	    unveil(NULL, NULL)) {
+		close(xdg_pipe[1]);
+		exit(0);
+	}
+	if (pledge("stdio rpath exec proc", NULL)) {
+		close(xdg_pipe[1]);
+		exit(0);
+	}
+#endif
+	xdg_listener();
+	exit(0);
+}
+
+#endif
+#endif
+
 #ifdef __FreeBSD__
 #include <stdio.h>
 #include <sys/capsicum.h>
@@ -24,39 +80,14 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
         return cap_getaddrinfo(_capnet, hostname, servname, hints, res);
 }
 
-int xdg_pipe[2];
-int xdg_open(char*);
-
-#include <string.h>
-int xdg_request(char* str) {
-	int len = strnlen(str, 1024)+1;
-	return write(xdg_pipe[0], str, len) != len;
-}
-
-void xdg_listener() {
-	char buf[4096];
-	while (1) {
-		int len = read(xdg_pipe[1], buf, sizeof(buf));
-		if (len <= 0)
-			break;
-		xdg_open(buf);
-	}
-}
-
 #include "cert.h"
 extern int config_folder;
 int sandbox_init() {
 #ifndef XDG_DISABLE
-	if (pipe(xdg_pipe)) {
-                printf("pipe failed\n");
-                return -1;
+	if (xdg_init()) {
+		printf("xdg failure\n");
+		return -1;
 	}
-	if (fork() == 0) {
-		close(xdg_pipe[0]);
-		xdg_listener();
-		exit(0);
-	}
-	close(xdg_pipe[1]);
 #endif
 	char path[1024];
 	getconfigfolder(path, sizeof(path));
@@ -144,6 +175,12 @@ int make_writeonly(FILE* f) {
 #include "cert.h"
 
 int sandbox_init() {
+#ifndef XDG_DISABLE
+	if (xdg_init()) {
+		printf("xdg failure\n");
+		return -1;
+	}
+#endif
 #ifndef HIDE_HOME
 	char path[1024];
 	if (gethomefolder(path, sizeof(path)) < 1) {
@@ -163,25 +200,16 @@ int sandbox_init() {
 	}
 	if (
 #ifndef HIDE_HOME
-		unveil(path, "r") ||
+	    unveil(path, "r") ||
 #endif
-		unveil(certpath, "rwc") || 
-		unveil(downloadpath, "rwc") || 
-#ifndef DISABLE_XDG
-		unveil("/bin/sh", "x") ||
-		unveil("/usr/bin/which", "x") ||
-		unveil("/usr/local/bin/xdg-open", "x") ||
-#endif
-		unveil("/etc/resolv.conf", "r") ||
-		unveil(NULL, NULL)) {
+	    unveil(certpath, "rwc") || 
+	    unveil(downloadpath, "rwc") || 
+	    unveil("/etc/resolv.conf", "r") ||
+	    unveil(NULL, NULL)) {
 		printf("Failed to unveil\n");
 		return -1;
 	}
-#ifndef DISABLE_XDG
-	if (pledge("stdio rpath wpath cpath inet dns tty exec proc", NULL)) {
-#else
 	if (pledge("stdio rpath wpath cpath inet dns tty", NULL)) {
-#endif
 		printf("Failed to pledge\n");
 		return -1;
 	}
