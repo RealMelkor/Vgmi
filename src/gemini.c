@@ -539,7 +539,7 @@ void gmi_freetab(struct gmi_tab* tab) {
 			link = ptr;
 		}
 	}
-	if ((signed)tab->thread.thread >= 0)
+	if ((signed)tab->thread.started)
 		pthread_join(tab->thread.thread, NULL);
 	bzero(tab, sizeof(struct gmi_tab));
 }
@@ -790,11 +790,11 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	if (!client.tabs) return fatalP();
 	struct gmi_tab* tab = &client.tabs[index];
 	bzero(tab, sizeof(struct gmi_tab));
-	tab->thread.thread = -1;
 	
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, tab->thread.pair))
 		return NULL;
 	pthread_create(&tab->thread.thread, NULL, (void *(*)(void *))gmi_request_thread, tab);
+	tab->thread.started = 1;
 	if (url)
 		gmi_request(tab, url, 1);
 
