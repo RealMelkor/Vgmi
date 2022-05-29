@@ -57,10 +57,8 @@ int xdg_init() {
 }
 
 int sandbox_close() {
-#ifndef DISABLE_XDG
 	close(xdg_pipe[0]);
 	close(xdg_pipe[1]);
-#endif
 	return 0;
 }
 
@@ -336,6 +334,7 @@ int sandbox_init() {
 }
 
 #else
+#define NOSANDBOX
 int sandbox_init() {
 	return 0;
 }
@@ -345,4 +344,8 @@ int sandbox_close() {
 }
 #endif
 
-
+#if !defined(NOSANDBOX) && defined(DISABLE_XDG)
+int sandbox_close() {
+	return 0;
+}
+#endif

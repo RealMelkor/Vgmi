@@ -95,6 +95,7 @@ struct gmi_tab {
 	} request;
 	struct thread {
 		pthread_t thread;
+		int started;
 		int pair[2];
 		char url[1024];
 		int add;
