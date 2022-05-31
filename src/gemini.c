@@ -972,7 +972,7 @@ void dns_async(union sigval sv) {
 #endif
 
 int gmi_request_dns(struct gmi_tab* tab) {
-#ifdef __linux__
+#if defined(__linux__) && !defined(__MUSL__)
 	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
 	bzero(tab->request.gaicb_ptr, sizeof(struct gaicb));
         tab->request.gaicb_ptr->ar_name = tab->request.host;

@@ -180,7 +180,7 @@ int make_writeonly(FILE* f) {
 #include "cert.h"
 
 int sandbox_init() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
 		return -1;
@@ -261,6 +261,17 @@ struct sock_filter filter[] = {
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 	    (offsetof(struct seccomp_data, arch))),
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
+#ifdef __MUSL__
+        SC_ALLOW(fstat),
+        SC_ALLOW(readv),
+        SC_ALLOW(writev),
+        SC_ALLOW(open),
+        SC_ALLOW(pipe),
+#else
+        SC_ALLOW(pipe2), // tb_init
+	SC_ALLOW(recvmsg), // getaddrinfo_a
+	SC_ALLOW(getsockname), // getaddrinfo_a
+#endif
 	SC_ALLOW(read),
 	SC_ALLOW(write),
 	SC_ALLOW(openat),
@@ -277,40 +288,31 @@ struct sock_filter filter[] = {
 	SC_ALLOW(mmap),
 	SC_ALLOW(fcntl),
 	SC_ALLOW(lseek),
-	SC_ALLOW(rt_sigaction), //tmp
-	SC_ALLOW(rt_sigprocmask), //tmp
-	SC_ALLOW(mprotect), //tmp
-	SC_ALLOW(pipe2), // for tb_init
+	SC_ALLOW(rt_sigaction),
+	SC_ALLOW(rt_sigprocmask),
+	SC_ALLOW(rt_sigreturn), // resizing
+	SC_ALLOW(mprotect),
 	SC_ALLOW(pread64),
-	SC_ALLOW(uname), // for some dns request? 
-	SC_ALLOW(ppoll), // for some dns request?
+	SC_ALLOW(uname), // getaddrinfo
+	SC_ALLOW(ppoll), // getaddrinfo
+	SC_ALLOW(bind), // getaddrinfo
 	SC_ALLOW(sendto),
 	SC_ALLOW(recvfrom),
-	SC_ALLOW(recvmsg), // for asynx dns request
-	SC_ALLOW(bind), // for asynx dns request
-	SC_ALLOW(getsockname), // for asynx dns request
 	SC_ALLOW(socket),
 	SC_ALLOW(socketpair),
 	SC_ALLOW(connect),
 	SC_ALLOW(poll),
-	SC_ALLOW(clone),
 	SC_ALLOW(clone3),
-	SC_ALLOW(nanosleep), // to check
-	SC_ALLOW(clock_nanosleep), // also
-	SC_ALLOW(rseq), // for pthread
-	SC_ALLOW(set_robust_list), // for pthread
-	SC_ALLOW(munmap), // for thread
-	SC_ALLOW(madvise), // used when thread exit
-
+	SC_ALLOW(clock_nanosleep),
+	SC_ALLOW(rseq), // pthread_create
+	SC_ALLOW(set_robust_list), // pthread_create
+	SC_ALLOW(munmap), // pthread_create
+	SC_ALLOW(madvise), // thread exit
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
-//SIGSYS
-#include <signal.h>
-
-
 int sandbox_init() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
 		return -1;
