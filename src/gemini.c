@@ -38,6 +38,7 @@ struct tls_config* config_empty;
 struct gmi_client client;
 
 void tb_colorline(int x, int y, uintattr_t color);
+void* gmi_request_thread(void* tab);
 
 void fatal() {
 	tb_shutdown();
@@ -70,7 +71,7 @@ int xdg_open(char* str) {
 	return 0;
 }
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
 int xdg_request(char*);
 #define xdg_open(x) xdg_request(x)
 #endif
@@ -166,7 +167,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 #endif
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Can't open web link");
+			 "Unable to open the link");
 		return -1;
 	} else if (strstr(link, "gemini://") == link) {
 		int ret = gmi_request(tab, link, 1);
@@ -496,6 +497,7 @@ void gmi_cleanforward(struct gmi_tab* tab) {
 }
 
 void gmi_freepage(struct gmi_page* page) {
+	if (!page) return;
 	free(page->data);
 	for (int i=0; i<page->links_count; i++)
 		free(page->links[i]);
@@ -507,6 +509,7 @@ void gmi_freepage(struct gmi_page* page) {
 }
 
 void gmi_freetab(struct gmi_tab* tab) {
+	if (!tab) return;
 	tab->request.state = STATE_CANCEL;
 	int signal = 0xFFFFFFFF;
 	send(tab->thread.pair[1], &signal, sizeof(signal), 0);
@@ -536,7 +539,8 @@ void gmi_freetab(struct gmi_tab* tab) {
 			link = ptr;
 		}
 	}
-	pthread_join(tab->thread.thread, NULL);
+	if ((signed)tab->thread.thread >= 0)
+		pthread_join(tab->thread.thread, NULL);
 	bzero(tab, sizeof(struct gmi_tab));
 }
 
@@ -776,7 +780,6 @@ struct gmi_tab* gmi_newtab() {
 	return gmi_newtab_url("about:home");
 }
 
-void* gmi_request_thread(void* tab);
 struct gmi_tab* gmi_newtab_url(const char* url) {
 	int index = client.tabs_count;
 	client.tabs_count++;
@@ -787,6 +790,7 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	if (!client.tabs) return fatalP();
 	struct gmi_tab* tab = &client.tabs[index];
 	bzero(tab, sizeof(struct gmi_tab));
+	tab->thread.thread = -1;
 	
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, tab->thread.pair))
 		return NULL;
@@ -861,7 +865,7 @@ skip_proto:;
 	host[ptr-proto_ptr] = '\0';
 	if (!urlbuf) return proto;
 	if (url_len < 16) return -1; // buffer too small
-	int len = 0;
+	unsigned int len = 0;
 	switch (proto) {
 	case PROTO_GEMINI:
 		len = strlcpy(urlbuf, "gemini://", url_len);
@@ -870,7 +874,7 @@ skip_proto:;
 		len = strlcpy(urlbuf, "http://", url_len);
 		break;
 	case PROTO_HTTPS:
-		len = strlcpy(urlbuf, "http://", url_len);
+		len = strlcpy(urlbuf, "https://", url_len);
 		break;
 	case PROTO_GOPHER:
 		len = strlcpy(urlbuf, "gopher://", url_len);
@@ -882,13 +886,13 @@ skip_proto:;
 		return -1;
 	}
 	size_t l = strlcpy(urlbuf + len, host, sizeof(urlbuf) - len);
-	if (l >= sizeof(urlbuf) - len) {
+	if (l >= url_len - len) {
 		goto parseurl_overflow;
 	}
 	len += l;
 	if (host_ptr &&
-	    strlcpy(urlbuf + len, host_ptr, sizeof(urlbuf) - len) >= 
-	    sizeof(urlbuf) - len)
+	    strlcpy(urlbuf + len, host_ptr, url_len - len) >= 
+	    url_len - len)
 		goto parseurl_overflow;
 	return proto;
 parseurl_overflow:
@@ -917,9 +921,12 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 		return gmi_loadfile(tab, &tab->request.url[P_FILE]);
 	}
 	if (proto != PROTO_GEMINI) {
-		snprintf(tab->error, sizeof(tab->error), "Invalid url: %s", url);
+#ifndef DISABLE_XDG
+		if (client.xdg && !xdg_open((char*)url)) return -1;
+#endif
 		tab->show_error = 1;
-		client.input.mode = 0;
+		snprintf(tab->error, sizeof(tab->error), 
+			 "Unable to open the link");
 		return -1;
 	}
 	if (tab->request.tls) {
@@ -1006,10 +1013,9 @@ int gmi_request_dns(struct gmi_tab* tab) {
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags |= AI_CANONNAME;
 	errno = 0;
-	int ret;
-        if ((ret = getaddrinfo(tab->request.host, NULL, &hints, &result))) {
+        if ((getaddrinfo(tab->request.host, NULL, &hints, &result))) {
                 snprintf(tab->error, sizeof(tab->error),
-			 "Unknown domain name: %s %s!!!", tab->request.host, gai_strerror(ret));
+			 "Unknown domain name: %s", tab->request.host);
 		tab->show_error = 1;
 		return -1;
         }
@@ -1556,10 +1562,9 @@ void* gmi_request_thread(void* ptr) {
 						tab->show_error = 1;
 						snprintf(tab->error, sizeof(tab->info),
 							"Failed to open %s", path);
-					} else {
-#else
-					{
+					} else
 #endif
+					{
 						tab->show_info = 1;
 						snprintf(tab->info, sizeof(tab->info),
 							"File downloaded to %s", path);
