@@ -20,4 +20,6 @@ int makefd_writeseek(int fd);
 #define connect(a, b, c) sandbox_connect(a, b, c)
 
 #endif
+#include <signal.h>
+void sigsys_handler(int signo, siginfo_t *info, void *unused);
 #endif

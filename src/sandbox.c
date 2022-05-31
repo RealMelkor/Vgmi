@@ -1,6 +1,6 @@
 /* See LICENSE file for copyright and license details. */
 #ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
 
 int xdg_pipe[2];
 int xdg_open(char*);
@@ -9,15 +9,19 @@ int xdg_open(char*);
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <errno.h>
+
 int xdg_request(char* str) {
 	int len = strnlen(str, 1024)+1;
-	return write(xdg_pipe[0], str, len) != len;
+	return write(xdg_pipe[1], str, len) != len;
 }
 
 void xdg_listener() {
 	char buf[4096];
 	while (1) {
-		int len = read(xdg_pipe[1], buf, sizeof(buf));
+		int len = read(xdg_pipe[0], buf, sizeof(buf));
 		if (len <= 0)
 			break;
 		xdg_open(buf);
@@ -29,12 +33,12 @@ int xdg_init() {
                 printf("pipe failed\n");
                 return -1;
 	}
-	
-	if (fork() != 0) {
-		close(xdg_pipe[1]);
+	int pid = fork();	
+	if (pid != 0) {
+		close(xdg_pipe[0]);
 		return 0;
 	}
-	close(xdg_pipe[0]);
+	close(xdg_pipe[1]);
 #ifdef __OpenBSD__
 	if (unveil("/bin/sh", "x") ||
 	    unveil("/usr/bin/which", "x") ||
@@ -50,6 +54,14 @@ int xdg_init() {
 #endif
 	xdg_listener();
 	exit(0);
+}
+
+int sandbox_close() {
+#ifndef DISABLE_XDG
+	close(xdg_pipe[0]);
+	close(xdg_pipe[1]);
+#endif
+	return 0;
 }
 
 #endif
@@ -93,7 +105,8 @@ int sandbox_init() {
 	getconfigfolder(path, sizeof(path));
 
 	cap_rights_t rights;
-	cap_rights_init(&rights, CAP_WRITE, CAP_LOOKUP, CAP_READ, CAP_SEEK, CAP_CREATE, CAP_FCNTL);
+	cap_rights_init(&rights, CAP_WRITE, CAP_LOOKUP, CAP_READ,
+			CAP_SEEK, CAP_CREATE, CAP_FCNTL);
         if (cap_rights_limit(config_folder, &rights)) {
                 printf("cap_rights_limit failed\n");
                 return -1;
@@ -128,14 +141,6 @@ int sandbox_init() {
                 printf("Unable to apply limits.\n");
                 return -1;
         }
-	return 0;
-}
-
-int sandbox_close() {
-#ifndef DISABLE_XDG
-	close(xdg_pipe[0]);
-	close(xdg_pipe[1]);
-#endif
 	return 0;
 }
 
@@ -218,9 +223,118 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_close() {
+#elif __linux__
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stddef.h>
+#include <sys/prctl.h>
+#include <linux/seccomp.h>
+#include <linux/filter.h>
+#include <linux/unistd.h>
+#include "cert.h"
+
+// --------------
+// copied from : https://roy.marples.name/git/dhcpcd/blob/HEAD:/src/privsep-linux.c
+#define SC_ALLOW_(nr)                                            \
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, nr, 0, 1),   \
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+
+#define SC_ALLOW(nr)						\
+	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##nr, 0, 1),	\
+	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+
+#define SC_ALLOW_ARG(_nr, _arg, _val)						\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (_nr), 0, 6),			\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
+	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_LO),		\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,					\
+	    ((_val) & 0xffffffff), 0, 3),					\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
+	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_HI),		\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,					\
+	    (((uint32_t)((uint64_t)(_val) >> 32)) & 0xffffffff), 0, 1),		\
+	BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),				\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
+	    offsetof(struct seccomp_data, nr))
+// --------------
+
+struct sock_filter filter[] = {
+	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+	    (offsetof(struct seccomp_data, arch))),
+	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
+	SC_ALLOW(read),
+	SC_ALLOW(write),
+	SC_ALLOW(openat),
+	SC_ALLOW(close),
+	SC_ALLOW(exit),
+	SC_ALLOW(ioctl),
+	SC_ALLOW(exit_group),
+	SC_ALLOW(futex),
+	SC_ALLOW(sysinfo),
+	SC_ALLOW(brk),
+	SC_ALLOW(newfstatat),
+	SC_ALLOW(getpid),
+	SC_ALLOW(getrandom),
+	SC_ALLOW(mmap),
+	SC_ALLOW(fcntl),
+	SC_ALLOW(lseek),
+	SC_ALLOW(rt_sigaction), //tmp
+	SC_ALLOW(rt_sigprocmask), //tmp
+	SC_ALLOW(mprotect), //tmp
+	SC_ALLOW(pipe2), // for tb_init
+	SC_ALLOW(pread64),
+	SC_ALLOW(uname), // for some dns request? 
+	SC_ALLOW(ppoll), // for some dns request?
+	SC_ALLOW(sendto),
+	SC_ALLOW(recvfrom),
+	SC_ALLOW(recvmsg), // for asynx dns request
+	SC_ALLOW(bind), // for asynx dns request
+	SC_ALLOW(getsockname), // for asynx dns request
+	SC_ALLOW(socket),
+	SC_ALLOW(socketpair),
+	SC_ALLOW(connect),
+	SC_ALLOW(poll),
+	SC_ALLOW(clone),
+	SC_ALLOW(clone3),
+	SC_ALLOW(nanosleep), // to check
+	SC_ALLOW(clock_nanosleep), // also
+	SC_ALLOW(rseq), // for pthread
+	SC_ALLOW(set_robust_list), // for pthread
+	SC_ALLOW(munmap), // for thread
+	SC_ALLOW(madvise), // used when thread exit
+
+	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
+};
+
+//SIGSYS
+#include <signal.h>
+
+
+int sandbox_init() {
+#ifndef XDG_DISABLE
+	if (xdg_init()) {
+		printf("xdg failure\n");
+		return -1;
+	}
+#endif
+	char path[1024];
+	getconfigfolder(path, sizeof(path));
+        if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
+		printf("PR_SET_NO_NEW_PRIVS failed\n");
+		return -1;
+	}
+        struct sock_fprog prog = {
+		.len = (unsigned short)(sizeof(filter) / sizeof (filter[0])),
+		.filter = filter,
+        };
+	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog, 0)) {
+		printf("Failed to enable seccomp\n");
+		return -1;
+	}
 	return 0;
 }
+
 #else
 int sandbox_init() {
 	return 0;
