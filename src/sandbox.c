@@ -301,7 +301,9 @@ struct sock_filter filter[] = {
 	SC_ALLOW(socket),
 	SC_ALLOW(socketpair),
 	SC_ALLOW(connect),
+        SC_ALLOW(getsockopt),
 	SC_ALLOW(poll),
+	SC_ALLOW(clone),
 	SC_ALLOW(clone3),
 	SC_ALLOW(clock_nanosleep),
 	SC_ALLOW(rseq), // pthread_create
