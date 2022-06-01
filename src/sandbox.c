@@ -265,6 +265,7 @@ struct sock_filter filter[] = {
         SC_ALLOW(readv),
         SC_ALLOW(writev),
         SC_ALLOW(open),
+        SC_ALLOW(dup2), // required by getaddrinfo
 #else
         SC_ALLOW(pipe2), // tb_init
 	SC_ALLOW(recvmsg), // getaddrinfo_a
@@ -273,7 +274,6 @@ struct sock_filter filter[] = {
         SC_ALLOW(fstat), // older glibc and musl
         SC_ALLOW(stat), // older glibc
         SC_ALLOW(pipe), // older glibc and musl
-        SC_ALLOW(dup2), // sometime required by getaddrinfo
 	SC_ALLOW(setsockopt),
 	SC_ALLOW(read),
 	SC_ALLOW(write),
@@ -309,6 +309,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(clone),
 	SC_ALLOW(clone3),
 	SC_ALLOW(clock_nanosleep),
+	SC_ALLOW(nanosleep),
 	SC_ALLOW(rseq), // pthread_create
 	SC_ALLOW(set_robust_list), // pthread_create
 	SC_ALLOW(munmap), // pthread_create
