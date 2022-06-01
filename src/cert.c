@@ -99,7 +99,7 @@ getpath_overflow:
 
 int cert_create(char* host, char* error, int errlen) {
 	FILE* f = NULL;
-	int fd = -1;
+	int fd;
 	int ret = 1;
 	EVP_PKEY* pkey;
 	pkey = EVP_PKEY_new();

@@ -975,6 +975,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 #if defined(__linux__) && !defined(__MUSL__)
 	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
 	bzero(tab->request.gaicb_ptr, sizeof(struct gaicb));
+	if (!tab->request.gaicb_ptr) return fatalI();
         tab->request.gaicb_ptr->ar_name = tab->request.host;
 	tab->request.resolved = 0;
         struct sigevent sevp;
@@ -1247,7 +1248,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 				nanosleep(&timeout, NULL);
 			tab->request.download = tab->request.ask;
 			if (!tab->request.download) {
-				recv = -1;
+				tab->request.recv = -1;
 				return 1; // download
 			}
 		}
