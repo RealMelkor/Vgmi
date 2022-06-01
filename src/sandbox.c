@@ -262,16 +262,19 @@ struct sock_filter filter[] = {
 	    (offsetof(struct seccomp_data, arch))),
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
 #ifdef __MUSL__
-        SC_ALLOW(fstat),
         SC_ALLOW(readv),
         SC_ALLOW(writev),
         SC_ALLOW(open),
-        SC_ALLOW(pipe),
 #else
         SC_ALLOW(pipe2), // tb_init
 	SC_ALLOW(recvmsg), // getaddrinfo_a
 	SC_ALLOW(getsockname), // getaddrinfo_a
 #endif
+        SC_ALLOW(fstat), // older glibc and musl
+        SC_ALLOW(stat), // older glibc
+        SC_ALLOW(pipe), // older glibc and musl
+        SC_ALLOW(dup2), // sometime required by getaddrinfo
+	SC_ALLOW(setsockopt),
 	SC_ALLOW(read),
 	SC_ALLOW(write),
 	SC_ALLOW(openat),
