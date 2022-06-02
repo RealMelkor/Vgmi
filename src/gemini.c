@@ -1119,15 +1119,15 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	time_t start = time(0);
 	while ((ret = tls_handshake(tab->request.tls))) {
 		if (time(NULL) - start > TIMEOUT ||
-		    tab->request.state == STATE_CANCEL) {
-			return -1;
-		}
+		    tab->request.state == STATE_CANCEL ||
+		    (ret < 0 && ret !=TLS_WANT_POLLIN))
+			break;
 		if (ret == TLS_WANT_POLLIN)
 			nanosleep(&timeout, NULL);
 	}
 	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to handshake: %s %d", tab->request.host, ret);
+			 "Failed to handshake: %s", tab->request.host);
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
