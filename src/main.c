@@ -15,7 +15,6 @@
 #include <strings.h>
 
 int main(int argc, char* argv[]) {
-
 #ifdef MEM_CHECK
 	__init();
 #endif
