@@ -409,8 +409,9 @@ int sandbox_init() {
 #ifdef ENABLE_LANDLOCK
 	int llfd = landlock_init();
 	if (llfd < 0) {
-		printf("landlock, failed to create ruleset : %s\n", strerror(errno));
-		return -1;
+		printf("[WARNING] Failed to initialize landlock : %s\n", strerror(errno));
+		printf("[WARNING] The filesystem won't be hidden from the program\n");
+		goto skip_landlock;
 	}
 	int cfg = landlock_unveil_path(llfd, config_path,
 					LANDLOCK_ACCESS_FS_READ_FILE |
@@ -444,6 +445,7 @@ int sandbox_init() {
 		printf("landlock, failed to restrict process : %s\n", strerror(errno));
 		return -1;
 	}
+skip_landlock:;
 #endif
         struct sock_fprog prog = {
 		.len = (unsigned short)(sizeof(filter) / sizeof (filter[0])),
