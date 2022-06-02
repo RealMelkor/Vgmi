@@ -1519,13 +1519,12 @@ void* gmi_request_thread(void* ptr) {
 				goto request_end;
 			}
 			char path[1024];
-			int pathlen;
 			if (ptr)
-				pathlen = strlcpy(path, ptr+1, sizeof(path));
+				strlcpy(path, ptr+1, sizeof(path));
 			else
-				pathlen = snprintf(path, sizeof(path),
+				snprintf(path, sizeof(path),
 						   "output_%ld.dat", time(NULL));
-			for (int i = 0; i < sizeof(path) && path[i] && ptr; i++) {
+			for (unsigned int i = 0; i < sizeof(path) && path[i] && ptr; i++) {
 				char c = path[i];
 				if ((path[i] == '.' && path[i+1] == '.') ||
 				    !(c == '.' ||
