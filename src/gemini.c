@@ -1017,7 +1017,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	errno = 0;
         if ((getaddrinfo(tab->request.host, NULL, &hints, &result))) {
                 snprintf(tab->error, sizeof(tab->error),
-			 "Unknown domain name: %s", tab->request.host);
+			 "Unknown domain name: %s, %s", tab->request.host, strerror(errno));
 		tab->show_error = 1;
 		return -1;
         }

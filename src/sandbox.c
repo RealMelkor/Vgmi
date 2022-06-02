@@ -419,13 +419,16 @@ int sandbox_init() {
 					LANDLOCK_ACCESS_FS_WRITE_FILE);
 	int hosts = landlock_unveil_path(llfd, "/etc/hosts",
 					LANDLOCK_ACCESS_FS_READ_FILE);
+	int run = landlock_unveil_path(llfd, "/run",
+					LANDLOCK_ACCESS_FS_READ_FILE);
 
-	if (dl || cfg || hosts) {
+	if (dl || cfg || hosts || run) {
 		printf("landlock, failed to unveil : %s\n", strerror(errno));
 		return -1;
 	}
 
-	// load library before restricting process
+#ifndef __MUSL__
+	// load dynamic library before restricting process
 	struct addrinfo hints, *result;
         bzero(&hints, sizeof(hints));
         hints.ai_family = AF_INET;
@@ -436,8 +439,7 @@ int sandbox_init() {
 		printf("getaddrinfo failed\n");
 		return -1;
 	}
-	//
-
+#endif
 	if (landlock_apply(llfd)) {
 		printf("landlock, failed to restrict process : %s\n", strerror(errno));
 		return -1;
