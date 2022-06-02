@@ -22,61 +22,64 @@
 #endif
 #include "gemini.h"
 #include "sandbox.h"
-int config_folder = -1;
 
-char homefolder[1024];
-int homepath_cached = 0;
-int gethomefolder(char* path, size_t len) {
-	if (homepath_cached)
-		return strlcpy(path, homefolder, len);
+char home_path[1024];
+char download_path[1024];
+char config_path[1024];
+const char* download_str = "Downloads";
+
+int home_fd = -1;
+int gethomefd() {
+	if (home_fd > -1)
+		return home_fd;
 	struct passwd *pw = getpwuid(geteuid());
-	if (!pw) return 0;
-	size_t length = strlcpy(path, pw->pw_dir, len);
-       	if (length >= len || length <= 0) return -1;
-	homepath_cached = 1;
-	strlcpy(homefolder, path, sizeof(homefolder));
-	return length;
+	if (!pw) return -1;
+	home_fd = open(pw->pw_dir, O_DIRECTORY);
+	strlcpy(home_path, pw->pw_dir, sizeof(home_path));
+	snprintf(download_path, sizeof(download_path), "%s/%s", home_path, download_str);
+	return home_fd;
 }
 
-char downloadfolder[1024];
-int downloadpath_cached = 0;
-int getdownloadfolder(char* path, size_t len) {
-	if (downloadpath_cached)
-		return strlcpy(path, downloadfolder, len);
-	size_t length = 0;
-	if (!homepath_cached)
-		length = gethomefolder(downloadfolder, sizeof(downloadfolder));
-	else
-		length = strlcpy(downloadfolder, homefolder, sizeof(downloadfolder));
-	if (length <= 0) return -1;
-	length += strlcpy(&downloadfolder[length], 
-			  "/Downloads", sizeof(downloadfolder) - length);
-        struct stat _stat;
-        if (stat(downloadfolder, &_stat) && mkdir(downloadfolder, 0700))
+int download_fd = -1;
+int getdownloadfd() {
+	if (download_fd > -1)
+		return download_fd;
+	if (home_fd == -1 && gethomefd() == -1)
 		return -1;
-	downloadpath_cached = 1;
-	strlcpy(path, downloadfolder, len);
-	return length;
+	download_fd = openat(home_fd, download_str, O_DIRECTORY);
+	if (download_fd < 0) {
+		mkdirat(home_fd, download_str, 0700);
+		download_fd = openat(home_fd, download_str, O_DIRECTORY);
+		if (download_fd < 0)
+			return -1;
+	}
+	return download_fd;
 }
 
-char configfolder[1024];
-int configpath_cached = 0;
-int getconfigfolder(char* path, size_t len) {
-	if (configpath_cached)
-		return strlcpy(path, configfolder, len);
-	int ret = gethomefolder(path, len);
-	if (ret == -1) return -1;
-	size_t length = ret;
-	if (length >= len) return -1;
-	length += strlcpy(&path[length], "/.config/vgmi", len - length);
-        if (length >= len) return -1;
-        struct stat _stat;
-        if (stat(path, &_stat) && mkdir(path, 0700)) return -1;
-	configpath_cached = 1;
-	strlcpy(configfolder, path, sizeof(configfolder));
-	config_folder = open(path, 0);
-	if (config_folder < 0) return -1;
-        return length;
+int config_fd = -1;
+int getconfigfd() {
+	if (config_fd > -1)
+		return config_fd;
+	if (home_fd == -1 && gethomefd() == -1)
+		return -1;
+	// check if .config exists first
+	int fd = openat(home_fd, ".config", O_DIRECTORY);
+	if (fd < 0) {
+		mkdirat(home_fd, ".config", 0700);
+		fd = openat(home_fd, ".config", O_DIRECTORY);
+		if (fd < 0)
+			return -1;
+	}
+	config_fd = openat(fd, "vgmi", O_DIRECTORY);
+	if (config_fd < 0) {
+		mkdirat(fd, "vgmi", 0700);
+		config_fd = openat(fd, "vgmi", O_DIRECTORY);
+		if (config_fd < 0)
+			return -1;
+	}
+	close(fd);
+	snprintf(config_path, sizeof(config_path), "%s/%s", home_path, "/.config/vgmi");
+	return config_fd;
 }
 
 int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_len) {
@@ -138,7 +141,7 @@ int cert_create(char* host, char* error, int errlen) {
 		goto skip_error;
 
 	// Key
-	fd = openat(config_folder, key, O_CREAT|O_WRONLY, 0600);
+	fd = openat(config_fd, key, O_CREAT|O_WRONLY, 0600);
 	if (fd < 0) {
 		snprintf(error, errlen, "Failed to open %s : %s", key, strerror(errno));
 		goto skip_error;
@@ -160,7 +163,7 @@ int cert_create(char* host, char* error, int errlen) {
 	fclose(f);
 
 	// Certificate
-	fd = openat(config_folder, crt, O_CREAT|O_WRONLY, 0600);
+	fd = openat(config_fd, crt, O_CREAT|O_WRONLY, 0600);
 	if (fd < 0) {
 		snprintf(error, errlen, "Failed to open %s", crt);
 		goto skip_error;
@@ -233,14 +236,13 @@ void cert_add(char* host, const char* hash, unsigned long long start, unsigned l
 }
 
 int cert_load() {
-	char path[1024];
-	int len = getconfigfolder(path, sizeof(path));
-	if (len < 1) return -1;
-	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
-	FILE* f = fopen(path, "r");
-	if (!f) {
-		return 0;
-	}
+	config_fd = getconfigfd();
+	if (config_fd < 0) return -1;
+	int known_hosts = openat(config_fd, "known_hosts", 0);
+	if (known_hosts < 0) return 0;
+	FILE* f = fdopen(known_hosts, "r");
+	if (!f)
+		return -1;
 	fseek(f, 0, SEEK_END);
 	size_t length = ftell(f);
 	fseek(f, 0, SEEK_SET);
@@ -305,11 +307,11 @@ int cert_getcert(char* host) {
         }
         size_t crt_pos = 0;
         size_t key_pos = 0;
-	int crt_fd = openat(config_folder, crt, 0);
+	int crt_fd = openat(config_fd, crt, 0);
 	if (crt_fd < 0) {
 		return -2;
 	}
-	int key_fd = openat(config_folder, key, 0);
+	int key_fd = openat(config_fd, key, 0);
 	if (key_fd < 0) {
 		close(key_fd);
 		return -2;
@@ -366,12 +368,11 @@ int cert_verify(char* host, const char* hash, unsigned long long start, unsigned
 	unsigned long long now = time(NULL);
 	if (found && found->start < now && found->end > now)
 		return strcmp(found->hash, hash);
-	char path[1024];
-	int len = getconfigfolder(path, sizeof(path));
-	if (len < 1) return -1;
-	strlcpy(&path[len], "/known_hosts", sizeof(path)-len);
 
-	int fd = openat(config_folder, "known_hosts", O_CREAT|O_APPEND|O_WRONLY, 0600);
+	int cfd = getconfigfd();
+	if (cfd < 0) return -1;
+
+	int fd = openat(cfd, "known_hosts", O_CREAT|O_APPEND|O_WRONLY, 0600);
 	if (fd == -1)
 		return -2;
 	if (!fdopen(fd, "a")) return -3;
@@ -380,7 +381,7 @@ int cert_verify(char* host, const char* hash, unsigned long long start, unsigned
                 return -3;
 #endif
 	char buf[2048];
-	len = sprintf(buf, "%s %s %lld %lld\n", host, hash, start, end);
+	int len = sprintf(buf, "%s %s %lld %lld\n", host, hash, start, end);
 	if (write(fd, buf, len) != len) return -4;
 
 	close(fd);
@@ -401,4 +402,10 @@ void cert_free() {
 		free(client.certs[i].key);
 	}
 	free(client.certs);
+	if (config_fd > 0)
+		close(config_fd);
+	if (download_fd > 0)
+		close(download_fd);
+	if (home_fd > 0)
+		close(home_fd);
 }

@@ -317,8 +317,8 @@ int input(struct tb_event ev) {
 		int H = tb_height() - 2 - (client.tabs_count>1);
 		tab->scroll += counter * H;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (page->lines <= H) tab->scroll = -1;
-		else if (tab->scroll + H >page->lines)
+		if (page->lines < H) tab->scroll = -1;
+		else if (tab->scroll + H > page->lines)
 			tab->scroll = page->lines - H;
 		client.vim.g = 0;
 		return 0;
@@ -393,7 +393,7 @@ int input(struct tb_event ev) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
 			if (tab->scroll+tb_height()-2>page->lines)
-				tab->scroll = page->lines - tb_height() + 2;
+				tab->scroll = page->lines - tb_height() + 2 + (client.tabs_count>1);
 		}
 		else if (tab->scroll+(client.tabs_count==1?tb_height()-2:tb_height()-3)
 			 < page->lines) tab->scroll++;

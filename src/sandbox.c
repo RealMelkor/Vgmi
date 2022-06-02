@@ -91,7 +91,6 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 }
 
 #include "cert.h"
-extern int config_folder;
 int sandbox_init() {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
@@ -99,13 +98,15 @@ int sandbox_init() {
 		return -1;
 	}
 #endif
-	char path[1024];
-	getconfigfolder(path, sizeof(path));
+	if (getconfigfd() < 0) {
+                printf("Unable to open/create config folder\n");
+                return -1;
+	}
 
 	cap_rights_t rights;
 	cap_rights_init(&rights, CAP_WRITE, CAP_LOOKUP, CAP_READ,
 			CAP_SEEK, CAP_CREATE, CAP_FCNTL);
-        if (cap_rights_limit(config_folder, &rights)) {
+        if (cap_rights_limit(config_fd, &rights)) {
                 printf("cap_rights_limit failed\n");
                 return -1;
         }
@@ -179,6 +180,9 @@ int make_writeonly(FILE* f) {
 #include <unistd.h>
 #include "cert.h"
 
+extern char home_path[1024];
+extern char config_path[1024];
+
 int sandbox_init() {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
@@ -188,27 +192,25 @@ int sandbox_init() {
 #endif
 #ifndef HIDE_HOME
 	char path[1024];
-	if (gethomefolder(path, sizeof(path)) < 1) {
+	if (gethomefd() < 1) {
 		printf("Failed to get home folder\n");
 		return -1;
 	}
 #endif
-	char certpath[1024];
-	if (getconfigfolder(certpath, sizeof(certpath)) < 1) {
+	if (getconfigfd() < 0) {
 		printf("Failed to get cache folder\n");
 		return -1;
 	}
-	char downloadpath[1024];
-	if (getdownloadfolder(downloadpath, sizeof(downloadpath)) < 1) {
+	if (getdownloadfd() < 0) {
 		printf("Failed to get download folder\n");
 		return -1;
 	}
 	if (
 #ifndef HIDE_HOME
-	    unveil(path, "r") ||
+	    unveil(home_path, "r") ||
 #endif
-	    unveil(certpath, "rwc") || 
-	    unveil(downloadpath, "rwc") || 
+	    unveil(config_path, "rwc") || 
+	    unveil(download_path, "rwc") || 
 	    unveil("/etc/resolv.conf", "r") ||
 	    unveil(NULL, NULL)) {
 		printf("Failed to unveil\n");
@@ -325,7 +327,7 @@ int sandbox_init() {
 	}
 #endif
 	char path[1024];
-	getconfigfolder(path, sizeof(path));
+	getconfigfd(path, sizeof(path));
         if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
 		printf("PR_SET_NO_NEW_PRIVS failed\n");
 		return -1;

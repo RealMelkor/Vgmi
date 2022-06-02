@@ -602,7 +602,7 @@ fail_malloc:
 }
 
 int gmi_loadbookmarks() {
-	int fd = openat(config_folder, "bookmarks.txt", O_RDONLY);
+	int fd = openat(config_fd, "bookmarks.txt", O_RDONLY);
 	if (fd < 0)
 		return -1;
 	FILE* f = fdopen(fd, "rb");
@@ -711,7 +711,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 }
 
 int gmi_savebookmarks() {
-	int fd = openat(config_folder, "bookmarks.txt", O_CREAT|O_WRONLY|O_TRUNC, 0600);
+	int fd = openat(config_fd, "bookmarks.txt", O_CREAT|O_WRONLY|O_TRUNC, 0600);
 	if (fd < 0)
 		return -1;
 	FILE* f = fdopen(fd, "wb");
@@ -900,6 +900,7 @@ parseurl_overflow:
 }
 
 int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
+	if (!tab) return -1;
 	if (!strcmp(url, "about:home")) {
 		gmi_gohome(tab, add);
 		return tab->page.data_len;
@@ -1135,7 +1136,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 			      tls_peer_cert_notafter(tab->request.tls));
 	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
-			 ret==-1?"Failed to verify server certificate for %s (The certificate changed) %s":
+			 ret==-1?"Failed to verify server certificate for %s" \
+				 "(The certificate changed) %s":
 			 	 "Failed to write %s certificate information : %s",
 			 tab->request.host, ret==-1?"":strerror(errno));
 		return -1;
@@ -1509,27 +1511,49 @@ void* gmi_request_thread(void* ptr) {
 				tab->request.url[len-1] = '\0';
 			char* ptr = strrchr(tab->request.url, '/');
 			FILE* f;
-			char path[1024];
-			int plen = getdownloadfolder(path, sizeof(path));	
-			if (plen < 0) plen = 0;
-			else {
-				path[plen] = '/';
-				plen++;
+			int fd = getdownloadfd();	
+			if (fd < 0) {
+				snprintf(tab->error, sizeof(tab->error),
+					 "Unable to open download folder");
+				tab->show_error = 1;
+				goto request_end;
 			}
+			char path[1024];
+			int pathlen;
 			if (ptr)
-				strlcpy(&path[plen], ptr+1, sizeof(path)-plen);
+				pathlen = strlcpy(path, ptr+1, sizeof(path));
 			else
-				strlcpy(&path[plen], "output.dat", sizeof(path)-plen);
-
-			for (int i = 0; i < 1024 && path[i]; i++)
-				if (path[i] == '/' || path[i] == '\\' ||
-				    (path[i] == '.' && path[i+1] == '.'))
+				pathlen = snprintf(path, sizeof(path),
+						   "output_%ld.dat", time(NULL));
+			for (int i = 0; i < sizeof(path) && path[i] && ptr; i++) {
+				char c = path[i];
+				if ((path[i] == '.' && path[i+1] == '.') ||
+				    !(c == '.' ||
+					(c >= 'A' && c <= 'Z') ||
+					(c >= 'a' && c <= 'z') ||
+					(c >= '0' && c <= '9')
+				     ))
 					path[i] = '_';
-			f = fopen(path, "wb");
+			}
+			int dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY);
+			if (dfd < 0) {
+				char buf[1024];
+				snprintf(buf, sizeof(buf), "%ld_%s", time(NULL), path);
+				strlcpy(path, buf, sizeof(path));
+				dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY);
+				if (dfd < 0) {
+					snprintf(tab->error, sizeof(tab->error),
+						 "Failed to write to the download folder");
+					tab->show_error = 1;
+					goto request_end;
+				}
+			}
+			f = fdopen(dfd, "wb");
 			if (!f) {
 				snprintf(tab->error, sizeof(tab->error),
 					 "Failed to write the downloaded file");
 				tab->show_error = 1;
+				goto request_end;
 			} else {
 #ifdef __FreeBSD__
 				if (make_writeonly(f)) {
@@ -1556,8 +1580,12 @@ void* gmi_request_thread(void* ptr) {
 						tb_interupt();
 						while (tab->request.ask == 2) 
 							nanosleep(&timeout, NULL);
-						if (tab->request.ask)
-							fail = xdg_open(path);
+						if (tab->request.ask) {
+							char file[1024];
+							snprintf(file, sizeof(file), "%s/%s", 
+								 download_path, path);
+							fail = xdg_open(file);
+						}
 					}
 					if (fail) {
 						tab->show_error = 1;
@@ -1577,6 +1605,7 @@ void* gmi_request_thread(void* ptr) {
 						 "Server sent invalid data");
 				}
 			}
+request_end:
 			free(tab->request.data);
 			tab->request.recv = tab->page.data_len;
 		}
@@ -1648,18 +1677,21 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 
 int gmi_init() {
 	if (tls_init()) {
+		tb_shutdown();
 		printf("Failed to initialize TLS\n");
 		return -1;
 	}
 	
 	config = tls_config_new();
 	if (!config) {
+		tb_shutdown();
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
 
 	config_empty = tls_config_new();
 	if (!config_empty) {
+		tb_shutdown();
 		printf("Failed to initialize TLS config\n");
 		return -1;
 	}
@@ -1674,14 +1706,19 @@ int gmi_init() {
 	client.xdg = xdg;
 #endif
 
-	char path[1024];
-	getconfigfolder(path, sizeof(path));
+	int fd = getconfigfd();
+	if (fd < 0) {
+		tb_shutdown();
+		printf("Failed to open config folder\n");
+		return -1;
+	}
 
 	if (gmi_loadbookmarks()) {
 		gmi_newbookmarks();
 	}
 
 	if (cert_load()) {
+		tb_shutdown();
 		printf("Failed to load known hosts\n");
 		return -1;
 	}
