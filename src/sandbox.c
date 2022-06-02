@@ -236,6 +236,10 @@ int sandbox_init() {
 #include <linux/seccomp.h>
 #include <linux/filter.h>
 #include <linux/unistd.h>
+#if ENABLE_LANDLOCK || (!defined(DISABLE_LANDLOCK) && __has_include(<linux/landlock.h>))
+	#include <linux/landlock.h>
+	#define ENABLE_LANDLOCK
+#endif
 #include "cert.h"
 
 // --------------
@@ -323,6 +327,67 @@ struct sock_filter filter[] = {
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
+#ifdef ENABLE_LANDLOCK
+static inline int landlock_create_ruleset(const struct landlock_ruleset_attr *attr,
+					  size_t size, uint32_t flags)
+{
+	return syscall(__NR_landlock_create_ruleset, attr, size, flags);
+}
+
+static inline int landlock_add_rule(int ruleset_fd, enum landlock_rule_type type,
+				    const void *attr, uint32_t flags)
+{
+	return syscall(__NR_landlock_add_rule, ruleset_fd, type, attr, flags);
+}
+
+static inline int landlock_restrict_self(int ruleset_fd, __u32 flags)
+{
+	return syscall(__NR_landlock_restrict_self, ruleset_fd, flags);
+}
+
+int landlock_unveil(int landlock_fd, int fd, int perms)
+{
+	struct landlock_path_beneath_attr attr = {
+		.allowed_access = perms,
+		.parent_fd = fd
+	};
+
+	int ret = landlock_add_rule(landlock_fd, LANDLOCK_RULE_PATH_BENEATH, &attr, 0);
+	int err = errno;
+	close(attr.parent_fd);
+	errno = err;
+	return ret;
+}
+
+#include <fcntl.h>
+int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
+	int fd = open(path, 0);
+	if (fd < 0) return -1;
+	int ret = landlock_unveil(landlock_fd, fd, perms);
+	return ret;
+}
+
+int landlock_init() {
+	struct landlock_ruleset_attr attr = {
+		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE |
+				     LANDLOCK_ACCESS_FS_WRITE_FILE,
+	};
+	return landlock_create_ruleset(&attr, sizeof(attr), 0);
+}
+
+int landlock_apply(int fd)
+{
+	int ret = landlock_restrict_self(fd, 0);
+	int err = errno;
+	close(fd);
+	errno = err;
+	return ret;
+}
+
+extern char config_path[1024];
+extern char download_path[1024];
+#endif
+
 int sandbox_init() {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
@@ -330,12 +395,54 @@ int sandbox_init() {
 		return -1;
 	}
 #endif
-	char path[1024];
-	getconfigfd(path, sizeof(path));
         if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) {
 		printf("PR_SET_NO_NEW_PRIVS failed\n");
 		return -1;
 	}
+
+	int dfd = getdownloadfd();
+	int cfd = getconfigfd();
+	if (cfd < 0 || dfd < 0) {
+		printf("Failed to access folders\n");
+		return -1;
+	}
+#ifdef ENABLE_LANDLOCK
+	int llfd = landlock_init();
+	if (llfd < 0) {
+		printf("landlock, failed to create ruleset : %s\n", strerror(errno));
+		return -1;
+	}
+	int cfg = landlock_unveil_path(llfd, config_path,
+					LANDLOCK_ACCESS_FS_READ_FILE |
+					LANDLOCK_ACCESS_FS_WRITE_FILE);
+	int dl = landlock_unveil_path(llfd, download_path,
+					LANDLOCK_ACCESS_FS_WRITE_FILE);
+	int hosts = landlock_unveil_path(llfd, "/etc/hosts",
+					LANDLOCK_ACCESS_FS_READ_FILE);
+
+	if (dl || cfg || hosts) {
+		printf("landlock, failed to unveil : %s\n", strerror(errno));
+		return -1;
+	}
+
+	// load library before restricting process
+	struct addrinfo hints, *result;
+        bzero(&hints, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags |= AI_CANONNAME;
+
+	if (getaddrinfo("example.com", NULL, &hints, &result)) {
+		printf("getaddrinfo failed\n");
+		return -1;
+	}
+	//
+
+	if (landlock_apply(llfd)) {
+		printf("landlock, failed to restrict process : %s\n", strerror(errno));
+		return -1;
+	}
+#endif
         struct sock_fprog prog = {
 		.len = (unsigned short)(sizeof(filter) / sizeof (filter[0])),
 		.filter = filter,
