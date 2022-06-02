@@ -1,5 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#include <fcntl.h>
 #ifdef __linux__
 #define _GNU_SOURCE
 #endif
@@ -19,7 +18,7 @@ int main(int argc, char* argv[]) {
 	__init();
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__linux__)
 	int ttyfd = open("/dev/tty", O_RDWR);
 	if (ttyfd < 0) {
 		printf("Failed to open tty\n");
@@ -50,7 +49,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__linux__)
 	if (tb_init_fd(ttyfd) == TB_ERR_INIT_OPEN) {
 #else
 	if (tb_init() == TB_ERR_INIT_OPEN) {
