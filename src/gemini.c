@@ -1535,12 +1535,12 @@ void* gmi_request_thread(void* ptr) {
 				     ))
 					path[i] = '_';
 			}
-			int dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY);
+			int dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
 			if (dfd < 0) {
 				char buf[1024];
 				snprintf(buf, sizeof(buf), "%ld_%s", time(NULL), path);
 				strlcpy(path, buf, sizeof(path));
-				dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY);
+				dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
 				if (dfd < 0) {
 					snprintf(tab->error, sizeof(tab->error),
 						 "Failed to write to the download folder");
