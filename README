@@ -30,9 +30,20 @@ You can prefix a movement key with a number to repeat it.
 * :o [url]	- Open an url
 * :s [search]	- Search the Geminispace using geminispace.info
 * :nt [url]	- Open a new tab, the url is optional
-* :add [name]   - Add the current url to the bookmarks, the is optional
+* :add [name]   - Add the current url to the bookmarks, the name is optional
 * :[number]	- Follow the link 
 * :gencert	- Generate a certificate for the current capsule
+
+## Sandboxing
+
+### FreeBSD
+On FreeBSD, Vgmi uses Capsicum to limit the filesystem and to enter capability mode, it also uses Casper for networking while in capability mode
+
+### OpenBSD
+On OpenBSD, Vgmi uses Unveil to limit access to the filesystem and Pledge to restrict the capabilities of the program
+
+### Linux
+On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict the filesystem
 
 ## Dependencies
 
