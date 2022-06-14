@@ -781,7 +781,7 @@ struct gmi_tab* gmi_newtab() {
 }
 
 struct gmi_tab* gmi_newtab_url(const char* url) {
-	int index = client.tabs_count;
+	size_t index = client.tabs_count;
 	client.tabs_count++;
 	if (client.tabs) 
 		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tabs_count);
@@ -793,7 +793,8 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, tab->thread.pair))
 		return NULL;
-	pthread_create(&tab->thread.thread, NULL, (void *(*)(void *))gmi_request_thread, tab);
+	pthread_create(&tab->thread.thread, NULL,
+		       (void *(*)(void *))gmi_request_thread, (void*)index);
 	tab->thread.started = 1;
 	if (url)
 		gmi_request(tab, url, 1);
@@ -1368,7 +1369,8 @@ int gmi_request_body(struct gmi_tab* tab) {
 }
 
 void* gmi_request_thread(void* ptr) {
-	struct gmi_tab* tab = ptr;
+	size_t index = (size_t)ptr;
+#define tab (&client.tabs[index])
 	unsigned int signal = 0;
 	while (!client.shutdown) {
 		tab->selected = 0;
@@ -1609,6 +1611,7 @@ request_end:
 			tab->request.recv = tab->page.data_len;
 		}
 	}
+#undef tab
 	return NULL;
 }
 
