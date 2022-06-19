@@ -195,6 +195,20 @@ int input(struct tb_event ev) {
 		}
 		return 0;
 	}
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_LEFT &&
+	    ev.mod == TB_MOD_SHIFT)
+		goto go_back;
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_RIGHT &&
+	    ev.mod == TB_MOD_SHIFT)
+		goto go_forward;
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_LEFT)
+		goto tab_prev;
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_RIGHT)
+		goto tab_next;
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_UP)
+		goto move_up;
+	if (!client.input.mode && ev.key == TB_KEY_ARROW_DOWN)
+		goto move_down;
 	if (!client.input.mode && ev.key == TB_KEY_TAB) {
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->selected = atoi(client.vim.counter);
@@ -325,6 +339,7 @@ int input(struct tb_event ev) {
 	}
 	switch (ev.ch) {
 	case 'u':
+		tab->show_error = 0;
 		client.input.mode = 1;
 		snprintf(client.input.field, sizeof(client.input.field), ":o %s", tab->url);
 		client.input.cursor = strnlen(client.input.field, sizeof(client.input.field));
@@ -341,14 +356,17 @@ int input(struct tb_event ev) {
 		gmi_request(tab, tab->history->url, 0);
 		break;
 	case 'h': // Tab left
+tab_prev:
 		client.tab--;
 		if (client.tab < 0) client.tab = client.tabs_count - 1;
 		break;
 	case 'l': // Tab right
+tab_next:
 		client.tab++;
 		if (client.tab >= client.tabs_count) client.tab = 0;
 		break;
 	case 'H': // Back
+go_back:
 		if (!tab->history || !tab->history->prev) break;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			tab->history->scroll = tab->scroll;
@@ -367,6 +385,7 @@ int input(struct tb_event ev) {
 		} else if (gmi_request(tab, tab->history->url, 1) < 0) break;
 		break;
 	case 'L': // Forward
+go_forward:
 		if (!tab->history || !tab->history->next) break;
 		if (!tab->history->cached) {
 			tab->history->page = tab->page;
@@ -380,6 +399,7 @@ int input(struct tb_event ev) {
 		tab->scroll = tab->history->scroll;
 		break;
 	case 'k': // UP
+move_up:
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll -= atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
@@ -389,6 +409,7 @@ int input(struct tb_event ev) {
 		client.vim.g = 0;
 		break;
 	case 'j': // DOWN
+move_down:
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));

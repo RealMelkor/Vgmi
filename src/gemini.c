@@ -1374,7 +1374,6 @@ void* gmi_request_thread(void* ptr) {
 	unsigned int signal = 0;
 	while (!client.shutdown) {
 		tab->selected = 0;
-		tab->scroll = -1;
 		tab->request.state = STATE_DONE;
 		if (tab->page.code == 10 ||
 		    tab->page.code == 11 ||
@@ -1506,6 +1505,7 @@ void* gmi_request_thread(void* ptr) {
 				tab->history->page = tab->page;
 				tab->history->cached = 1;
 			}
+			tab->scroll = -1;
 		}
 		if (tab->request.download && tab->request.recv > 0 && tab->page.code == 20) {
 			int len = strnlen(tab->request.url, sizeof(tab->request.url));
@@ -1565,8 +1565,8 @@ void* gmi_request_thread(void* ptr) {
 				char* ptr = strchr(tab->request.data, '\n')+1;
 				if (ptr) {
 					fwrite(ptr, 1, 
-						tab->request.recv - (ptr-tab->request.data),
-						f);
+					       tab->request.recv - (ptr-tab->request.data),
+					       f);
 					fclose(f);
 #ifndef DISABLE_XDG
 					int fail = 0;
