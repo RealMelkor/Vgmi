@@ -924,7 +924,7 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	}
 	if (proto != PROTO_GEMINI) {
 #ifndef DISABLE_XDG
-		if (client.xdg && !xdg_open((char*)url)) return -1;
+		if (client.xdg && !xdg_open((char*)url)) return 1;
 #endif
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error), 
@@ -951,7 +951,7 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 				       client.certs[cert].key_len))
 	{
 		tab->show_error = 1;
-		snprintf(tab->error, sizeof(tab->error), "%s", 
+		snprintf(tab->error, sizeof(tab->error), "tls error: %s", 
 			 tls_config_error(config));
 		return -1;
 	}
@@ -1198,7 +1198,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 			 "Invalid data from: %s", tab->request.host);
 		return -1;
 	}
-	tab->request.error_ptr = ptr;
+	strlcpy(tab->request.error, ptr+1, sizeof(tab->request.error));
 
 	int previous_code = tab->page.code;
 	tab->page.code = atoi(buf);
@@ -1390,7 +1390,8 @@ void* gmi_request_thread(void* ptr) {
 				tls_free(tab->request.tls);
 				tab->request.tls= NULL;
 			}
-			if (ret == -1) tab->show_error = 1;
+			if (ret == -1)
+				tab->show_error = 1;
 			tab->request.recv = ret;
 			continue;
 		}
@@ -1413,12 +1414,12 @@ void* gmi_request_thread(void* ptr) {
 		}
 
 		if (ret == -2) {
-			char* cr = strchr(tab->request.error_ptr+1, '\r');
+			char* cr = strchr(tab->request.error, '\r');
 			if (cr) {
 				*cr = '\0';
 				char buf[256];
 				snprintf(buf, sizeof(buf),
-					 "%s (%d : %s)", tab->request.error_ptr+1,
+					 "%s (%d : %s)", tab->request.error,
 					 tab->page.code, tab->error);
 				strlcpy(tab->error, buf, sizeof(tab->error));
 				*cr = '\r';
