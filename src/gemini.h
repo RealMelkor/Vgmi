@@ -91,7 +91,7 @@ struct gmi_tab {
 		char* data;
 		int recv;
 		int download;
-		char* error_ptr;
+		char error[1024];
 	} request;
 	struct thread {
 		pthread_t thread;
