@@ -756,15 +756,16 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 		return;
 	}
 
-	tab->request.recv = 
-	snprintf(tab->request.data, sizeof(home_page) + bm, home_page, 
-		 data?data:"") + 1;
+	tab->request.recv = snprintf(tab->request.data,
+				     sizeof(home_page) + bm, home_page, 
+				     data?data:"") + 1;
 	free(data);
 
 	strlcpy(tab->request.meta, "text/gemini",
 		sizeof(tab->request.meta));
 
 	if (!add) gmi_freepage(&tab->page);
+	bzero(&tab->page, sizeof(struct gmi_page));
 	tab->page.data = tab->request.data;
 	tab->page.data_len = tab->request.recv;
 	tab->page.code = 20;
@@ -772,8 +773,12 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	gmi_load(&tab->page);
 	if (add)
 		gmi_addtohistory(tab);
-	else if (tab->history)
+	else if (tab->history) {
 		tab->history->page = tab->page;
+		tab->history->cached = 1;
+	}
+	tab->scroll = -1;
+	tab->request.data = NULL;
 }
 
 struct gmi_tab* gmi_newtab() {
@@ -1502,7 +1507,7 @@ void* gmi_request_thread(void* ptr) {
 			gmi_load(&tab->page);
 			if (tab->thread.add)
 				gmi_addtohistory(tab);
-			else {
+			else if (tab->history) {
 				tab->history->page = tab->page;
 				tab->history->cached = 1;
 			}
