@@ -12,6 +12,9 @@ int xdg_open(char*);
 #include <signal.h>
 #include <sys/wait.h>
 #include <errno.h>
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
 
 int xdg_request(char* str) {
 	int len = strnlen(str, 1024)+1;
@@ -51,6 +54,9 @@ int xdg_init() {
 		close(xdg_pipe[1]);
 		exit(0);
 	}
+#endif
+#ifdef __linux__
+	prctl(PR_SET_NAME, "vgmi [xdg]", 0, 0, 0);
 #endif
 	xdg_listener();
 	exit(0);
@@ -232,7 +238,6 @@ int sandbox_init() {
 #include <fcntl.h>
 #include <unistd.h>
 #include <stddef.h>
-#include <sys/prctl.h>
 #include <linux/seccomp.h>
 #include <linux/filter.h>
 #include <linux/unistd.h>
