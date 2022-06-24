@@ -321,7 +321,22 @@ int gmi_render(struct gmi_tab* tab) {
 	int start = 1;
 	int ignore = 0;
 	int h = tb_height() - 2 - (client.tabs_count>1);
-	for (int c = 0; c < tab->page.data_len; c++) {
+	char* search = client.input.field[0] == '/'?
+			&client.input.field[1]:
+			tab->search.entry;
+	int search_len = search?strnlen(search, sizeof(client.input.field) - 1):0;
+	if (!search_len) search = NULL;
+	int highlight = 0;
+	int hlcolor = (client.c256?58:TB_YELLOW);
+	if (tab->search.cursor >= tab->search.count)
+		tab->search.cursor = 0;
+	else if (tab->search.cursor < 0)
+		tab->search.cursor = tab->search.count - 1;
+	int previous_count = tab->search.count;
+	tab->search.count = 0;
+	char* ptr = strstr(tab->page.data, "\r\n");
+	line++;
+	for (int c = ptr?ptr-tab->page.data+2:0; c < tab->page.data_len; c++) {
 		if (x == 0 && tab->page.data[c] == '\n') {
 			if (c+1 != tab->page.data_len)
 				line++;
@@ -386,6 +401,24 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 		}
 
+		if (search &&
+		    !strncasecmp(&tab->page.data[c], search, search_len)) {
+			if (tab->search.count == (tab->search.cursor?
+						 (tab->search.cursor - 1):
+						 (previous_count - 1)))
+				tab->search.pos[0] = line;
+			if (tab->search.count == tab->search.cursor)
+				hlcolor++;
+			if (tab->search.cursor == previous_count - 1 &&
+			    tab->search.count == 0)
+				tab->search.pos[1] = line;
+			if (tab->search.count == tab->search.cursor + 1) {
+				hlcolor--;
+				tab->search.pos[1] = line;
+			}
+			highlight += search_len;
+			tab->search.count++;
+		}
 		if (tab->page.data[c] == '\n' || tab->page.data[c] == ' ' ||
 		    x+4 >= tb_width()) {
 			int end = 0;
@@ -426,14 +459,17 @@ int gmi_render(struct gmi_tab* tab) {
 		
 		int wc = mk_wcwidth(ch);
 		if (wc < 0) wc = 0;
-		if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
+		if (line-1>=tab->scroll &&
 		    (line-tab->scroll <= tb_height() - 2) && ch != '\t') {
 			if (wc == 1)
-				tb_set_cell(x+2, line-1-tab->scroll, ch, color, TB_DEFAULT);
+				tb_set_cell(x+2, line-1-tab->scroll, ch, color,
+					    highlight?hlcolor:TB_DEFAULT);
 			else
-				tb_set_cell_ex(x+2, line-1-tab->scroll, &ch,
-					       wc, color, TB_DEFAULT);
+				tb_set_cell_ex(x+2, line-1-tab->scroll, &ch, wc, color,
+					       highlight?hlcolor:TB_DEFAULT);
 		}
+		if (highlight > 0)
+			highlight--;
 
 		x += wc;
 		start = 0;
@@ -446,7 +482,7 @@ int gmi_render(struct gmi_tab* tab) {
 	if (size < 1) size = 1;
 	int H = (line-h+1+(client.tabs_count>1));
 	int pos = (tab->scroll+(client.tabs_count<1))*h/(H?H:1) 
-		  + (client.tabs_count>1) ;
+		  + (client.tabs_count>1);
 	if (pos >= h) pos = h - size;
 	if (pos < 0) pos = 0;
 	if (tab->scroll+h == line) pos = h - size;

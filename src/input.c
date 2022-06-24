@@ -15,6 +15,13 @@
 #endif
 int fatalI();
 
+void fix_scroll(struct gmi_tab* tab) {
+	if (tab->scroll > tab->page.lines - tb_height() + 3)
+		tab->scroll = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
+	if (tab->scroll < 0)
+		tab->scroll = -1;
+}
+
 int command() {
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	struct gmi_page* page = &tab->page;
@@ -168,14 +175,18 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
-	if (atoi(&client.input.field[1]) ||
-	   (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
+	if (client.input.field[0] == ':' && (atoi(&client.input.field[1]) ||
+	   (client.input.field[1] == '0' && client.input.field[2] == '\0'))) {
 		gmi_goto(tab, atoi(&client.input.field[1]));
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;
 	}
-	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
+	if (client.input.field[0] == '/') {
+		strlcpy(tab->search.entry, &client.input.field[1],
+			sizeof(tab->search.entry));
+		client.input.field[0] = '\0';
+	} else if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
 unknown:
 		tab->show_error = -1;
@@ -221,6 +232,9 @@ int input(struct tb_event ev) {
 	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2 || ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
 		if (i>((page->code==10||page->code==11)?0:1)) {
+			if (client.input.field[0] == '/' &&
+			    page->code == 20)
+				tab->search.scroll = 1;
 			strlcpy(&client.input.field[i-1],
 				&client.input.field[i], sizeof(client.input.field)-i);
 			client.input.cursor--;
@@ -360,6 +374,33 @@ int input(struct tb_event ev) {
 		client.input.cursor++;
 		l++;
 		client.input.field[l] = '\0';
+		if (client.input.field[0] != '/' ||
+		    page->code != 20)
+			return 0;
+		int lines = 0;
+		int posx = 0;
+		int w = tb_width();
+		int found = 0;
+		for (int i = 0; i < tab->page.data_len; i++) {
+			if (lines && !strncasecmp(&client.input.field[1],
+				     &tab->page.data[i],
+				     strnlen(&client.input.field[1],
+					     sizeof(client.input.field) - 1)
+				     )) {
+				found = 1;
+				break;
+			}
+			if (posx == w || tab->page.data[i] == '\n') {
+				lines++;
+				posx=0;
+				continue;
+			}
+			posx++;
+		}
+		if (found) {
+			tab->scroll = lines - tb_height()/2;
+			fix_scroll(tab);
+		}
 		return 0;
 	} else
 		tb_hide_cursor();
@@ -398,6 +439,13 @@ int input(struct tb_event ev) {
 		client.input.mode = 1;
 		client.input.cursor = 1;
 		client.input.field[0] = ':';
+		client.input.field[1] = '\0';
+		break;
+	case '/':
+		tab->show_error = 0;
+		client.input.mode = 1;
+		client.input.cursor = 1;
+		client.input.field[0] = '/';
 		client.input.field[1] = '\0';
 		break;
 	case 'r': // Reload
@@ -482,6 +530,16 @@ move_down:
 		tab->scroll = page->lines-tb_height()+2;
 		if (client.tabs_count != 1) tab->scroll++;
 		if (tb_height()-2-(client.tabs_count>1) > page->lines) tab->scroll = -1;
+		break;
+	case 'n': // Next occurence
+		tab->search.cursor++;
+		tab->scroll = tab->search.pos[1] - tb_height()/2;
+		fix_scroll(tab);
+		break;
+	case 'N': // Previous occurence
+		tab->search.cursor--;
+		tab->scroll = tab->search.pos[0] - tb_height()/2;
+		fix_scroll(tab);
 		break;
 	default:
 		if (!(ev.ch >= '0' && ev.ch <= '9'))
