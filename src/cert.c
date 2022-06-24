@@ -351,8 +351,11 @@ int cert_getcert(char* host) {
 
 	fclose(crt_f);
 	fclose(key_f);
+	client.certs[index].crt[crt_pos-1] = '\0';
+	client.certs[index].key[key_pos-1] = '\0';
 	client.certs[index].crt_len = crt_pos;
 	client.certs[index].key_len = key_pos;
+	strlcpy(client.certs[index].host, host, sizeof(client.certs[index]));
 	client.certs_size++;
 	return index;
 }
