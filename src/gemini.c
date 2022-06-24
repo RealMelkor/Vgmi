@@ -575,7 +575,8 @@ char home_page[] =
 "* :nt [url] - Open a new tab, the url is optional\n" \
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n" \
 "* :[number] - Follow the link\n" \
-"* :gencert - Generate a certificate for the current capsule"
+"* :gencert - Generate a certificate for the current capsule\n" \
+"* :download [name] - Download the current page, the name is optional"
 ;
 
 void gmi_newbookmarks() {

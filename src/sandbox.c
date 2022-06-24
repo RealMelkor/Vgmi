@@ -15,6 +15,7 @@ int xdg_open(char*);
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
+#include <termbox.h>
 
 int xdg_request(char* str) {
 	int len = strnlen(str, 1024)+1;
@@ -27,6 +28,7 @@ void xdg_listener() {
 		int len = read(xdg_pipe[0], buf, sizeof(buf));
 		if (len <= 0)
 			break;
+		//system("$EDITOR");
 		xdg_open(buf);
 	}
 }
@@ -374,8 +376,19 @@ int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
 
 int landlock_init() {
 	struct landlock_ruleset_attr attr = {
-		.handled_access_fs = LANDLOCK_ACCESS_FS_READ_FILE |
-				     LANDLOCK_ACCESS_FS_WRITE_FILE,
+		.handled_access_fs =	LANDLOCK_ACCESS_FS_EXECUTE |
+					LANDLOCK_ACCESS_FS_READ_FILE |
+					LANDLOCK_ACCESS_FS_READ_DIR |
+					LANDLOCK_ACCESS_FS_WRITE_FILE |
+					LANDLOCK_ACCESS_FS_REMOVE_DIR |
+					LANDLOCK_ACCESS_FS_REMOVE_FILE |
+					LANDLOCK_ACCESS_FS_MAKE_CHAR |
+					LANDLOCK_ACCESS_FS_MAKE_DIR |
+					LANDLOCK_ACCESS_FS_MAKE_REG |
+					LANDLOCK_ACCESS_FS_MAKE_SOCK |
+					LANDLOCK_ACCESS_FS_MAKE_FIFO |
+					LANDLOCK_ACCESS_FS_MAKE_BLOCK |
+					LANDLOCK_ACCESS_FS_MAKE_SYM,
 	};
 	return landlock_create_ruleset(&attr, sizeof(attr), 0);
 }
@@ -418,17 +431,29 @@ int sandbox_init() {
 		printf("[WARNING] The filesystem won't be hidden from the program\n");
 		goto skip_landlock;
 	}
+	#ifndef HIDE_HOME
+#include <pwd.h>
+	struct passwd *pw = getpwuid(geteuid());
+        if (!pw) {
+		printf("failed to get home folder: %s\n", strerror(errno));
+		return -1;
+	}
+	int home = landlock_unveil_path(llfd, pw->pw_dir,
+					LANDLOCK_ACCESS_FS_READ_FILE);
+	#endif
 	int cfg = landlock_unveil_path(llfd, config_path,
 					LANDLOCK_ACCESS_FS_READ_FILE |
-					LANDLOCK_ACCESS_FS_WRITE_FILE);
+					LANDLOCK_ACCESS_FS_WRITE_FILE |
+					LANDLOCK_ACCESS_FS_MAKE_REG);
 	int dl = landlock_unveil_path(llfd, download_path,
-					LANDLOCK_ACCESS_FS_WRITE_FILE);
+					LANDLOCK_ACCESS_FS_WRITE_FILE |
+					LANDLOCK_ACCESS_FS_MAKE_REG);
 	int hosts = landlock_unveil_path(llfd, "/etc/hosts",
 					LANDLOCK_ACCESS_FS_READ_FILE);
 	int run = landlock_unveil_path(llfd, "/run",
 					LANDLOCK_ACCESS_FS_READ_FILE);
 
-	if (dl || cfg || hosts || run) {
+	if (dl || cfg || hosts || run || home) {
 		printf("landlock, failed to unveil : %s\n", strerror(errno));
 		return -1;
 	}

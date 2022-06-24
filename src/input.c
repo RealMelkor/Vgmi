@@ -1,5 +1,6 @@
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 #define TB_IMPL
 #include "wcwidth.h"
 #undef wcwidth
@@ -12,6 +13,7 @@
 #ifdef __linux__
 #include <bsd/string.h>
 #endif
+int fatalI();
 
 int command() {
 	struct gmi_tab* tab = &client.tabs[client.tab];
@@ -120,6 +122,52 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
+	if (strncmp(client.input.field, ":download", sizeof(":download") - 1) == 0) {
+		char* ptr = client.input.field + sizeof(":download") - 1;
+		int space = 0;
+		for (; *ptr; ptr++) {
+			if (*ptr != ' ') break;
+			space++;
+		}
+		if (space == 0 && *ptr) goto unknown;
+		char urlbuf[1024];
+		char* url = strrchr(tab->history->url, '/');
+		if (url && (*(url+1) == '\0')) {
+			while (*url == '/' && url > tab->history->url)
+				url--;
+			char* ptr = url + 1;
+			while (*url != '/' && url > tab->history->url)
+				url--;
+			if (*url == '/') url++;
+			if (strlcpy(urlbuf, url, ptr - url + 1) >= sizeof(urlbuf))
+				return fatalI();
+			url = urlbuf;
+		} else if (url) url++;
+		else url = tab->history->url;
+		int fd = openat(getdownloadfd(), *ptr?ptr:url,
+				O_CREAT|O_EXCL|O_RDWR, 0600);
+		if (fd < 0) {
+			tab->show_error = -1;
+			snprintf(tab->error, sizeof(tab->error),
+				 "Failed to write file : %s", strerror(errno));
+			return 0;
+		}
+		char* data = strnstr(tab->page.data, "\r\n", tab->page.data_len);
+		int data_len = tab->page.data_len;
+		if (!data) data = tab->page.data;
+		else {
+			data += 2;
+			data_len -= (data - tab->page.data);
+		}
+		write(fd, data, data_len);
+		close(fd);
+		tab->show_info = 1;
+		snprintf(tab->info, sizeof(tab->info),
+			 "File downloaded : %s", *ptr?ptr:url);
+		client.input.field[0] = '\0';
+		tab->selected = 0;
+		return 0;
+	}
 	if (atoi(&client.input.field[1]) ||
 	   (client.input.field[1] == '0' && client.input.field[2] == '\0')) {
 		gmi_goto(tab, atoi(&client.input.field[1]));
@@ -129,6 +177,7 @@ int command() {
 	}
 	if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
+unknown:
 		tab->show_error = -1;
 		snprintf(tab->error, sizeof(tab->error),
 			 "Unknown input: %s", &client.input.field[1]);
