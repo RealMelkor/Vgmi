@@ -331,6 +331,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(set_robust_list), // pthread_create
 	SC_ALLOW(munmap), // pthread_create
 	SC_ALLOW(madvise), // thread exit
+	SC_ALLOW(mremap), // realloc
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 

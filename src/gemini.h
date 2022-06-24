@@ -61,6 +61,13 @@ struct gmi_tab {
 	char error[256];
 	int show_error;
 	char info[256];
+	struct search { 
+		char entry[MAX_URL];
+		int cursor;
+		int count;
+		int scroll;
+		int pos[2];
+	} search;
 	int show_info;
 	// async
 	int pair[2];
