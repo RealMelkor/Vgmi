@@ -163,6 +163,10 @@ void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
 
+void fatal();
+int fatalI();
+void* fatalP();
+
 #include "img.h"
 #ifdef TERMINAL_IMG_VIEWER
 #undef TB_WHITE
