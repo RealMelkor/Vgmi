@@ -13,7 +13,17 @@
 #ifdef __linux__
 #include <bsd/string.h>
 #endif
-int fatalI();
+
+#ifdef NO_STRNSTR
+char *strnstr(const char *haystack, const char *needle, long unsigned int len) {
+	if (len == 0) return (char*)haystack;
+	while ((haystack = strchr(haystack, needle[0]))) {
+		if (!strncmp(haystack, needle, len)) return (char*)haystack;
+		haystack++;
+	}
+	return 0;
+}
+#endif
 
 void fix_scroll(struct gmi_tab* tab) {
 	if (tab->scroll > tab->page.lines - tb_height() + 3)
