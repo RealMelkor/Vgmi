@@ -25,14 +25,15 @@ You can prefix a movement key with a number to repeat it.
 
 ## Commands
 
-* :q		- Close the current tab
-* :qa		- Close all tabs, exit the program
-* :o [url]	- Open an url
-* :s [search]	- Search the Geminispace using geminispace.info
-* :nt [url]	- Open a new tab, the url is optional
-* :add [name]   - Add the current url to the bookmarks, the name is optional
-* :[number]	- Follow the link 
-* :gencert	- Generate a certificate for the current capsule
+* :q			- Close the current tab
+* :qa			- Close all tabs, exit the program
+* :o [url]		- Open an url
+* :s [search]		- Search the Geminispace using geminispace.info
+* :nt [url]		- Open a new tab, the url is optional
+* :add [name]   	- Add the current url to the bookmarks, the name is optional
+* :[number]		- Follow the link 
+* :gencert		- Generate a certificate for the current capsule
+* :download [name]	- Download the current page, the name is optional
 
 ## Sandboxing
 
