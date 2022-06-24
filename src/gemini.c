@@ -746,7 +746,6 @@ char* gmi_getbookmarks(int* len) {
 }
 
 void gmi_gohome(struct gmi_tab* tab, int add) {
-	tab->scroll = -1;
 	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
 	int bm;
 	char* data = gmi_getbookmarks(&bm);
@@ -960,8 +959,8 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 			 tls_config_error(config));
 		return -1;
 	}
-
-	if (tls_configure(tab->request.tls, cert?config:config_empty)) {
+	
+	if (tls_configure(tab->request.tls, cert>=0?config:config_empty)) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to configure TLS");
 		tab->show_error = 1;
@@ -1133,7 +1132,7 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	}
 	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to handshake: %s", tab->request.host);
+			 "Failed to handshake: %s (%s)", tls_error(tab->request.tls), tab->request.host);
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
