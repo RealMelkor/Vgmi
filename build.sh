@@ -9,7 +9,7 @@ cp stb/stb_image.h ../include/
 # No need to on OpenBSD
 if [ "$(uname)" != OpenBSD ] ;
 then
-mkdir lib
+mkdir ../lib
 wget https://causal.agency/libretls/libretls-3.5.2.tar.gz
 tar -zxf libretls-3.5.2.tar.gz
 cd libretls-3.5.2
