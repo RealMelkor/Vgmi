@@ -399,7 +399,7 @@ int input(struct tb_event ev) {
 				int firstspace = 0;
 				while (i + ignore < tab->page.data_len) {
 					if (tab->page.data[i + ignore] != '\n') {
-						ignore += 2 + firstspace;
+						i += 2 + firstspace;
 						break;
 					}
 					if (tab->page.data[i + ignore] == ' ') {
@@ -411,6 +411,8 @@ int input(struct tb_event ev) {
 					ignore++;
 					firstspace = 1;
 				}
+				if (i > tab->page.data_len)
+					break;
 			}
 			if (lines && !strncasecmp(&client.input.field[1],
 				     &tab->page.data[i],
