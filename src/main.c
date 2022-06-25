@@ -30,6 +30,9 @@ int main(int argc, char* argv[]) {
 	const char* term = getenv("TERM");
 	if (!term) {
 		printf("Failed to detect terminal\n");
+#if defined(__FreeBSD__) || defined(__linux__)
+		close(ttyfd);
+#endif
 		return -1;
 	}
 
@@ -47,6 +50,9 @@ int main(int argc, char* argv[]) {
 
 	if (sandbox_init()) {
 		printf("Failed to sandbox\n");
+#if defined(__FreeBSD__) || defined(__linux__)
+		close(ttyfd);
+#endif
 		return -1;
 	}
 
@@ -64,7 +70,7 @@ int main(int argc, char* argv[]) {
 	if (tb_set_output_mode(TB_OUTPUT_256)) {
 		printf("Terminal doesn't support 256 colors mode\n");
 		gmi_free();
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__linux__)
 		close(ttyfd);
 #endif
 		return -1;
@@ -95,7 +101,7 @@ int main(int argc, char* argv[]) {
 		if (input(ev)) break;
 	}
 	tb_shutdown();
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__linux__)
 	close(ttyfd);
 #endif
 	gmi_free();
