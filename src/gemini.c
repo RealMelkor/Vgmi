@@ -20,14 +20,12 @@
 #include <ctype.h>
 #include <time.h>
 #include "gemini.h"
-#ifdef __linux__
-#include <bsd/string.h>
-#endif
 #include "cert.h"
 #include "wcwidth.h"
 #include "display.h"
 #include "input.h"
 #include "sandbox.h"
+#include "str.h"
 
 #define MAX_CACHE 10
 #define TIMEOUT 8

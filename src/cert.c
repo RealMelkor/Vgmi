@@ -18,10 +18,10 @@
 #include <fcntl.h>
 #ifdef __linux__
 #include <sys/random.h>
-#include <bsd/string.h>
 #endif
 #include "gemini.h"
 #include "sandbox.h"
+#include "str.h"
 
 char home_path[1024];
 char download_path[1024];

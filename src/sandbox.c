@@ -277,16 +277,16 @@ struct sock_filter filter[] = {
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 	    (offsetof(struct seccomp_data, arch))),
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
-#ifdef __MUSL__
+//#ifdef __MUSL__
         SC_ALLOW(readv),
         SC_ALLOW(writev),
         SC_ALLOW(open),
         SC_ALLOW(dup2), // required by getaddrinfo
-#else
+//#else
         SC_ALLOW(pipe2), // tb_init
 	SC_ALLOW(recvmsg), // getaddrinfo_a
 	SC_ALLOW(getsockname), // getaddrinfo_a
-#endif
+//#endif
         SC_ALLOW(fstat), // older glibc and musl
         SC_ALLOW(stat), // older glibc
         SC_ALLOW(pipe), // older glibc and musl
@@ -323,7 +323,9 @@ struct sock_filter filter[] = {
         SC_ALLOW(getsockopt),
 	SC_ALLOW(poll),
 	SC_ALLOW(clone),
+#ifdef __NR_clone3
 	SC_ALLOW(clone3),
+#endif
 	SC_ALLOW(clock_nanosleep),
 	SC_ALLOW(nanosleep),
 	SC_ALLOW(rseq), // pthread_create
@@ -331,6 +333,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(munmap), // pthread_create
 	SC_ALLOW(madvise), // thread exit
 	SC_ALLOW(mremap), // realloc
+	SC_ALLOW(select), // on old version of linux
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
