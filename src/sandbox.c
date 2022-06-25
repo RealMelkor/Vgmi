@@ -203,7 +203,6 @@ int sandbox_init() {
 	}
 #endif
 #ifndef HIDE_HOME
-	char path[1024];
 	if (gethomefd() < 1) {
 		printf("Failed to get home folder\n");
 		return -1;

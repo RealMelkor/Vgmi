@@ -26,8 +26,9 @@ char *strnstr(const char *haystack, const char *needle, long unsigned int len) {
 #endif
 
 void fix_scroll(struct gmi_tab* tab) {
-	if (tab->scroll > tab->page.lines - tb_height() + 2 + (client.tabs_count>1))
-		tab->scroll = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
+	int h = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
+	if (tab->scroll > h)
+		tab->scroll = h;
 	if (tab->scroll < 0)
 		tab->scroll = -1;
 }
@@ -52,6 +53,8 @@ int command() {
 		client.input.field[0] = '\0';
 		if (client.tabs_count < 1)
 			return 1;
+		if (client.tabs_count == 1)
+			fix_scroll(&client.tabs[0]);
 		return 0;
 	}
 	if (client.input.field[1] == 'q' && client.input.field[2] == 'a'
@@ -215,13 +218,12 @@ int input(struct tb_event ev) {
 		client.input.mode = 1;
 	}
 	if (ev.type == TB_EVENT_RESIZE) {
-		if (last_height == -1) last_height = tb_height(); 
 		if (tb_height() == last_height) return 0;
 		int lines = gmi_render(tab);
 		tab->scroll -= page->lines - lines - 1;
-		if (tab->scroll+tb_height()-2 > lines) tab->scroll = lines - tb_height() + 2;
-		if (tab->scroll < -1) tab->scroll = -1;
+		fix_scroll(tab);
 		tb_clear();
+		last_height = tb_height();
 		return 0;
 	}
 	if (ev.type != TB_EVENT_KEY) return 0;
@@ -312,10 +314,9 @@ int input(struct tb_event ev) {
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->scroll+tb_height()-2>page->lines)
-				tab->scroll = page->lines - tb_height() + 2;
 		}
-		else if (tab->scroll+tb_height()-2<page->lines) tab->scroll++;
+		else tab->scroll++;
+		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
 	}
@@ -391,7 +392,26 @@ int input(struct tb_event ev) {
 		int posx = 0;
 		int w = tb_width();
 		int found = 0;
-		for (int i = 0; i < tab->page.data_len; i++) {
+		for (int i = 0; i < tab->page.data_len - 1; i++) {
+			if (posx == 0 && tab->page.data[i] == '=' &&
+			    tab->page.data[i + 1] == '>') {
+				int ignore = 0;
+				int firstspace = 0;
+				while (i + ignore < tab->page.data_len) {
+					if (tab->page.data[i + ignore] != '\n') {
+						ignore += 2 + firstspace;
+						break;
+					}
+					if (tab->page.data[i + ignore] == ' ') {
+						ignore++;
+						if (firstspace) continue;
+						i += ignore;
+						break;
+					}
+					ignore++;
+					firstspace = 1;
+				}
+			}
 			if (lines && !strncasecmp(&client.input.field[1],
 				     &tab->page.data[i],
 				     strnlen(&client.input.field[1],
@@ -421,7 +441,7 @@ int input(struct tb_event ev) {
 		int H = tb_height() - 2 - (client.tabs_count>1);
 		tab->scroll -= counter * H;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (tab->scroll < -1) tab->scroll = -1;
+		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
 	}
@@ -431,9 +451,7 @@ int input(struct tb_event ev) {
 		int H = tb_height() - 2 - (client.tabs_count>1);
 		tab->scroll += counter * H;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
-		if (page->lines < H) tab->scroll = -1;
-		else if (tab->scroll + H > page->lines)
-			tab->scroll = page->lines - H;
+		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
 	}
@@ -510,9 +528,9 @@ move_up:
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll -= atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->scroll < -1) tab->scroll = -1;
 		}
-		else if (tab->scroll>-1) tab->scroll--;
+		else tab->scroll--;
+		fix_scroll(tab);
 		client.vim.g = 0;
 		break;
 	case 'j': // DOWN
@@ -520,11 +538,9 @@ move_down:
 		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->scroll+tb_height()-2>page->lines)
-				tab->scroll = page->lines - tb_height() + 2 + (client.tabs_count>1);
 		}
-		else if (tab->scroll+(client.tabs_count==1?tb_height()-2:tb_height()-3)
-			 < page->lines) tab->scroll++;
+		else tab->scroll++;
+		fix_scroll(tab);
 		client.vim.g = 0;
 		break;
 	case 'f': // Show history

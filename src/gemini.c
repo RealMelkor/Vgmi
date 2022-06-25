@@ -1170,13 +1170,15 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	}
 	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to handshake: %s (%s)", tls_error(tab->request.tls), tab->request.host);
+			 "Failed to handshake: %s (%s)",
+			 tls_error(tab->request.tls),
+			 tab->request.host);
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
 	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
-			      tls_peer_cert_notbefore(tab->request.tls),
-			      tls_peer_cert_notafter(tab->request.tls));
+			  tls_peer_cert_notbefore(tab->request.tls),
+			  tls_peer_cert_notafter(tab->request.tls));
 	if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
 			 ret==-1?"Failed to verify server certificate for %s" \
