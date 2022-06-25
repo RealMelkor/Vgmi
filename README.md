@@ -12,6 +12,7 @@ Gemini client written in C with vim-like keybindings
 * L  - Go forward in the history
 * gg - Go at the top of the page
 * G  - Go at the bottom of the page
+* /  - Open search mode
 * :  - Open input mode
 * u  - Open input mode with the current url
 * f  - Show the history

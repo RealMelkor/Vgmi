@@ -594,6 +594,7 @@ char home_page[] =
 "* L - Go forward in the history\n" \
 "* gg - Go at the top of the page\n" \
 "* G - Go at the bottom of the page\n" \
+"* / - Open search mode\n" \
 "* : - Open input mode\n" \
 "* u - Open input mode with the current url\n" \
 "* f - Show the history\n" \
