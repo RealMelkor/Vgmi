@@ -26,7 +26,7 @@ char *strnstr(const char *haystack, const char *needle, long unsigned int len) {
 #endif
 
 void fix_scroll(struct gmi_tab* tab) {
-	if (tab->scroll > tab->page.lines - tb_height() + 3)
+	if (tab->scroll > tab->page.lines - tb_height() + 2 + (client.tabs_count>1))
 		tab->scroll = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
 	if (tab->scroll < 0)
 		tab->scroll = -1;
