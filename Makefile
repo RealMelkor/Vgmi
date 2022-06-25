@@ -7,8 +7,9 @@ CC = cc
 FLAGS = -DTERMINAL_IMG_VIEWER
 LIBSPATH = -L./lib -L/usr/local/lib -L/usr/pkg/lib
 INCLUDES = -L./include -I/usr/local/include -I/usr/pkg/include
-LIBS = -l:libtls.a -lssl -lcrypto -lpthread -lm
-SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c src/sandbox.c
+#LIBS = -l:libtls.a -lssl -lcrypto -lpthread -lm
+LIBS = -l:libtls.a -lcrypto -lssl -lpthread -lm
+SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c src/sandbox.c src/str.c
 
 vgmi: src/*
 	${CC} ${SRC} ${FLAGS} ${CFLAGS} ${INCLUDES} ${LIBSPATH} ${LIBS} -o $@
