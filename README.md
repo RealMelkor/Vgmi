@@ -55,10 +55,10 @@ On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict th
 ### Optional dependency
 * [stb-image][2] - image loading library
 
-### On Linux
-* [libbsd][3] - utility functions from BSD systems
+## Building
+
+Executing the build.sh script will download all dependencies and build Vgmi
 
 [0]: https://git.causal.agency/libretls/about/
 [1]: https://github.com/termbox/termbox2
 [2]: https://github.com/nothings/stb/blob/master/stb_image.h
-[3]: https://libbsd.freedesktop.org/wiki/

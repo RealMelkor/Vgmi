@@ -2,8 +2,8 @@
 SHELL = /bin/sh
 
 PREFIX = /usr
-CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
-LDFLAGS = -ltls -lcrypto -lbsd -lm
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
+LDFLAGS = -L./lib -ltls -lcrypto -lm -lpthread -lssl -lanl
 FLAGS = -DTERMINAL_IMG_VIEWER
 CC = cc
 SRC = $(wildcard src/*.c)

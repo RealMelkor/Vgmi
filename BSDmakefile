@@ -3,8 +3,8 @@ SHELL = /bin/sh
 
 PREFIX = /usr/local
 CC = cc
-CFLAGS = -O2 -Wall -Wpedantic -Wextra -I/usr/local/include
-LDFLAGS = -lcasper -lcap_net -L/usr/local/lib -ltls -lcrypto -lpthread -lm 
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -I/usr/local/include -I./include
+LDFLAGS = -L./lib -lcasper -lcap_net -L/usr/local/lib -ltls -lcrypto -lpthread -lm 
 FLAGS = -DTERMINAL_IMG_VIEWER
 SRC = ${:!ls src/*.c!}
 OBJ = ${SRC:.c=.o}

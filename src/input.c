@@ -9,21 +9,8 @@
 #include "gemini.h"
 #include "display.h"
 #include "cert.h"
+#include "str.h"
 #include <stdio.h>
-#ifdef __linux__
-#include <bsd/string.h>
-#endif
-
-#ifdef NO_STRNSTR
-char *strnstr(const char *haystack, const char *needle, long unsigned int len) {
-	if (len == 0) return (char*)haystack;
-	while ((haystack = strchr(haystack, needle[0]))) {
-		if (!strncmp(haystack, needle, len)) return (char*)haystack;
-		haystack++;
-	}
-	return 0;
-}
-#endif
 
 void fix_scroll(struct gmi_tab* tab) {
 	int h = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
