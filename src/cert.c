@@ -114,10 +114,10 @@ int cert_create(char* host, char* error, int errlen) {
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	int id;
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-	arc4random_buf(&id, sizeof(id));
-#else
+#ifdef __linux__
 	getrandom(&id, sizeof(id), GRND_RANDOM);
+#else
+	arc4random_buf(&id, sizeof(id));
 #endif
 	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;

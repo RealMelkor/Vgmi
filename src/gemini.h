@@ -116,7 +116,7 @@ struct gmi_client {
 	int tabs_count;
 	struct input {
 		char label[MAX_URL];
-		char field[MAX_URL];
+		char field[MAX_URL * 2];
 		int cursor;
 		int mode;
 	} input;
