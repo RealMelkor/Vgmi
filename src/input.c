@@ -196,7 +196,6 @@ unknown:
 	return 0;
 }
 
-int last_height = -1; 
 int input(struct tb_event ev) {
 	struct gmi_tab* tab = &client.tabs[client.tab];
 	struct gmi_page* page = &tab->page;
@@ -205,12 +204,7 @@ int input(struct tb_event ev) {
 		client.input.mode = 1;
 	}
 	if (ev.type == TB_EVENT_RESIZE) {
-		if (tb_height() == last_height) return 0;
-		int lines = gmi_render(tab);
-		tab->scroll -= page->lines - lines - 1;
 		fix_scroll(tab);
-		tb_clear();
-		last_height = tb_height();
 		return 0;
 	}
 	if (ev.type != TB_EVENT_KEY) return 0;
