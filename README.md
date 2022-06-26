@@ -1,6 +1,6 @@
 # Vgmi
 
-Gemini client written in C with vim-like keybindings
+[Gemini][0] client written in C with vim-like keybindings
 
 ## Keybindings
 
@@ -49,16 +49,17 @@ On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict th
 
 ## Dependencies
 
-* [libtls][0] - a new TLS library
-* [termbox2][1] - terminal rendering library
+* [libtls][1] - a new TLS library
+* [termbox2][2] - terminal rendering library
 
 ### Optional dependency
-* [stb-image][2] - image loading library
+* [stb-image][3] - image loading library
 
 ## Building
 
 Executing the build.sh script will download all dependencies and build Vgmi
 
-[0]: https://git.causal.agency/libretls/about/
-[1]: https://github.com/termbox/termbox2
-[2]: https://github.com/nothings/stb/blob/master/stb_image.h
+[0]: https://gemini.circumlunar.space/
+[1]: https://git.causal.agency/libretls/about/
+[2]: https://github.com/termbox/termbox2
+[3]: https://github.com/nothings/stb/blob/master/stb_image.h
