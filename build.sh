@@ -29,7 +29,7 @@ cd libressl-3.5.3
 make -j 4
 cp include/*.h ../../include/
 cp -R include/compat ../../include/
-cp -R include/ssl ../../include/
+cp -R include/openssl ../../include/
 cp tls/.libs/libtls.a ../../lib
 cp crypto/.libs/libcrypto.a ../../lib
 cp ssl/.libs/libssl.a ../../lib
