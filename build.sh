@@ -10,7 +10,19 @@ cp stb/stb_image.h ../include/
 if [ "$(uname)" != OpenBSD ] ;
 then
 mkdir ../lib
-wget https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.3.tar.gz
+download=fetch
+if ! hash $download 2>/dev/null; then
+        download=wget
+fi
+if ! hash $download 2>/dev/null; then
+        download=curl
+if ! hash $download 2>/dev/null; then
+        echo "No download program found"
+        exit
+fi
+        download="curl -O"
+fi
+$download https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.3.tar.gz
 tar -zxf libressl-3.5.3.tar.gz
 cd libressl-3.5.3
 ./configure
