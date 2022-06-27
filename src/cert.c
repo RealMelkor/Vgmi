@@ -355,7 +355,7 @@ int cert_getcert(char* host) {
 	client.certs[index].key[key_pos-1] = '\0';
 	client.certs[index].crt_len = crt_pos;
 	client.certs[index].key_len = key_pos;
-	strlcpy(client.certs[index].host, host, sizeof(client.certs[index]));
+	strlcpy(client.certs[index].host, host, sizeof(client.certs[index].host));
 	client.certs_size++;
 	return index;
 }
