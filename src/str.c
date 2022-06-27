@@ -167,16 +167,4 @@ strnstr(const char *s, const char *find, size_t slen)
 	}
 	return ((char *)s);
 }
-/*
-char *strnstr(const char *haystack, const char *needle, long unsigned int len) {
-	if (len == 0) return (char*)haystack;
-	while ((haystack = strchr(haystack, needle[0]))) {
-		if (!strncmp(haystack, needle, len)) return (char*)haystack;
-		haystack++;
-	}
-	return 0;
-}
-*/
-
-typedef int remove_iso_warning;
 #endif
