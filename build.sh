@@ -10,14 +10,17 @@ cp stb/stb_image.h ../include/
 if [ "$(uname)" != OpenBSD ] ;
 then
 mkdir ../lib
-wget https://causal.agency/libretls/libretls-3.5.2.tar.gz
-tar -zxf libretls-3.5.2.tar.gz
-cd libretls-3.5.2
+wget https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.3.tar.gz
+tar -zxf libressl-3.5.3.tar.gz
+cd libressl-3.5.3
 ./configure
 make -j 4
-cp include/tls.h ../../include/
+cp include/*.h ../../include/
 cp -R include/compat ../../include/
-cp .libs/libtls.a ../../lib
+cp -R include/ssl ../../include/
+cp tls/.libs/libtls.a ../../lib
+cp crypto/.libs/libcrypto.a ../../lib
+cp ssl/.libs/libssl.a ../../lib
 cd ../../
 else
 cd ../
