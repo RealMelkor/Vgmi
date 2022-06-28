@@ -384,7 +384,8 @@ int cert_verify(char* host, const char* hash, unsigned long long start, unsigned
                 return -3;
 #endif
 	char buf[2048];
-	int len = sprintf(buf, "%s %s %lld %lld\n", host, hash, start, end);
+	int len = snprintf(buf, 2048, "%s %s %lld %lld\n",
+			   host, hash, start, end);
 	if (write(fd, buf, len) != len) return -4;
 
 	close(fd);
