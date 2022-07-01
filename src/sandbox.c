@@ -334,6 +334,9 @@ struct sock_filter filter[] = {
 	SC_ALLOW(madvise), // thread exit
 	SC_ALLOW(mremap), // realloc
 	SC_ALLOW(select), // on old version of linux
+#ifdef __NR_pselect6
+	SC_ALLOW(pselect6),
+#endif
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
