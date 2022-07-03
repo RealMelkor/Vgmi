@@ -86,7 +86,8 @@ int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 		    (url[i] >= '0' && url[i] <= '9') ||
 		    (url[i] == '?' && !inquery) ||
 		    url[i] == '.' || url[i] == '/' ||
-		    url[i] == ':' || url[i] == '-') {
+		    url[i] == ':' || url[i] == '-' ||
+		    url[i] == '_') {
 			if (url[i] == '?') inquery = 1;
 			buf[j] = url[i];
 			j++;
