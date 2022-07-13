@@ -107,6 +107,7 @@ struct gmi_tab {
 		char url[1024];
 		int add;
 	} thread;
+	pthread_mutex_t render_mutex;
 };
 
 struct gmi_client {
