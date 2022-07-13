@@ -265,6 +265,7 @@ void gmi_load(struct gmi_page* page) {
 }
 
 int gmi_render(struct gmi_tab* tab) {
+	pthread_mutex_lock(&tab->render_mutex);
 #include "img.h"
 #ifdef TERMINAL_IMG_VIEWER
 	if (strncmp(tab->page.meta, "image/", 6) == 0) {
@@ -274,6 +275,7 @@ int gmi_render(struct gmi_tab* tab) {
 				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 					  "Invalid data: new line not found");
 				tab->page.img.tried = 1;
+				pthread_mutex_unlock(&tab->render_mutex);
 				return 1;
 			}
 			ptr++;
@@ -290,6 +292,7 @@ int gmi_render(struct gmi_tab* tab) {
 				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 					  "Failed to decode image: %s;", tab->page.meta);
 				tab->page.img.tried = 1;
+				pthread_mutex_unlock(&tab->render_mutex);
 				return 1;
 			}
 
@@ -299,6 +302,7 @@ int gmi_render(struct gmi_tab* tab) {
 			img_display(tab->page.img.data,
 					tab->page.img.w, tab->page.img.h,
 					client.tabs_count>1);
+			pthread_mutex_unlock(&tab->render_mutex);
 			return 1;
 		}
 	}
@@ -309,6 +313,7 @@ int gmi_render(struct gmi_tab* tab) {
 		if (strncmp(tab->page.meta, "text/", 5)) {
 			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 				  "Unable to render format : %s", tab->page.meta);
+			pthread_mutex_unlock(&tab->render_mutex);
 			return 1;
 		}
 		text = 1;
@@ -431,8 +436,10 @@ int gmi_render(struct gmi_tab* tab) {
 					newline = 0;
 					break;
 				}
-				if (tab->page.data[c+i] == ' ' || tab->page.data[c+i] == '\n' ||
-				    tab->page.data[c+i] == '\0' || c+i >= tab->page.data_len)
+				if (c+i >= tab->page.data_len ||
+				    tab->page.data[c+i] == ' ' ||
+				    tab->page.data[c+i] == '\n' ||
+				    tab->page.data[c+i] == '\0')
 					break;
 				if (tb_width()-4<=x+i) newline = 1;
 			}
@@ -475,7 +482,10 @@ int gmi_render(struct gmi_tab* tab) {
 	}
 	line++;
 	h += (client.tabs_count>1);
-	if (h > line) return line;
+	if (h > line) {
+		pthread_mutex_unlock(&tab->render_mutex);
+		return line;
+	}
 	int size = (h==line?(h-1):(h/(line-h))); 
 	if (size == h) size--;
 	if (size < 1) size = 1;
@@ -491,6 +501,7 @@ int gmi_render(struct gmi_tab* tab) {
 			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?246:TB_CYAN);
 		else
 			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?233:TB_BLACK);
+	pthread_mutex_unlock(&tab->render_mutex);
 	return line;
 }
 
@@ -576,6 +587,7 @@ void gmi_freetab(struct gmi_tab* tab) {
 	}
 	if ((signed)tab->thread.started)
 		pthread_join(tab->thread.thread, NULL);
+	pthread_mutex_destroy(&tab->render_mutex);
 	bzero(tab, sizeof(struct gmi_tab));
 }
 
@@ -786,6 +798,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
 	int bm;
 	char* data = gmi_getbookmarks(&bm);
+	pthread_mutex_lock(&tab->render_mutex);
 	tab->request.data = malloc(sizeof(home_page) + bm);
 	if (!tab->request.data) {
 		fatal();
@@ -815,6 +828,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	}
 	tab->scroll = -1;
 	tab->request.data = NULL;
+	pthread_mutex_unlock(&tab->render_mutex);
 }
 
 struct gmi_tab* gmi_newtab() {
@@ -831,6 +845,7 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	if (!client.tabs) return fatalP();
 	struct gmi_tab* tab = &client.tabs[index];
 	bzero(tab, sizeof(struct gmi_tab));
+	pthread_mutex_init(&tab->render_mutex, NULL);
 	
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, tab->thread.pair))
 		return NULL;
@@ -1534,6 +1549,7 @@ void* gmi_request_thread(void* ptr) {
 				}
 				link_ptr = link_ptr->prev;
 			}
+			pthread_mutex_lock(&tab->render_mutex);
 			if (!tab->thread.add)
 				gmi_freepage(&tab->page);
 			bzero(&tab->page, sizeof(struct gmi_page));
@@ -1550,6 +1566,7 @@ void* gmi_request_thread(void* ptr) {
 				tab->history->cached = 1;
 			}
 			tab->scroll = -1;
+			pthread_mutex_unlock(&tab->render_mutex);
 		}
 		if (tab->request.download && tab->request.recv > 0 && tab->page.code == 20) {
 			int len = strnlen(tab->request.url, sizeof(tab->request.url));
@@ -1699,6 +1716,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		return -1;
 	}
 	fclose(f);
+	pthread_mutex_lock(&tab->render_mutex);
 	tab->page.code = 20;
 	tab->page.data_len = len;
 	if (tab->page.data) free(tab->page.data);
@@ -1718,6 +1736,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		strlcpy(tab->page.meta, "text/text", sizeof(tab->page.meta));
 	gmi_load(&tab->page);
 	gmi_addtohistory(tab);
+	pthread_mutex_unlock(&tab->render_mutex);
 	return len;
 }
 
