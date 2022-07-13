@@ -281,10 +281,10 @@ int cert_load() {
 
 			cert_add(host, hash, atoi(start), atoi(end));
 			host = ptr;
-			hash = NULL;
+			end = start = hash = NULL;
 		} else if (*ptr == '\n') {
 			host = ptr+1;
-			hash = NULL;
+			end = start = hash = NULL;
 		}
 		ptr++;
 	}
@@ -360,12 +360,39 @@ int cert_getcert(char* host) {
 	return index;
 }
 
+int cert_rewrite() {
+	int cfd = getconfigfd();
+	if (cfd < 0) return -1;
+
+	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY, 0600);
+	if (fd == -1)
+		return -2;
+	if (!fdopen(fd, "w")) return -3;
+#ifdef __FreeBSD__
+        if (makefd_writeonly(fd))
+                return -3;
+#endif
+	char buf[2048];
+	for (struct cert* cert = first_cert; cert; cert = cert->next) {
+		int len = snprintf(buf, 2048, "%s %s %lld %lld\n",
+				   cert->host, cert->hash,
+				   cert->start, cert->end);
+		if (write(fd, buf, len) != len) {
+			close(fd);
+			return -1;
+		}
+	}
+	close(fd);
+	return 0;
+}
+
 int cert_forget(char* host) {
 	struct cert* prev = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		if (!strcmp(host, cert->host)) {
 			prev->next = cert->next;
 			free(cert);
+			cert_rewrite();
 			return 0;
 		}
 		prev = cert;
@@ -401,7 +428,10 @@ int cert_verify(char* host, const char* hash,
 	char buf[2048];
 	int len = snprintf(buf, 2048, "%s %s %lld %lld\n",
 			   host, hash, start, end);
-	if (write(fd, buf, len) != len) return -4;
+	if (write(fd, buf, len) != len) {
+		close(fd);
+		return -4;
+	}
 
 	close(fd);
 	cert_add(host, hash, start, end);
