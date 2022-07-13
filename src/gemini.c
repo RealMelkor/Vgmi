@@ -624,6 +624,7 @@ char home_page[] =
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n" \
 "* :[number] - Follow the link\n" \
 "* :gencert - Generate a certificate for the current capsule\n" \
+"* :forget <host> - Forget the certificate for an host\n" \
 "* :download [name] - Download the current page, the name is optional"
 ;
 
@@ -1193,7 +1194,14 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
 			  tls_peer_cert_notbefore(tab->request.tls),
 			  tls_peer_cert_notafter(tab->request.tls));
-	if (ret) {
+	if (ret == 1) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Invalid certificate, enter \":forget %s\"" \
+			 " to forget the old certificate.",
+			 tab->request.host);
+		return -1;
+	}
+	else if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
 			 ret==-1?"Failed to verify server certificate for %s" \
 				 "(The certificate changed) %s":
