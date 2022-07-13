@@ -360,7 +360,22 @@ int cert_getcert(char* host) {
 	return index;
 }
 
-int cert_verify(char* host, const char* hash, unsigned long long start, unsigned long long end) {
+int cert_forget(char* host) {
+	struct cert* prev = NULL;
+	for (struct cert* cert = first_cert; cert; cert = cert->next) {
+		if (!strcmp(host, cert->host)) {
+			prev->next = cert->next;
+			free(cert);
+			return 0;
+		}
+		prev = cert;
+	}
+	return -1;
+}
+
+int cert_verify(char* host, const char* hash,
+		unsigned long long start,
+		unsigned long long end) {
 	struct cert* found = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		if (!strcmp(host, cert->host)) {
@@ -370,7 +385,7 @@ int cert_verify(char* host, const char* hash, unsigned long long start, unsigned
 	}
 	unsigned long long now = time(NULL);
 	if (found && found->start < now && found->end > now)
-		return strcmp(found->hash, hash);
+		return strcmp(found->hash, hash)?1:0;
 
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;

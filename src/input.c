@@ -119,6 +119,25 @@ int command() {
 		}
 		return 0;
 	}
+	if (strncmp(client.input.field, ":forget", sizeof(":forget") - 1) == 0) {
+		char* ptr = client.input.field + sizeof(":forget") - 1;
+		int space = 0;
+		for (; *ptr; ptr++) {
+			if (*ptr != ' ') break;
+			space++;
+		}
+		if (space == 0 || !*ptr) goto unknown;
+		if (cert_forget(ptr)) {
+			tab->show_error = 1;
+			snprintf(tab->error, sizeof(tab->error),
+				 "Unknown certificate %s", ptr);
+			return 0;
+		}
+		tab->show_info = 1;
+		snprintf(tab->info, sizeof(tab->info),
+			 "%s certificate removed from known hosts", ptr);
+		return 0;
+	}
 	if (strcmp(client.input.field, ":gencert") == 0) {
 		char host[256];
 		gmi_parseurl(tab->url, host, sizeof(host), NULL, 0, NULL);
