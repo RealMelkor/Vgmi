@@ -2,10 +2,16 @@
 SHELL = /bin/sh
 
 PREFIX = /usr
+CC = cc
+
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
 LDFLAGS = -L./lib -ltls -lcrypto -lm -lpthread -lssl -lanl
+# MUSL
+#CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
+#LDFLAGS = -static -L./lib -ltls -lcrypto -lm -lpthread -lssl
+
 FLAGS = -DTERMINAL_IMG_VIEWER
-CC = cc
+
 SRC = $(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}
 OBJS = $(subst src,obj,$(OBJ))

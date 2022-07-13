@@ -1707,10 +1707,9 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	fseek(f, 0, SEEK_END);
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	char* data = malloc(len+1);
+	char* data = malloc(len);
 	if (!data) return fatalI();
-	data[0] = '\n';
-	if (len != fread(&data[1], 1, len, f)) {
+	if (len != fread(data, 1, len, f)) {
 		fclose(f);
 		free(data);
 		return -1;
