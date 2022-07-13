@@ -505,6 +505,7 @@ go_forward:
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
+		strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		break;
 	case 'k': // UP
 move_up:
