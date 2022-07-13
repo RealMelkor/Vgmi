@@ -460,7 +460,10 @@ int sandbox_init() {
 	int run = landlock_unveil_path(llfd, "/run",
 					LANDLOCK_ACCESS_FS_READ_FILE);
 
-	if (dl || cfg || hosts || run || home) {
+	int resolv = landlock_unveil_path(llfd, "/etc/resolv.conf",
+					LANDLOCK_ACCESS_FS_READ_FILE);
+
+	if (dl || cfg || hosts || run || home || resolv) {
 		printf("landlock, failed to unveil : %s\n", strerror(errno));
 		return -1;
 	}
