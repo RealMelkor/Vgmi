@@ -334,6 +334,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(mremap), // realloc
 	SC_ALLOW(select), // on old version of linux
 	SC_ALLOW(membarrier),
+	SC_ALLOW(sendmmsg),
 #ifdef __NR_pselect6
 	SC_ALLOW(pselect6),
 #endif
