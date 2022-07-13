@@ -973,10 +973,10 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 		return -1;
 	}
 	if (tab->request.tls) {
-		tls_close(tab->request.tls);
-		tab->request.tls = NULL;
+		tls_reset(tab->request.tls);
+	} else {
+		tab->request.tls = tls_client();
 	}
-	tab->request.tls = tls_client();
 	if (!tab->request.tls) {
 		snprintf(tab->error, sizeof(tab->error), "Failed to initialize TLS");
 		tab->show_error = 1;

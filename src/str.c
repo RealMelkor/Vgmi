@@ -140,7 +140,9 @@ strlcat(char *dst, const char *src, size_t dsize)
  * SUCH DAMAGE.
  */
 
+#if __has_include(<sys/cdefs.h>)
 #include <sys/cdefs.h>
+#endif
 #include <string.h>
 
 /*
