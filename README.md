@@ -34,6 +34,7 @@ You can prefix a movement key with a number to repeat it.
 * :add [name]   	- Add the current url to the bookmarks, the name is optional
 * :[number]		- Follow the link 
 * :gencert		- Generate a certificate for the current capsule
+* :forget [host]	- Forget the certificate for the host
 * :download [name]	- Download the current page, the name is optional
 
 ## Sandboxing
