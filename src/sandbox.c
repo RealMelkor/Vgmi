@@ -28,7 +28,6 @@ void xdg_listener() {
 		int len = read(xdg_pipe[0], buf, sizeof(buf));
 		if (len <= 0)
 			break;
-		//system("$EDITOR");
 		xdg_open(buf);
 	}
 }
@@ -334,6 +333,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(madvise), // thread exit
 	SC_ALLOW(mremap), // realloc
 	SC_ALLOW(select), // on old version of linux
+	SC_ALLOW(membarrier),
 #ifdef __NR_pselect6
 	SC_ALLOW(pselect6),
 #endif
