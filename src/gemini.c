@@ -446,11 +446,11 @@ int gmi_render(struct gmi_tab* tab) {
 			if (newline) {
 				if (c+1 != tab->page.data_len)
 					line++;
-				if (tab->page.data[c+1] == ' ') c++;
 				if (tab->page.data[c] == '\n') {
 					color = TB_DEFAULT;
 					start = 1;
 				}
+				if (tab->page.data[c+1] == ' ') c++;
 				x = 0;
 				continue;
 			} else if (end) {
