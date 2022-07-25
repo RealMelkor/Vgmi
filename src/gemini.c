@@ -87,7 +87,7 @@ int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 		    (url[i] == '?' && !inquery) ||
 		    url[i] == '.' || url[i] == '/' ||
 		    url[i] == ':' || url[i] == '-' ||
-		    url[i] == '_') {
+		    url[i] == '_' || url[i] == '~') {
 			if (url[i] == '?') inquery = 1;
 			buf[j] = url[i];
 			j++;
@@ -357,7 +357,7 @@ int gmi_render(struct gmi_tab* tab) {
 		
 		if (!ignore && !text) {
 			for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
-				if (tab->page.data[c+i+1] == ' ') {
+				if (tab->page.data[c+i+1] != '#') {
 					color = TB_RED + i;
 					break;
 				}
@@ -1259,15 +1259,18 @@ int gmi_request_header(struct gmi_tab* tab) {
 		return -1;
 	}
 	char* ptr = strchr(buf, ' ');
-	if (!ptr) {
-		snprintf(tab->error, sizeof(tab->error),
-			 "Invalid data from: %s", tab->request.host);
-		return -1;
+	char meta_buf[128];
+	if (!ptr) { // work-around for servers not sending meta
+		ptr = meta_buf;
+		strlcpy(meta_buf, " text/gemini\r\n", sizeof(meta_buf));
 	}
-	strlcpy(tab->request.error, ptr+1, sizeof(tab->request.error));
+	else strlcpy(tab->request.error, ptr+1, sizeof(tab->request.error));
 
 	int previous_code = tab->page.code;
+	char c = buf[2];
+	buf[2] = '\0';
 	tab->page.code = atoi(buf);
+	buf[2] = c;
 
 	if (tab->request.state == STATE_CANCEL) return -1;
 	switch (tab->page.code) {
