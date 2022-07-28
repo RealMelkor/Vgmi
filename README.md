@@ -50,7 +50,7 @@ On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict th
 
 ## Dependencies
 
-* [libtls][1] - a new TLS library
+* [LibreSSL][1] - fork of OpenSSL developed by the OpenBSD project
 * [termbox2][2] - terminal rendering library
 
 ### Optional dependency
@@ -61,6 +61,6 @@ On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict th
 Executing the build.sh script will download all dependencies and build Vgmi
 
 [0]: https://gemini.circumlunar.space/
-[1]: https://git.causal.agency/libretls/about/
+[1]: https://www.libressl.org/
 [2]: https://github.com/termbox/termbox2
 [3]: https://github.com/nothings/stb/blob/master/stb_image.h

@@ -50,7 +50,7 @@ On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict th
 
 ## Dependencies
 
-=> https://git.causal.agency/libretls/about/ libtls - a new TLS library
+=> https://www.libressl.org/ LibreSSL - fork of OpenSSL developed by the OpenBSD project
 => https://github.com/termbox/termbox2 termbox2 - terminal rendering library
 
 ### Optional dependency
