@@ -75,7 +75,9 @@ void display() {
         // Show selected link url
         if (tab->selected != 0) {
                 int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
-                tb_printf(tb_width()-llen-5, tb_height()-2, bg, TB_BLUE,
+		int x = tb_width()-llen-5;
+		x = x < 10?10:x;
+                tb_printf(x, tb_height()-2, bg, TB_BLUE,
 			  " => %s ", tab->selected_url);
         } else if (tab->request.state != STATE_DONE) {
 		hide_query(tab->request.url, urlbuf);

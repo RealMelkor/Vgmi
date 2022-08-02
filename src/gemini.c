@@ -199,6 +199,21 @@ nextlink_overflow:
 	return -1;
 }
 
+int gmi_load_parse(int* pos, char* data) {
+	unsigned int ch;
+	*pos += tb_utf8_char_to_unicode(
+			&ch,
+			&data[*pos]) - 1;
+	if (data[*pos] == '\n' || data[*pos] == '\0' ||
+	    data[*pos] == '\r')
+		return 0;
+	if (data[*pos] < 32) {
+		// wrong encoding
+		data[*pos]  = '?';
+	}
+	return 1;
+}
+
 void gmi_load(struct gmi_page* page) {
 	for (int i=0; i<page->links_count; i++)
 		free(page->links[i]);
@@ -217,18 +232,19 @@ void gmi_load(struct gmi_page* page) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
 			int nospace = c;
-			for (; page->data[c]==' ' || page->data[c]=='\t'; c++) {
-				if (page->data[c] == '\n' || page->data[c] == '\0') {
+			for (; page->data[c] == ' ' || page->data[c] == '\t'; c++) {
+				if (!gmi_load_parse(&c, page->data)) {
+					page->data[c] = '\0';
 					c = nospace;
 					break;
 				}
 			}
 			char* url = (char*)&page->data[c];
-			for (; page->data[c]!=' ' && page->data[c]!='\t'; c++) {
-				if (page->data[c] == '\n' || page->data[c] == '\0') {
-					break;
-				}
-			}
+			for (; page->data[c] != ' ' &&
+			       page->data[c] != '\t' &&
+			       gmi_load_parse(&c, page->data); c++) ;
+			if (page->data[c - 1] == 127)
+				c--;
 			char save = page->data[c];
 			page->data[c] = '\0';
 			if (page->links)
@@ -338,7 +354,8 @@ int gmi_render(struct gmi_tab* tab) {
 		tab->search.cursor = tab->search.count - 1;
 	int previous_count = tab->search.count;
 	tab->search.count = 0;
-	char* ptr = strstr(tab->page.data, "\r\n");
+	char* ptr = tab->page.no_header?NULL:strstr(tab->page.data, "\r\n");
+	if (ptr && ptr > strstr(tab->page.data, "\n")) ptr = NULL;
 	line++;
 	for (int c = ptr?ptr-tab->page.data+2:0; c < tab->page.data_len; c++) {
 		if (x == 0 && tab->page.data[c] == '\n') {
@@ -462,6 +479,7 @@ int gmi_render(struct gmi_tab* tab) {
 		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 		if (size > 0)
 			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
+		else if (ch < 32) ch = '?';
 		
 		int wc = mk_wcwidth(ch);
 		if (wc < 0) wc = 0;
@@ -1744,6 +1762,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		strlcpy(tab->page.meta, "text/gemini", sizeof(tab->page.meta));
 	else
 		strlcpy(tab->page.meta, "text/text", sizeof(tab->page.meta));
+	tab->page.no_header = 1;
 	gmi_load(&tab->page);
 	gmi_addtohistory(tab);
 	pthread_mutex_unlock(&tab->render_mutex);

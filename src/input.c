@@ -229,6 +229,7 @@ int input(struct tb_event ev) {
 	if (ev.type != TB_EVENT_KEY) return 0;
 
 	if (!client.input.mode && ev.key == TB_KEY_ESC) {
+		tab->selected = 0;
 		bzero(client.vim.counter, sizeof(client.vim.counter));
 		client.vim.g = 0;
 	}

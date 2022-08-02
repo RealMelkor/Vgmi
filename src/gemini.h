@@ -30,6 +30,7 @@ struct gmi_page {
 		int h;
 		int channels;
 	} img;
+	int no_header;
 };
 
 struct gmi_link {
