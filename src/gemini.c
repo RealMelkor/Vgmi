@@ -1251,8 +1251,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 int gmi_request_header(struct gmi_tab* tab) {
 	time_t now = time(0);
 	char buf[1024];
-	int recv = TLS_WANT_POLLIN;
-	while (recv==TLS_WANT_POLLIN || recv==TLS_WANT_POLLOUT) {
+	int recv = 0;
+	while (1) {
 		if (tab->request.state == STATE_CANCEL) break;
 		if (time(0) - now >= TIMEOUT) {
 			snprintf(tab->error, sizeof(tab->error),
@@ -1260,9 +1260,18 @@ int gmi_request_header(struct gmi_tab* tab) {
 				 tab->request.host);
 			return -1;
 		}
-		recv = tls_read(tab->request.tls, buf, sizeof(buf));
-		if (recv == TLS_WANT_POLLIN)
+		int n = tls_read(tab->request.tls, &buf[recv], sizeof(buf) - recv);
+		if (n == TLS_WANT_POLLIN) {
 			nanosleep(&timeout, NULL);
+			continue;
+		}
+		if (n < 1) {
+			recv = -1;
+			break;
+		}
+		recv += n;
+		buf[recv + 1] = '\0';
+		if (strstr(buf, "\r\n")) break;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
 	
@@ -1277,10 +1286,10 @@ int gmi_request_header(struct gmi_tab* tab) {
 		return -1;
 	}
 	char* ptr = strchr(buf, ' ');
-	char meta_buf[128];
-	if (!ptr) { // work-around for servers not sending meta
-		ptr = meta_buf;
-		strlcpy(meta_buf, " text/gemini\r\n", sizeof(meta_buf));
+	if (!ptr) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Invalid data from: %s (no metadata)", tab->request.host);
+		return -1;
 	}
 	else strlcpy(tab->request.error, ptr+1, sizeof(tab->request.error));
 
