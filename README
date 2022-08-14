@@ -2,6 +2,12 @@
 
 Gemini client written in C with vim-like keybindings
 
+## Screenshots
+
+=>img/img1.png On Konsole 1.6.6
+=>img/img2.png On gnome terminal
+=>img/img3.png On uxterm
+
 ## Statically linked binaries
 
 ### x86_64
