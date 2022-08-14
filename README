@@ -2,6 +2,18 @@
 
 Gemini client written in C with vim-like keybindings
 
+## Statically linked binaries
+
+### x86_64
+=>/static/vgmi/vgmi_linux_x86_64 Linux
+=>/static/vgmi/vgmi_openbsd_x86_64 OpenBSD
+=>/static/vgmi/vgmi_netbsd_x86_64 NetBSD
+=>/static/vgmi/vgmi_freebsd_x86_64_static FreeBSD (sandboxed but non-static)
+=>/static/vgmi/vgmi_freebsd_x86_64 FreeBSD (static but non-sandboxed)
+
+### aarch64
+=>/static/vgmi/vgmi_linux_aarch64 Linux
+
 ## Keybindings
 
 * k  - Scroll up
