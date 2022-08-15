@@ -276,19 +276,24 @@ struct sock_filter filter[] = {
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 	    (offsetof(struct seccomp_data, arch))),
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
-//#ifdef __MUSL__
         SC_ALLOW(readv),
         SC_ALLOW(writev),
+#ifdef __NR_open
         SC_ALLOW(open),
+#endif
+#ifdef __NR_dup2
         SC_ALLOW(dup2), // required by getaddrinfo
-//#else
+#endif
         SC_ALLOW(pipe2), // tb_init
 	SC_ALLOW(recvmsg), // getaddrinfo_a
 	SC_ALLOW(getsockname), // getaddrinfo_a
-//#endif
         SC_ALLOW(fstat), // older glibc and musl
+#ifdef __NR_stat
         SC_ALLOW(stat), // older glibc
+#endif
+#ifdef __NR_pipe
         SC_ALLOW(pipe), // older glibc and musl
+#endif
 	SC_ALLOW(setsockopt),
 	SC_ALLOW(read),
 	SC_ALLOW(write),
@@ -320,7 +325,9 @@ struct sock_filter filter[] = {
 	SC_ALLOW(socketpair),
 	SC_ALLOW(connect),
         SC_ALLOW(getsockopt),
+#ifdef __NR_poll
 	SC_ALLOW(poll),
+#endif
 	SC_ALLOW(clone),
 #ifdef __NR_clone3
 	SC_ALLOW(clone3),
@@ -332,7 +339,9 @@ struct sock_filter filter[] = {
 	SC_ALLOW(munmap), // pthread_create
 	SC_ALLOW(madvise), // thread exit
 	SC_ALLOW(mremap), // realloc
+#ifdef __NR_select
 	SC_ALLOW(select), // on old version of linux
+#endif
 	SC_ALLOW(membarrier),
 	SC_ALLOW(sendmmsg),
 #ifdef __NR_pselect6
