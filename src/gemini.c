@@ -1157,33 +1157,25 @@ int gmi_request_connect(struct gmi_tab* tab) {
 			sizeof(struct sockaddr_in6);
 
 	int connected = 0;
-	time_t start = time(NULL);
-	while (!connected) {
-		errno = 0;
-		connected = !connect(tab->request.socket, tab->request.addr, addr_size);
-#ifdef sun
-		if (!connected && errno == 0) {
-			struct pollfd fd;
-			fd.fd = tab->request.socket;
-			fd.events = POLLOUT;
-			int count = poll(&fd, 1, (TIMEOUT - (time(NULL) - start)) * 1000);
-			if (count != 1) break;
-			int value;
-			int len = sizeof(value);
-			int ret = getsockopt(tab->request.socket, SOL_SOCKET, SO_ERROR, &value, &len);
-			connected = (value == 0 && ret == 0);
-			break;
-		}
-#endif
-		if (errno == EISCONN) connected = 1;
-		if (connected) break;
-		if (errno != EAGAIN && errno != EWOULDBLOCK &&
-		    errno != EINPROGRESS && errno != EALREADY)
-			break;
-		if (tab->request.state == STATE_CANCEL) break;
-		if (time(NULL) - start > TIMEOUT) break;
-		nanosleep(&timeout, NULL);
+	int failed = connect(tab->request.socket, tab->request.addr, addr_size);
+	failed = failed?(errno != EAGAIN && errno != EWOULDBLOCK &&
+		    errno != EINPROGRESS && errno != EALREADY):failed;
+	while (!failed) {
+		struct pollfd fds[2];
+		fds[0].fd = tab->thread.pair[0];
+		fds[0].events = POLLIN;
+		fds[1].fd = tab->request.socket;
+		fds[1].events = POLLOUT;
+		int count = poll(fds, 2, TIMEOUT * 1000);
+		if (count < 1 || fds[1].revents != POLLOUT ||
+			tab->request.state == STATE_CANCEL) break;
+		int value;
+		socklen_t len = sizeof(value);
+		int ret = getsockopt(tab->request.socket, SOL_SOCKET, SO_ERROR, &value, &len);
+		connected = (value == 0 && ret == 0);
+		break;
 	}
+
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Connection to %s timed out : %s",
@@ -1235,8 +1227,7 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 			 " to forget the old certificate.",
 			 tab->request.host);
 		return -1;
-	}
-	else if (ret) {
+	} else if (ret) {
 		snprintf(tab->error, sizeof(tab->error),
 			 ret==-1?"Failed to verify server certificate for %s" \
 				 "(The certificate changed) %s":

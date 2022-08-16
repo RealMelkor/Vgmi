@@ -364,7 +364,7 @@ int cert_rewrite() {
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
 
-	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY, 0600);
+	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd == -1)
 		return -2;
 	if (!fdopen(fd, "w")) return -3;
@@ -374,7 +374,7 @@ int cert_rewrite() {
 #endif
 	char buf[2048];
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
-		int len = snprintf(buf, 2048, "%s %s %lld %lld\n",
+		int len = snprintf(buf, 2048, "%s %s %llu %llu\n",
 				   cert->host, cert->hash,
 				   cert->start, cert->end);
 		if (write(fd, buf, len) != len) {
@@ -389,13 +389,16 @@ int cert_rewrite() {
 int cert_forget(char* host) {
 	struct cert* prev = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
-		if (!strcmp(host, cert->host)) {
-			prev->next = cert->next;
-			free(cert);
-			cert_rewrite();
-			return 0;
+		if (strcmp(host, cert->host)) {
+			prev = cert;
+			continue;
 		}
-		prev = cert;
+		prev->next = cert->next;
+		if (cert->next == NULL) {
+			last_cert = prev;
+		}
+		free(cert);
+		return cert_rewrite();
 	}
 	return -1;
 }
