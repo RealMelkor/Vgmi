@@ -10,9 +10,9 @@ cp stb/stb_image.h ../include/
 if [ "$(uname)" != OpenBSD ] ;
 then
 mkdir ../lib
-download=fetch
+download=wget
 if ! hash $download 2>/dev/null; then
-        download=wget
+        download=fetch
 fi
 if ! hash $download 2>/dev/null; then
         download=curl

@@ -16,6 +16,7 @@ Gemini client written in C with vim-like keybindings
 =>/static/vgmi/vgmi_netbsd_x86_64 NetBSD
 =>/static/vgmi/vgmi_freebsd_x86_64 FreeBSD (sandboxed but non-static)
 =>/static/vgmi/vgmi_freebsd_x86_64_static FreeBSD (static but non-sandboxed)
+=>/static/vgmi/vgmi_illumos_x86_64 Illumos
 
 ### aarch64
 =>/static/vgmi/vgmi_linux_aarch64 Linux

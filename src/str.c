@@ -170,3 +170,14 @@ strnstr(const char *s, const char *find, size_t slen)
 	return ((char *)s);
 }
 #endif
+
+#ifdef sun
+#include <termios.h>
+void cfmakeraw(struct termios *t) {
+	t->c_iflag &= ~(IMAXBEL|IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
+	t->c_oflag &= ~OPOST;
+	t->c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
+	t->c_cflag &= ~(CSIZE|PARENB);
+	t->c_cflag |= CS8;
+}
+#endif

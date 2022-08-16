@@ -2,6 +2,9 @@
 #ifdef __linux__
 #define _GNU_SOURCE
 #endif
+#ifdef sun
+#include <port.h>
+#endif
 #include <pthread.h>
 #include <netinet/in.h>
 #include <stdint.h>
@@ -1158,6 +1161,14 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	while (!connected) {
 		errno = 0;
 		connected = !connect(tab->request.socket, tab->request.addr, addr_size);
+#ifdef sun
+		if (!connected && errno == 0) {
+			struct timespec tm = {TIMEOUT - (time(NULL) - start) + 2, 1};
+			port_event_t e;
+			connected = port_get(tab->request.socket, &e, NULL);
+			break;
+		}
+#endif
 		if (errno == EISCONN) connected = 1;
 		if (connected) break;
 		if (errno != EAGAIN && errno != EWOULDBLOCK &&
@@ -1167,6 +1178,9 @@ int gmi_request_connect(struct gmi_tab* tab) {
 		if (time(NULL) - start > TIMEOUT) break;
 		nanosleep(&timeout, NULL);
 	}
+#ifdef sun
+sleep(1); // to be fixed
+#endif
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Connection to %s timed out : %s",
