@@ -15,10 +15,6 @@
 #include <strings.h>
 
 int main(int argc, char* argv[]) {
-#ifdef MEM_CHECK
-	__init();
-#endif
-
 #if defined(__FreeBSD__) || defined(__linux__)
 	int ttyfd = open("/dev/tty", O_RDWR);
 	if (ttyfd < 0) {
@@ -106,8 +102,5 @@ int main(int argc, char* argv[]) {
 #endif
 	gmi_free();
 	sandbox_close();
-#ifdef MEM_CHECK
-	__check();
-#endif
 	return 0;
 }

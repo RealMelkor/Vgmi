@@ -14,5 +14,6 @@ void __check();
 #define malloc(x) __malloc(x, __FILE__, __LINE__, __func__)
 #define calloc(x,y) __calloc(x, y, __FILE__, __LINE__, __func__)
 #define realloc(x,y) __realloc(x, y, __FILE__, __LINE__, __func__)
+#define main(x,y) __main(x, y)
 #endif
 #endif

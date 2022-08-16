@@ -16,6 +16,8 @@ void* __calloc(size_t, size_t, const char*, int, const char*);
 void* __realloc(void*, size_t, const char*, int, const char*);
 void __init();
 void __check();
+int __main(int argc, char* argv[]);
+
 struct __allocation {
 	void* ptr;
 	int line;
@@ -23,6 +25,13 @@ struct __allocation {
 	const char* file;
 	const char* func;
 };
+
+int main(int argc, char* argv[]) {
+        __init();
+        int ret = __main(argc, argv);
+	__check();
+	return ret;
+}
 
 struct __allocation* __allocation;
 uint64_t __allocationCount;

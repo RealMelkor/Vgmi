@@ -2,6 +2,8 @@
 
 [Gemini][0] client written in C with vim-like keybindings
 
+![pic0](./img/img1.png)
+
 ## Keybindings
 
 * k  - Scroll up
