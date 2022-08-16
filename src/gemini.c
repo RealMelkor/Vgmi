@@ -1163,9 +1163,15 @@ int gmi_request_connect(struct gmi_tab* tab) {
 		connected = !connect(tab->request.socket, tab->request.addr, addr_size);
 #ifdef sun
 		if (!connected && errno == 0) {
-			struct timespec tm = {TIMEOUT - (time(NULL) - start) + 2, 1};
-			port_event_t e;
-			connected = port_get(tab->request.socket, &e, NULL);
+			struct pollfd fd;
+			fd.fd = tab->request.socket;
+			fd.events = POLLOUT;
+			int count = poll(&fd, 1, (TIMEOUT - (time(NULL) - start)) * 1000);
+			if (count != 1) break;
+			int value;
+			int len = sizeof(value);
+			int ret = getsockopt(tab->request.socket, SOL_SOCKET, SO_ERROR, &value, &len);
+			connected = (value == 0 && ret == 0);
 			break;
 		}
 #endif
@@ -1178,9 +1184,6 @@ int gmi_request_connect(struct gmi_tab* tab) {
 		if (time(NULL) - start > TIMEOUT) break;
 		nanosleep(&timeout, NULL);
 	}
-#ifdef sun
-sleep(1); // to be fixed
-#endif
 	if (!connected) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Connection to %s timed out : %s",
