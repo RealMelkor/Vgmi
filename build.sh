@@ -25,8 +25,14 @@ fi
 $download https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.3.tar.gz
 tar -zxf libressl-3.5.3.tar.gz
 cd libressl-3.5.3
-./configure
-make -j 4
+if [ "$(uname)" == SunOS ] ;
+then
+	CC=gcc MAKE=gmake ./configure
+	gmake -j 4
+else
+	./configure
+	make -j 4
+fi
 cp include/*.h ../../include/
 cp -R include/compat ../../include/
 cp -R include/openssl ../../include/
@@ -36,5 +42,11 @@ cp ssl/.libs/libssl.a ../../lib
 cd ../../
 else
 cd ../
+fi
+if [ "$(uname)" == SunOS ] ;
+then
+	sed -i -e "/CC/s/^#//" Makefile
+	sed -i -e "/LIBS/s/^#//" Makefile
+	sed -i -e "/CFLAGS/s/^#//" Makefile
 fi
 make
