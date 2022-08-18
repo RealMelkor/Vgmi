@@ -5,6 +5,10 @@
 #include "wcwidth.h"
 #undef wcwidth
 #define wcwidth(x) mk_wcwidth(x)
+#ifdef sun
+#include <termios.h>
+void cfmakeraw(struct termios *t);
+#endif
 #include <termbox.h>
 #include "gemini.h"
 #include "display.h"

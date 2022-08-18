@@ -12,6 +12,7 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <string.h>
+#include <strings.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <sys/stat.h>

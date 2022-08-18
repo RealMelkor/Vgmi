@@ -1200,7 +1200,7 @@ int gmi_request_connect(struct gmi_tab* tab) {
 	int connected = 0;
 	int failed = connect(tab->request.socket, tab->request.addr, addr_size);
 	failed = failed?(errno != EAGAIN && errno != EWOULDBLOCK &&
-		    errno != EINPROGRESS && errno != EALREADY):failed;
+		    errno != EINPROGRESS && errno != EALREADY && errno != 0):failed;
 	while (!failed) {
 		struct pollfd fds[2];
 		fds[0].fd = tab->thread.pair[0];
