@@ -40,6 +40,7 @@ struct gmi_client client;
 
 void tb_colorline(int x, int y, uintattr_t color);
 void* gmi_request_thread(void* tab);
+void parse_relative(const char* urlbuf, int host_len, char* buf);
 
 void fatal() {
 	tb_shutdown();
@@ -80,9 +81,12 @@ int xdg_request(char*);
 #endif
 
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
+	char urlbuf[1024];
+	parse_relative(url, 0, urlbuf);
+	url = urlbuf;
 	int j = 0;
 	int inquery = 0;
-	for (int i=0; j < llen && i < len && url[i]; i++) {
+	for (int i = 0; j < llen && i < len && url[i]; i++) {
 		if (url[i] == '/') inquery = 0;
 		if ((url[i] >= 'a' && url[i] <= 'z') ||
 		    (url[i] >= 'A' && url[i] <= 'Z') ||
@@ -191,7 +195,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		if (l2 >= sizeof(urlbuf) - l)
 			goto nextlink_overflow;
 		l += l2;
-		if (urlbuf[l-1] == '/') urlbuf[l-1] = '\0';
+		//if (urlbuf[l-1] == '/') urlbuf[l-1] = '\0';
 		int ret = gmi_request(tab, urlbuf, 1);
 		return ret;
 	}
@@ -887,8 +891,44 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 #define PROTO_GOPHER 3
 #define PROTO_FILE 4
 
-int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf,
+void parse_relative(const char* urlbuf, int host_len, char* buf) {
+	int j = 0;
+	for (size_t i = 0; i < MAX_URL; i++) {
+		if (j + 1 >= MAX_URL) {
+			buf[j] = '\0';
+			break;
+		}
+		buf[j] = urlbuf[i];
+		j++;
+		if (urlbuf[i] == '\0') break;
+		if (i + 2 < MAX_URL &&
+			urlbuf[i - 1] == '/' && urlbuf[i + 0] == '.' &&
+			(urlbuf[i + 1] == '/' || urlbuf[i + 1] == '\0')) {
+			i += 1;
+			j--;
+			continue;
+		}
+		if (!(i + 3 < MAX_URL &&
+			urlbuf[i - 1] == '/' &&
+			urlbuf[i + 0] == '.' && urlbuf[i + 1] == '.' &&
+			(urlbuf[i + 2] == '/' || urlbuf[i + 2] == '\0')))
+			continue;
+		int k = j - 3;
+		i += 2;
+		if (k <= (int)host_len) {
+			j = k + 2;
+			buf[j] = '\0';
+			continue;
+		}
+		for (; k >= host_len && buf[k] != '/'; k--) ;
+		j = k + 1;
+		buf[k + 1] = '\0';
+	}
+}
+
+int gmi_parseurl(const char* url, char* host, int host_len, char* buf,
 		 int url_len, unsigned short* port) {
+	char urlbuf[1024];
 	int proto = PROTO_GEMINI;
 	char* proto_ptr = strstr(url, "://");
 	char* ptr = (char*)url;
@@ -924,9 +964,8 @@ skip_proto:;
 		*host_ptr = '\0';
 		if (port) {
 			*port = atoi(port_ptr);
-			if (*port < 1) {
+			if (*port < 1)
 				return -1; // invalid port
-			}
 		}
 		*host_ptr = c;
 		host_ptr = port_ptr - 1;
@@ -942,7 +981,7 @@ skip_proto:;
 		host[ptr-proto_ptr] = *ptr;
 	}
 	host[ptr-proto_ptr] = '\0';
-	if (!urlbuf) return proto;
+	if (!buf) return proto;
 	if (url_len < 16) return -1; // buffer too small
 	unsigned int len = 0;
 	switch (proto) {
@@ -973,6 +1012,8 @@ skip_proto:;
 	    strlcpy(urlbuf + len, host_ptr, url_len - len) >= 
 	    url_len - len)
 		goto parseurl_overflow;
+	if (buf)
+		parse_relative(urlbuf, len + 1, buf);
 	return proto;
 parseurl_overflow:
 	return -2;
