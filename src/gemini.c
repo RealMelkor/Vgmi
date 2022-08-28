@@ -1264,7 +1264,12 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
 			  tls_peer_cert_notbefore(tab->request.tls),
 			  tls_peer_cert_notafter(tab->request.tls));
-	if (ret == 1) {
+	if (ret == -5) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Expired certificate, the certificate for %s has expired",
+			 tab->request.host);
+		return -1;
+	} else if (ret == 1) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid certificate, enter \":forget %s\"" \
 			 " to forget the old certificate.",

@@ -280,7 +280,9 @@ int cert_load() {
 				continue;
 			}
 
-			cert_add(host, hash, atoi(start), atoi(end));
+			cert_add(host, hash,
+				 strtoull(start, NULL, 10),
+				 strtoull(end, NULL, 10));
 			host = ptr;
 			end = start = hash = NULL;
 		} else if (*ptr == '\n') {
@@ -415,9 +417,11 @@ int cert_verify(char* host, const char* hash,
 		}
 	}
 	unsigned long long now = time(NULL);
-	if (found && found->start < now && found->end > now)
-		return strcmp(found->hash, hash)?1:0;
-
+	if (found) {
+		if (found->start < now && found->end > now)
+			return strcmp(found->hash, hash)?1:0;
+		return -5; // expired
+	}
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
 
