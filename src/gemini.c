@@ -239,7 +239,8 @@ void gmi_load(struct gmi_page* page) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
 			int nospace = c;
-			for (; page->data[c] == ' ' || page->data[c] == '\t'; c++) {
+			for (; c < page->data_len &&
+			       (page->data[c] == ' ' || page->data[c] == '\t'); c++) {
 				if (!gmi_load_parse(&c, page->data)) {
 					page->data[c] = '\0';
 					c = nospace;
@@ -247,7 +248,8 @@ void gmi_load(struct gmi_page* page) {
 				}
 			}
 			char* url = (char*)&page->data[c];
-			for (; page->data[c] != ' ' &&
+			for (; c < page->data_len &&
+			       page->data[c] != ' ' &&
 			       page->data[c] != '\t' &&
 			       gmi_load_parse(&c, page->data); c++) ;
 			if (page->data[c - 1] == 127)
