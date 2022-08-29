@@ -1066,7 +1066,7 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 		return -1;
 	}
 
-	int cert = cert_getcert(tab->request.host);
+	int cert = cert_getcert(tab->request.host, 0);
 	if (cert >= 0 && 
 	    tls_config_set_keypair_mem(config,
 		    		       (unsigned char*)client.certs[cert].crt,

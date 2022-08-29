@@ -148,6 +148,7 @@ int command() {
 		if (cert_create(host, tab->error, sizeof(tab->error))) {
 			tab->show_error = 1;
 		}
+		cert_getcert(host, 1);
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;

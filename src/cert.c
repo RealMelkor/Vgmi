@@ -295,13 +295,20 @@ int cert_load() {
 	return 0;
 }
 
-int cert_getcert(char* host) {
+int cert_getcert(char* host, int reload) {
 
 	int index = 0;
 	while (client.certs && index < client.certs_size) {
-		if (!strcmp(client.certs[index].host, host)) return index;
+		if (!strcmp(client.certs[index].host, host)) {
+			if (reload) {
+				reload = 2;
+				break;
+			}
+			return index;
+		}
 		index++;
 	}
+	if (reload != 2) reload = 0;
 
         char crt[1024];
         char key[1024];
@@ -335,9 +342,14 @@ int cert_getcert(char* host) {
 	fseek(key_f, 0, SEEK_END);
 	key_pos = ftell(key_f);
 
-	client.certs = realloc(client.certs, sizeof(*client.certs) * (index + 1));
-	if (!client.certs) return fatalI();
-	bzero(&client.certs[index], sizeof(*client.certs));
+	if (!reload) {
+		client.certs = realloc(client.certs, sizeof(*client.certs) * (index + 1));
+		if (!client.certs) return fatalI();
+		bzero(&client.certs[index], sizeof(*client.certs));
+	} else {
+		free(client.certs[index].crt);
+		free(client.certs[index].key);
+	}
 	client.certs[index].crt = malloc(crt_pos);
 	if (!client.certs[index].crt) return fatalI();
 	client.certs[index].key = malloc(key_pos);
@@ -359,7 +371,8 @@ int cert_getcert(char* host) {
 	client.certs[index].crt_len = crt_pos;
 	client.certs[index].key_len = key_pos;
 	strlcpy(client.certs[index].host, host, sizeof(client.certs[index].host));
-	client.certs_size++;
+	if (!reload)
+		client.certs_size++;
 	return index;
 }
 
