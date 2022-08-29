@@ -80,6 +80,16 @@ int xdg_request(char*);
 
 #endif
 
+int isCharValid(char c, int inquery) {
+	return (c >= 'a' && c <= 'z') ||
+	    (c >= 'A' && c <= 'Z') ||
+	    (c >= '0' && c <= '9') ||
+	    (c == '?' && !inquery) ||
+	    c == '.' || c == '/' ||
+	    c == ':' || c == '-' ||
+	    c == '_' || c == '~';
+}
+
 int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 	char urlbuf[1024];
 	parse_relative(url, 0, urlbuf);
@@ -88,13 +98,7 @@ int gmi_parseuri(const char* url, int len, char* buf, int llen) {
 	int inquery = 0;
 	for (int i = 0; j < llen && i < len && url[i]; i++) {
 		if (url[i] == '/') inquery = 0;
-		if ((url[i] >= 'a' && url[i] <= 'z') ||
-		    (url[i] >= 'A' && url[i] <= 'Z') ||
-		    (url[i] >= '0' && url[i] <= '9') ||
-		    (url[i] == '?' && !inquery) ||
-		    url[i] == '.' || url[i] == '/' ||
-		    url[i] == ':' || url[i] == '-' ||
-		    url[i] == '_' || url[i] == '~') {
+		if (isCharValid(url[i], inquery)) {
 			if (url[i] == '?') inquery = 1;
 			buf[j] = url[i];
 			j++;
@@ -976,8 +980,7 @@ skip_proto:;
 		if (host_len <= host_ptr-ptr) {
 			return -1;
 		}
-		if (!((*ptr >= 'a' && *ptr <= 'z') || (*ptr >= 'A' && *ptr <= 'Z')
-		|| (*ptr >= '0' && *ptr <= '9') || *ptr == '.' || *ptr == '-')) {
+		if (!isCharValid(*ptr, 0)) {
 			return -1;
 		}
 		host[ptr-proto_ptr] = *ptr;
