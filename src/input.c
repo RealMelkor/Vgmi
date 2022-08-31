@@ -37,7 +37,10 @@ int command() {
 		client.tabs_count--;
 		gmi_freetab(&client.tabs[client.tab]);
 		for (int i = client.tab; i < client.tabs_count; i++) {
-			client.tabs[i] = client.tabs[i+1];
+			// to check
+			pthread_mutex_lock(&client.tabs[i + 1].render_mutex);
+			client.tabs[i] = client.tabs[i + 1];
+			pthread_mutex_unlock(&client.tabs[i].render_mutex);
 		}
 		if (client.tab > 0 && client.tab == client.tabs_count)
 			client.tab--;
@@ -110,8 +113,9 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
-	if (client.input.field[1] == 'a' && client.input.field[2] == 'd'
-	   && client.input.field[3] == 'd' && 
+	if (client.input.field[1] == 'a' &&
+	    client.input.field[2] == 'd' &&
+	    client.input.field[3] == 'd' &&
 	   (client.input.field[4] == ' ' || client.input.field[4] == '\0')) {
 		char* title = client.input.field[4] == '\0'?NULL:&client.input.field[5];
 		gmi_addbookmark(tab, tab->url, title);

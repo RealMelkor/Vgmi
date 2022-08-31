@@ -62,8 +62,9 @@ void display() {
 	// current tab
 	if (client.tabs_count > 1) {
 		tb_colorline(0, 0, bg);
+		gmi_gettitle(page);
 		tb_printf(0, 0, TB_BLACK, bg,
-			  "Tabs : %d/%d", client.tab+1, client.tabs_count);
+			  " %s [%d/%d]", page->title, client.tab+1, client.tabs_count);
 	}
 
         // current url

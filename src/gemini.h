@@ -17,6 +17,8 @@
 
 struct gmi_page {
 	char** links;
+	char title[64];
+	int title_cached;
 	int links_count;
 	char* data;
 	int data_len;
@@ -161,6 +163,7 @@ void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
 void gmi_polling();
 void gmi_gohome(struct gmi_tab* tab, int add);
+void gmi_gettitle(struct gmi_page* page);
 void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
@@ -176,7 +179,7 @@ void* fatalP();
 #undef TB_BLACK
 #define TB_BLACK 16
 #undef TB_BLUE
-#define TB_BLUE 4
+#define TB_BLUE 25
 #undef TB_RED
 #define TB_RED 9
 #undef TB_GREEN

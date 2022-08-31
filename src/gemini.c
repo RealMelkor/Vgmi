@@ -725,31 +725,32 @@ int gmi_loadbookmarks() {
 	return 0;
 }
 
-char* gmi_gettitle(struct gmi_page page, int* len) {
+void gmi_gettitle(struct gmi_page* page) {
+	if (page->title_cached) return;
 	int start = -1;
 	int end = -1;
-	for (int i=0; i < page.data_len; i++) {
-		if (start == -1 && page.data[i] == '#') {
-			for (int j = i+1; j < page.data_len; j++) {
-				if (j && page.data[j-1] == '#' && page.data[j] == '#')
+	for (int i = 0; i < page->data_len; i++) {
+		if (start == -1 && page->data[i] == '#') {
+			for (int j = i+1; j < page->data_len; j++) {
+				if (j && page->data[j-1] == '#' && page->data[j] == '#')
 					break;
-				if (page.data[j] != ' ') {
+				if (page->data[j] != ' ') {
 					start = j;
 					break;
 				}
 			}
 		}
-		if (start != -1 && page.data[i] == '\n') {
+		if (start != -1 && page->data[i] == '\n') {
 			end = i;
 			break;
 		}
 	}
-	if (start == -1 || end == -1) return NULL;
-	char* title = malloc(end - start + 1);
-	strlcpy(title, &page.data[start], end - start + 1);
-	title[end - start] = '\0'; 
-	*len = end - start + 1;
-	return title;
+	page->title_cached = 1;
+	page->title[0] = '\0';
+	if (start == -1 || end == -1) return;
+	size_t len = end - start + 1;
+	strlcpy(page->title, &page->data[start],
+		len<sizeof(page->title)?len:sizeof(page->title));
 }
 
 int gmi_removebookmark(int index) {
@@ -775,9 +776,15 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 		return;
 	}
 	int title_len = 0;
-	char* tmp_title = NULL;
-	if (!title) tmp_title = title = gmi_gettitle(tab->page, &title_len);
-	else title_len = strnlen(title, 128);
+	if (!title) {
+		gmi_gettitle(&tab->page);
+		title = tab->page.title;
+		title_len = strnlen(tab->page.title, sizeof(tab->page.title));
+		if (!title_len) {
+			title_len = sizeof("no title");
+			title = "no title";
+		}
+	} else title_len = strnlen(title, 128);
 	long n = 0;
 	while (client.bookmarks[n]) n++;
 	client.bookmarks = realloc(client.bookmarks, sizeof(char*) * (n + 2));
@@ -788,7 +795,6 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	else
 		snprintf(client.bookmarks[n], len, "%s", url);
 	client.bookmarks[n+1] = NULL;
-	free(tmp_title);
 }
 
 int gmi_savebookmarks() {
