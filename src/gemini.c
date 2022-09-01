@@ -196,8 +196,6 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		size_t l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
 		if (l2 >= sizeof(urlbuf) - l)
 			goto nextlink_overflow;
-		l += l2;
-		//if (urlbuf[l-1] == '/') urlbuf[l-1] = '\0';
 		int ret = gmi_request(tab, urlbuf, 1);
 		return ret;
 	}

@@ -383,22 +383,24 @@ int cert_rewrite() {
 	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd == -1)
 		return -2;
-	if (!fdopen(fd, "w")) return -3;
 #ifdef __FreeBSD__
         if (makefd_writeonly(fd))
                 return -3;
 #endif
+	FILE* f = fdopen(fd, "w");
+	if (!f) return -3;
+
 	char buf[2048];
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		int len = snprintf(buf, 2048, "%s %s %llu %llu\n",
 				   cert->host, cert->hash,
 				   cert->start, cert->end);
 		if (write(fd, buf, len) != len) {
-			close(fd);
+			fclose(f);
 			return -1;
 		}
 	}
-	close(fd);
+	fclose(f);
 	return 0;
 }
 
@@ -409,10 +411,10 @@ int cert_forget(char* host) {
 			prev = cert;
 			continue;
 		}
-		prev->next = cert->next;
-		if (cert->next == NULL) {
+		if (prev)
+			prev->next = cert->next;
+		if (cert->next == NULL)
 			last_cert = prev;
-		}
 		free(cert);
 		return cert_rewrite();
 	}
