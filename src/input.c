@@ -16,6 +16,12 @@ void cfmakeraw(struct termios *t);
 #include "str.h"
 #include <stdio.h>
 
+int vim_counter() {
+	int counter = atoi(client.vim.counter);
+	bzero(client.vim.counter, sizeof(client.vim.counter));
+	return counter?counter:1;
+}
+
 void fix_scroll(struct gmi_tab* tab) {
 	int h = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
 	if (tab->scroll > h)
@@ -438,21 +444,15 @@ int input(struct tb_event ev) {
 		tb_hide_cursor();
 
 	if (ev.key == TB_KEY_PGUP) {
-		int counter = atoi(client.vim.counter);
-		if (!counter) counter++;
 		int H = tb_height() - 2 - (client.tabs_count>1);
-		tab->scroll -= counter * H;
-		bzero(client.vim.counter, sizeof(client.vim.counter));
+		tab->scroll -= vim_counter() * H;
 		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
 	}
 	if (ev.key == TB_KEY_PGDN) {
-		int counter = atoi(client.vim.counter);
-		if (!counter) counter++;
 		int H = tb_height() - 2 - (client.tabs_count>1);
-		tab->scroll += counter * H;
-		bzero(client.vim.counter, sizeof(client.vim.counter));
+		tab->scroll += vim_counter() * H;
 		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
@@ -484,12 +484,12 @@ int input(struct tb_event ev) {
 		break;
 	case 'h': // Tab left
 tab_prev:
-		if (client.tab->prev)
+		for (int i = vim_counter(); client.tab->prev && i > 0; i--)
 			client.tab = client.tab->prev;
 		break;
 	case 'l': // Tab right
 tab_next:
-		if (client.tab->next)
+		for (int i = vim_counter(); client.tab->next && i > 0; i--)
 			client.tab = client.tab->next;
 		break;
 	case 'H': // Back
@@ -528,21 +528,13 @@ go_forward:
 		break;
 	case 'k': // UP
 move_up:
-		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
-			tab->scroll -= atoi(client.vim.counter);
-			bzero(client.vim.counter, sizeof(client.vim.counter));
-		}
-		else tab->scroll--;
+		tab->scroll -= vim_counter();
 		fix_scroll(tab);
 		client.vim.g = 0;
 		break;
 	case 'j': // DOWN
 move_down:
-		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
-			tab->scroll += atoi(client.vim.counter);
-			bzero(client.vim.counter, sizeof(client.vim.counter));
-		}
-		else tab->scroll++;
+		tab->scroll += vim_counter();
 		fix_scroll(tab);
 		client.vim.g = 0;
 		break;
