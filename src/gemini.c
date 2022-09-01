@@ -1548,10 +1548,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 	while (!client.shutdown) {
 		tab->selected = 0;
 		tab->request.state = STATE_DONE;
-		if (tab->page.code == 10 ||
-		    tab->page.code == 11 ||
-		    tab->page.code == 20)
-			tb_interupt();
+		tb_interupt();
 		if (recv(tab->thread.pair[0], &signal, 4, 0) != 4 ||
 		    client.shutdown || signal == 0xFFFFFFFF) break;
 		bzero(&tab->request, sizeof(tab->request));

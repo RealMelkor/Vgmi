@@ -118,7 +118,6 @@ struct gmi_tab {
 struct gmi_client {
 	struct gmi_tab* tab;
 	struct pollfd* tabs_fds;
-	int tabs_changed;
 	int tabs_count;
 	struct input {
 		char label[MAX_URL];
