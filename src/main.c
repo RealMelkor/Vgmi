@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 	struct tb_event ev;
 	bzero(&ev, sizeof(ev));
 	int ret = 0;
-	client.tabs[client.tab].scroll = -1;
+	client.tab->scroll = -1;
 
 	while (!client.shutdown) {
 		display();

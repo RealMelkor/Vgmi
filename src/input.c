@@ -25,7 +25,7 @@ void fix_scroll(struct gmi_tab* tab) {
 }
 
 int command() {
-	struct gmi_tab* tab = &client.tabs[client.tab];
+	struct gmi_tab* tab = client.tab;
 	struct gmi_page* page = &tab->page;
 
 	// Trim
@@ -34,21 +34,12 @@ int command() {
 		client.input.field[i] = '\0';
 
 	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
-		client.tabs_count--;
-		gmi_freetab(&client.tabs[client.tab]);
-		for (int i = client.tab; i < client.tabs_count; i++) {
-			// to check
-			pthread_mutex_lock(&client.tabs[i + 1].render_mutex);
-			client.tabs[i] = client.tabs[i + 1];
-			pthread_mutex_unlock(&client.tabs[i].render_mutex);
-		}
-		if (client.tab > 0 && client.tab == client.tabs_count)
-			client.tab--;
+		gmi_freetab(tab);
 		client.input.field[0] = '\0';
 		if (client.tabs_count < 1)
 			return 1;
 		if (client.tabs_count == 1)
-			fix_scroll(&client.tabs[0]);
+			fix_scroll(client.tab);
 		return 0;
 	}
 	if (client.input.field[1] == 'q' && client.input.field[2] == 'a'
@@ -56,8 +47,7 @@ int command() {
 		return 1;
 	if (client.input.field[1] == 'n' && client.input.field[2] == 't'
 	    && client.input.field[3] == '\0') {
-		gmi_newtab();
-		client.tab = client.tabs_count - 1;
+		client.tab = gmi_newtab();
 		client.input.field[0] = '\0';
 		return 0;
 	}
@@ -70,15 +60,15 @@ int command() {
 			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
-			gmi_newtab_url(&client.input.field[4]);
-			client.tab = client.tabs_count - 1;
+			client.tab = gmi_newtab_url(&client.input.field[4]);
 			client.input.field[0] = '\0';
 		}
 		return 0;
 	}
 	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
 		char urlbuf[MAX_URL];
-		if (strlcpy(urlbuf, &client.input.field[3], sizeof(urlbuf)) >= sizeof(urlbuf)) {
+		if (strlcpy(urlbuf, &client.input.field[3],
+			    sizeof(urlbuf)) >= sizeof(urlbuf)) {
 			tab->show_error = 1;
 			snprintf(tab->error, sizeof(tab->error), "Url too long");
 			return 0;
@@ -225,7 +215,7 @@ unknown:
 }
 
 int input(struct tb_event ev) {
-	struct gmi_tab* tab = &client.tabs[client.tab];
+	struct gmi_tab* tab = client.tab;
 	struct gmi_page* page = &tab->page;
 	if (page->code == 11 || page->code == 10) {
 		if (!client.input.mode) client.input.cursor = 0;
@@ -350,7 +340,7 @@ int input(struct tb_event ev) {
 					 "%s?%s", tab->url, client.input.field);
 			int bytes = gmi_request(tab, urlbuf, 1);
 			if (bytes>0) {
-				tab = &client.tabs[client.tab];
+				tab = client.tab;
 				tab->scroll = -1;
 			}
 			client.input.field[0] = '\0';
@@ -494,13 +484,13 @@ int input(struct tb_event ev) {
 		break;
 	case 'h': // Tab left
 tab_prev:
-		client.tab--;
-		if (client.tab < 0) client.tab = client.tabs_count - 1;
+		if (client.tab->prev)
+			client.tab = client.tab->prev;
 		break;
 	case 'l': // Tab right
 tab_next:
-		client.tab++;
-		if (client.tab >= client.tabs_count) client.tab = 0;
+		if (client.tab->next)
+			client.tab = client.tab->next;
 		break;
 	case 'H': // Back
 go_back:

@@ -55,6 +55,8 @@ struct gmi_link {
 #define STATE_STARTED 8
 
 struct gmi_tab {
+	struct gmi_tab* next;
+	struct gmi_tab* prev;
 	struct gmi_link* history;
 	struct gmi_page page;
 	int scroll;
@@ -114,7 +116,7 @@ struct gmi_tab {
 };
 
 struct gmi_client {
-	struct gmi_tab* tabs;
+	struct gmi_tab* tab;
 	struct pollfd* tabs_fds;
 	int tabs_changed;
 	int tabs_count;
@@ -137,7 +139,6 @@ struct gmi_client {
 	} *certs;
 	int certs_size;
 	char** bookmarks;
-	int tab;
 #ifndef DISABLE_XDG
 	int xdg;
 #endif

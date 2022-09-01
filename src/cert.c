@@ -95,8 +95,8 @@ int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_le
 		goto getpath_overflow;
 	return len+4;
 getpath_overflow:
-	snprintf(client.tabs[client.tab].error,
-		 sizeof(client.tabs[client.tab].error),
+	snprintf(client.tab->error,
+		 sizeof(client.tab->error),
 		 "The hostname is too long %s", host);
 	return -1;
 }

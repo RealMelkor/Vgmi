@@ -34,7 +34,7 @@ void hide_query(char* url, char* urlbuf) {
 
 void display() {
 	int bg = client.c256?252:TB_WHITE;
-        struct gmi_tab* tab = &client.tabs[client.tab];
+        struct gmi_tab* tab = client.tab;
         struct gmi_page* page = &tab->page;
 	if (tab->request.ask == 2) {
 		tab->request.ask = display_ask(tab->request.info, tab->request.action);
@@ -63,8 +63,14 @@ void display() {
 	if (client.tabs_count > 1) {
 		tb_colorline(0, 0, bg);
 		gmi_gettitle(page);
+		int index = 1;
+		struct gmi_tab* ptr = tab;
+		while (ptr->prev) {
+			index++;
+			ptr = ptr->prev;
+		}
 		tb_printf(0, 0, TB_BLACK, bg,
-			  " %s [%d/%d]", page->title, client.tab+1, client.tabs_count);
+			  " %s [%d/%d]", page->title, index, client.tabs_count);
 	}
 
         // current url
@@ -129,7 +135,7 @@ void display_history() {
         struct tb_event ev;
         bzero(&ev, sizeof(ev));
         do {
-                struct gmi_tab* tab = &client.tabs[client.tab];
+                struct gmi_tab* tab = client.tab;
 
                 tb_clear();
                 tb_print(2, 1, TB_RED, TB_DEFAULT, "# History");

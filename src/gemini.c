@@ -39,7 +39,7 @@ struct tls_config* config_empty;
 struct gmi_client client;
 
 void tb_colorline(int x, int y, uintattr_t color);
-void* gmi_request_thread(void* tab);
+void* gmi_request_thread(struct gmi_tab* tab);
 void parse_relative(const char* urlbuf, int host_len, char* buf);
 
 void fatal() {
@@ -139,11 +139,9 @@ int gmi_goto_new(struct gmi_tab* tab, int id) {
 		client.input.mode = 0;
 		return -1;
 	}
-	int old_tab = client.tab;
-	struct gmi_tab* new_tab = gmi_newtab_url(NULL);
-	client.tab = client.tabs_count - 1;
-	page = &client.tabs[old_tab].page;
-	int ret = gmi_nextlink(new_tab, client.tabs[old_tab].url, page->links[id]);
+	struct gmi_tab* old_tab = client.tab;
+	client.tab = gmi_newtab_url(NULL);
+	int ret = gmi_nextlink(client.tab, old_tab->url, old_tab->page.links[id]);
 	return ret;
 }
 
@@ -616,10 +614,16 @@ void gmi_freetab(struct gmi_tab* tab) {
 			link = ptr;
 		}
 	}
+	if (tab->prev) tab->prev->next = tab->next;
+	if (tab->next) tab->next->prev = tab->prev;
+	struct gmi_tab* prev = tab->prev;
+	if (!prev) prev = tab->next;
+	pthread_mutex_destroy(&tab->render_mutex);
 	if ((signed)tab->thread.started)
 		pthread_join(tab->thread.thread, NULL);
-	pthread_mutex_destroy(&tab->render_mutex);
-	bzero(tab, sizeof(struct gmi_tab));
+	free(tab);
+	client.tab = prev;
+	client.tabs_count--;
 }
 
 char home_page[] = 
@@ -727,6 +731,11 @@ int gmi_loadbookmarks() {
 
 void gmi_gettitle(struct gmi_page* page) {
 	if (page->title_cached) return;
+	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
+		strlcpy(page->title, page->meta, sizeof(page->title));
+		page->title_cached = 1;
+		return;
+	}
 	int start = -1;
 	int end = -1;
 	for (int i = 0; i < page->data_len; i++) {
@@ -874,27 +883,34 @@ struct gmi_tab* gmi_newtab() {
 }
 
 struct gmi_tab* gmi_newtab_url(const char* url) {
-	size_t index = client.tabs_count;
 	client.tabs_count++;
-	if (client.tabs) 
-		client.tabs = realloc(client.tabs, sizeof(struct gmi_tab) * client.tabs_count);
-	else
-		client.tabs = malloc(sizeof(struct gmi_tab));
-	if (!client.tabs) return fatalP();
-	struct gmi_tab* tab = &client.tabs[index];
-	bzero(tab, sizeof(struct gmi_tab));
-	pthread_mutex_init(&tab->render_mutex, NULL);
+	if (client.tab) {
+		struct gmi_tab* next = client.tab->next;
+		client.tab->next = malloc(sizeof(struct gmi_tab));
+		if (!client.tab->next) return fatalP();
+		bzero(client.tab->next, sizeof(struct gmi_tab));
+		client.tab->next->next = next;
+		client.tab->next->prev = client.tab;
+		client.tab = client.tab->next;
+		if (next)
+			next->prev = client.tab;
+	} else {
+		client.tab = malloc(sizeof(struct gmi_tab));
+		if (!client.tab) return fatalP();
+		bzero(client.tab, sizeof(struct gmi_tab));
+	}
+	pthread_mutex_init(&client.tab->render_mutex, NULL);
 	
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, tab->thread.pair))
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, client.tab->thread.pair))
 		return NULL;
-	pthread_create(&tab->thread.thread, NULL,
-		       (void *(*)(void *))gmi_request_thread, (void*)index);
-	tab->thread.started = 1;
+	pthread_create(&client.tab->thread.thread, NULL,
+		       (void *(*)(void *))gmi_request_thread, (void*)client.tab);
+	client.tab->thread.started = 1;
 	if (url)
-		gmi_request(tab, url, 1);
+		gmi_request(client.tab, url, 1);
 
-	tab->scroll = -1;
-	return tab;
+	client.tab->scroll = -1;
+	return client.tab;
 }
 
 #define PROTO_GEMINI 0
@@ -1529,9 +1545,7 @@ int gmi_request_body(struct gmi_tab* tab) {
 	return 0;
 }
 
-void* gmi_request_thread(void* ptr) {
-	size_t index = (size_t)ptr;
-#define tab (&client.tabs[index])
+void* gmi_request_thread(struct gmi_tab* tab) {
 	unsigned int signal = 0;
 	while (!client.shutdown) {
 		tab->selected = 0;
@@ -1775,7 +1789,6 @@ request_end:
 			tab->request.recv = tab->page.data_len;
 		}
 	}
-#undef tab
 	return NULL;
 }
 
@@ -1895,12 +1908,10 @@ int gmi_init() {
 }
 
 void gmi_free() {
-	for (int i=0; i < client.tabs_count; i++)
-		gmi_freetab(&client.tabs[i]);
+	while (client.tab) gmi_freetab(client.tab);
 	gmi_savebookmarks();
 	for (int i = 0; client.bookmarks[i]; i++)
 		free(client.bookmarks[i]);
 	free(client.bookmarks);
-	free(client.tabs);
 	cert_free();
 }
