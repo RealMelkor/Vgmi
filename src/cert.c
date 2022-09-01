@@ -148,7 +148,7 @@ int cert_create(char* host, char* error, int errlen) {
 		goto skip_error;
 	}
 	f = fdopen(fd, "wb");
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	if (makefd_writeonly(fd)) {
 		snprintf(error, errlen, "Failed to limit %s", key);
 		goto skip_error;
@@ -170,7 +170,7 @@ int cert_create(char* host, char* error, int errlen) {
 		goto skip_error;
 	}
 	f = fdopen(fd, "wb");
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	if (makefd_writeonly(fd)) {
 		snprintf(error, errlen, "Failed to limit %s", crt);
 		goto skip_error;
@@ -328,7 +328,7 @@ int cert_getcert(char* host, int reload) {
 	}
 	FILE* crt_f = fdopen(crt_fd, "rb");
 	FILE* key_f = fdopen(key_fd, "rb");
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	makefd_readonly(crt_fd);
 	makefd_readonly(key_fd);
 #endif
@@ -383,7 +383,7 @@ int cert_rewrite() {
 	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd == -1)
 		return -2;
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
         if (makefd_writeonly(fd))
                 return -3;
 #endif
@@ -444,7 +444,7 @@ int cert_verify(char* host, const char* hash,
 	if (fd == -1)
 		return -2;
 	if (!fdopen(fd, "a")) return -3;
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
         if (makefd_writeonly(fd))
                 return -3;
 #endif

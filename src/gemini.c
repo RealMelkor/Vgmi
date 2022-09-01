@@ -691,7 +691,7 @@ int gmi_loadbookmarks() {
 	FILE* f = fdopen(fd, "rb");
 	if (!f)
 		return -1;
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	if (makefd_readonly(fd)) {
 		fclose(f);
 		return -1;
@@ -811,7 +811,7 @@ int gmi_savebookmarks() {
 	FILE* f = fdopen(fd, "wb");
 	if (!f)
 		return -1;
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	if (makefd_writeonly(fd)) {
 		fclose(f);
 		return -1;
@@ -1729,7 +1729,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				tab->show_error = 1;
 				goto request_end;
 			} else {
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 				if (make_writeonly(f)) {
 					client.shutdown = 1;
 					break;
@@ -1808,7 +1808,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		tab->show_error = 1;
 		return -1;
 	}
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 	if (make_readonly(f)) {
 		fclose(f);
 		client.shutdown = 1;

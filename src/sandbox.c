@@ -44,6 +44,7 @@ int xdg_init() {
 	}
 	close(xdg_pipe[1]);
 #ifdef __OpenBSD__
+#ifndef NO_SANDBOX
 	if (unveil("/bin/sh", "x") ||
 	    unveil("/usr/bin/which", "x") ||
 	    unveil("/usr/local/bin/xdg-open", "x") ||
@@ -55,6 +56,7 @@ int xdg_init() {
 		close(xdg_pipe[1]);
 		exit(0);
 	}
+#endif
 #endif
 #ifdef __linux__
 	prctl(PR_SET_NAME, "vgmi [xdg]", 0, 0, 0);
@@ -72,6 +74,7 @@ int sandbox_close() {
 #endif
 #endif
 
+#ifndef NO_SANDBOX
 #ifdef __FreeBSD__
 #include <stdio.h>
 #include <sys/capsicum.h>
@@ -447,6 +450,7 @@ int sandbox_init() {
 		printf("[WARNING] The filesystem won't be hidden from the program\n");
 		goto skip_landlock;
 	}
+	int home = 0;
 	#ifndef HIDE_HOME
 #include <pwd.h>
 	struct passwd *pw = getpwuid(geteuid());
@@ -454,7 +458,7 @@ int sandbox_init() {
 		printf("failed to get home folder: %s\n", strerror(errno));
 		return -1;
 	}
-	int home = landlock_unveil_path(llfd, pw->pw_dir,
+	home = landlock_unveil_path(llfd, pw->pw_dir,
 					LANDLOCK_ACCESS_FS_READ_FILE);
 	#endif
 	int cfg = landlock_unveil_path(llfd, config_path,
@@ -508,17 +512,23 @@ skip_landlock:;
 }
 
 #else
-#define NOSANDBOX
+#define NO_SANDBOX
+#endif
+#endif
+
+#ifdef NO_SANDBOX
 int sandbox_init() {
 	return 0;
 }
 
+#if !(defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__))
 int sandbox_close() {
 	return 0;
 }
 #endif
+#endif
 
-#if !defined(NOSANDBOX) && defined(DISABLE_XDG)
+#if !defined(NO_SANDBOX) && defined(DISABLE_XDG)
 int sandbox_close() {
 	return 0;
 }
