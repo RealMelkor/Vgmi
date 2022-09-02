@@ -3,7 +3,7 @@
 #define _CAPSICUM_H_
 int sandbox_init();
 int sandbox_close();
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
 
 extern int config_folder;
 #include <netdb.h>
