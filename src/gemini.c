@@ -206,11 +206,13 @@ nextlink_overflow:
 	return -1;
 }
 
-int gmi_load_parse(int* pos, char* data) {
-	unsigned int ch;
-	*pos += tb_utf8_char_to_unicode(
-			&ch,
-			&data[*pos]) - 1;
+int gmi_load_parse(int* pos, char* data, int* utf8) {
+	if (*utf8) {
+		(*utf8)--;
+		return 1;
+	}
+	*utf8 += tb_utf8_char_length(data[*pos]) - 1;
+	if (*utf8) return 1;
 	if (data[*pos] == '\n' || data[*pos] == '\0' ||
 	    data[*pos] == '\r')
 		return 0;
@@ -238,20 +240,15 @@ void gmi_load(struct gmi_page* page) {
 	for (int c = 0; c < page->data_len; c++) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
-			int nospace = c;
+			int utf8 = 0;
 			for (; c < page->data_len &&
-			       (page->data[c] == ' ' || page->data[c] == '\t'); c++) {
-				if (!gmi_load_parse(&c, page->data)) {
-					page->data[c] = '\0';
-					c = nospace;
-					break;
-				}
-			}
+			       (page->data[c] == ' ' || page->data[c] == '\t'); c++) ;
 			char* url = (char*)&page->data[c];
+			utf8 = 0;
 			for (; c < page->data_len &&
-			       page->data[c] != ' ' &&
-			       page->data[c] != '\t' &&
-			       gmi_load_parse(&c, page->data); c++) ;
+			       (utf8 || (page->data[c] != ' ' &&
+				page->data[c] != '\t')) &&
+			       gmi_load_parse(&c, page->data, &utf8); c++) ;
 			if (page->data[c - 1] == 127)
 				c--;
 			char save = page->data[c];
@@ -975,9 +972,7 @@ int gmi_parseurl(const char* url, char* host, int host_len, char* buf,
 	else if (!strcmp(proto_buf,"https")) proto = PROTO_HTTPS;
 	else if (!strcmp(proto_buf,"gopher")) proto = PROTO_GOPHER;
 	else if (!strcmp(proto_buf,"file")) proto = PROTO_FILE;
-	else {
-		return -1; // unknown protocol
-	}
+	else return -1; // unknown protocol
 skip_proto:;
 	if (port && proto == PROTO_GEMINI) *port = 1965;
 	if (!proto_ptr) proto_ptr = ptr;
@@ -996,14 +991,22 @@ skip_proto:;
 		*host_ptr = c;
 		host_ptr = port_ptr - 1;
 	}
+	int utf8 = 0;
 	for(; host_ptr!=ptr; ptr++) {
 		if (host_len <= host_ptr-ptr) {
 			return -1;
 		}
-		if (!isCharValid(*ptr, 0)) {
-			return -1;
+		host[ptr - proto_ptr] = *ptr;
+		if (utf8) {
+			utf8--;
+			continue;
 		}
-		host[ptr-proto_ptr] = *ptr;
+		utf8 += tb_utf8_char_length(*ptr) - 1;
+		if (utf8) continue;
+		if (*ptr < 32) {
+			host[ptr - proto_ptr] = '?';
+			continue;
+		}
 	}
 	host[ptr-proto_ptr] = '\0';
 	if (!buf) return proto;
@@ -1548,7 +1551,8 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 	while (!client.shutdown) {
 		tab->selected = 0;
 		tab->request.state = STATE_DONE;
-		tb_interupt();
+		if (tab->page.code != 30 && tab->page.code != 31)
+			tb_interupt();
 		if (recv(tab->thread.pair[0], &signal, 4, 0) != 4 ||
 		    client.shutdown || signal == 0xFFFFFFFF) break;
 		bzero(&tab->request, sizeof(tab->request));
