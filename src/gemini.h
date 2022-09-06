@@ -9,10 +9,10 @@
 #include <poll.h>
 #include <netinet/in.h>
 #include "memcheck.h"
+#include "url.h"
 
 #define GMI 9
 #define P_FILE 7
-#define MAX_URL 1024
 #define MAX_META 1024
 
 struct gmi_page {
@@ -152,7 +152,6 @@ int gmi_goto_new(struct gmi_tab* tab, int id);
 int gmi_request(struct gmi_tab* tab, const char* url, int add);
 void gmi_load(struct gmi_page* page);
 int gmi_render(struct gmi_tab* tab);
-int gmi_parseurl(const char* url, char* host, int host_len, char* urlbuf, int url_len, unsigned short* port);
 void gmi_cleanforward(struct gmi_tab* tab);
 int gmi_nextlink(struct gmi_tab* tab, char* url, char* link);
 struct gmi_tab* gmi_newtab();

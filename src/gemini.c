@@ -29,6 +29,7 @@
 #include "input.h"
 #include "sandbox.h"
 #include "str.h"
+#include "url.h"
 
 #define MAX_CACHE 10
 #define TIMEOUT 8
@@ -40,7 +41,6 @@ struct gmi_client client;
 
 void tb_colorline(int x, int y, uintattr_t color);
 void* gmi_request_thread(struct gmi_tab* tab);
-void parse_relative(const char* urlbuf, int host_len, char* buf);
 
 void fatal() {
 	tb_shutdown();
@@ -62,7 +62,7 @@ void* fatalP() {
 int xdg_open(char* str) {
 	if (client.xdg) {
 		char buf[4096];
-		snprintf(buf, sizeof(buf), "xdg-open %s > /dev/null 2>&1", str);
+		snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);
 		if (fork() == 0) {
 			setsid();
 			char* argv[] = {"/bin/sh", "-c", buf, NULL};
@@ -79,40 +79,6 @@ int xdg_request(char*);
 #endif
 
 #endif
-
-int isCharValid(char c, int inquery) {
-	return (c >= 'a' && c <= 'z') ||
-	    (c >= 'A' && c <= 'Z') ||
-	    (c >= '0' && c <= '9') ||
-	    (c == '?' && !inquery) ||
-	    c == '.' || c == '/' ||
-	    c == ':' || c == '-' ||
-	    c == '_' || c == '~';
-}
-
-int gmi_parseuri(const char* url, int len, char* buf, int llen) {
-	char urlbuf[1024];
-	parse_relative(url, 0, urlbuf);
-	url = urlbuf;
-	int j = 0;
-	int inquery = 0;
-	for (int i = 0; j < llen && i < len && url[i]; i++) {
-		if (url[i] == '/') inquery = 0;
-		if (isCharValid(url[i], inquery)) {
-			if (url[i] == '?') inquery = 1;
-			buf[j] = url[i];
-			j++;
-		} else {
-			char format[8];
-			snprintf(format, sizeof(format), "%%%x", (unsigned char)url[i]);
-			buf[j] = '\0';
-			j = strlcat(buf, format, llen);
-		}
-	}
-	if (j >= llen) j = llen - 1;
-	buf[j] = '\0';
-	return j;
-}
 
 int gmi_goto(struct gmi_tab* tab, int id) {
 	id--;
@@ -151,7 +117,14 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		gmi_gohome(tab, 1);
 		return 0;
 	} else if (link[0] == '/' && link[1] == '/') {
-		int ret = gmi_request(tab, &link[2], 1);
+		char buf[1024];
+		strlcpy(buf, &link[2], MAX_URL - 2);
+		int len = strnlen(buf, sizeof(buf));
+		if (len < MAX_URL - 1 && buf[len - 1] != '/') {
+			buf[len] = '/';
+			buf[len + 1] = '\0';
+		}
+		int ret = gmi_request(tab, buf, 1);
 		if (ret < 1) return ret;
 		return ret;
 	} else if (link[0] == '/') {
@@ -206,23 +179,6 @@ nextlink_overflow:
 	return -1;
 }
 
-int gmi_load_parse(int* pos, char* data, int* utf8) {
-	if (*utf8) {
-		(*utf8)--;
-		return 1;
-	}
-	*utf8 += tb_utf8_char_length(data[*pos]) - 1;
-	if (*utf8) return 1;
-	if (data[*pos] == '\n' || data[*pos] == '\0' ||
-	    data[*pos] == '\r')
-		return 0;
-	if (data[*pos] < 32) {
-		// wrong encoding
-		data[*pos]  = '?';
-	}
-	return 1;
-}
-
 void gmi_load(struct gmi_page* page) {
 	for (int i=0; i<page->links_count; i++)
 		free(page->links[i]);
@@ -240,15 +196,10 @@ void gmi_load(struct gmi_page* page) {
 	for (int c = 0; c < page->data_len; c++) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
-			int utf8 = 0;
 			for (; c < page->data_len &&
 			       (page->data[c] == ' ' || page->data[c] == '\t'); c++) ;
 			char* url = (char*)&page->data[c];
-			utf8 = 0;
-			for (; c < page->data_len &&
-			       (utf8 || (page->data[c] != ' ' &&
-				page->data[c] != '\t')) &&
-			       gmi_load_parse(&c, page->data, &utf8); c++) ;
+			c += parse_link(&page->data[c], page->data_len - c);
 			if (page->data[c - 1] == 127)
 				c--;
 			char save = page->data[c];
@@ -307,7 +258,8 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 			tab->page.img.data = 
 			stbi_load_from_memory((unsigned char*)ptr, 
-						tab->page.data_len-(int)(ptr-tab->page.data),
+						tab->page.data_len -
+						  (int)(ptr-tab->page.data),
 						&tab->page.img.w, &tab->page.img.h,
 						&tab->page.img.channels, 3);
 			if (!tab->page.img.data) {
@@ -386,13 +338,16 @@ int gmi_render(struct gmi_tab* tab) {
 					break;
 				}
 			}
-			if (start && tab->page.data[c] == '*' && tab->page.data[c+1] == ' ') {
+			if (start && tab->page.data[c] == '*' &&
+				     tab->page.data[c+1] == ' ') {
 				color = TB_ITALIC|TB_CYAN;
 			}
-			if (start && tab->page.data[c] == '>' && tab->page.data[c+1] == ' ') {
+			if (start && tab->page.data[c] == '>' &&
+				     tab->page.data[c+1] == ' ') {
 				color = TB_ITALIC|TB_MAGENTA;
 			}
-			if (start && tab->page.data[c] == '=' && tab->page.data[c+1] == '>') {
+			if (start && tab->page.data[c] == '=' &&
+				     tab->page.data[c+1] == '>') {
 				char buf[32];
 				int len = snprintf(buf, sizeof(buf), "[%d]", links+1);
 				if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
@@ -415,7 +370,8 @@ int gmi_render(struct gmi_tab* tab) {
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
-				while ((tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
+				while (
+				(tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
@@ -908,145 +864,6 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	return client.tab;
 }
 
-#define PROTO_GEMINI 0
-#define PROTO_HTTP 1
-#define PROTO_HTTPS 2
-#define PROTO_GOPHER 3
-#define PROTO_FILE 4
-
-void parse_relative(const char* urlbuf, int host_len, char* buf) {
-	int j = 0;
-	for (size_t i = 0; i < MAX_URL; i++) {
-		if (j + 1 >= MAX_URL) {
-			buf[j] = '\0';
-			break;
-		}
-		buf[j] = urlbuf[i];
-		j++;
-		if (urlbuf[i] == '\0') break;
-		if (i + 2 < MAX_URL &&
-			urlbuf[i - 1] == '/' && urlbuf[i + 0] == '.' &&
-			(urlbuf[i + 1] == '/' || urlbuf[i + 1] == '\0')) {
-			i += 1;
-			j--;
-			continue;
-		}
-		if (!(i + 3 < MAX_URL &&
-			urlbuf[i - 1] == '/' &&
-			urlbuf[i + 0] == '.' && urlbuf[i + 1] == '.' &&
-			(urlbuf[i + 2] == '/' || urlbuf[i + 2] == '\0')))
-			continue;
-		int k = j - 3;
-		i += 2;
-		if (k <= (int)host_len) {
-			j = k + 2;
-			buf[j] = '\0';
-			continue;
-		}
-		for (; k >= host_len && buf[k] != '/'; k--) ;
-		j = k + 1;
-		buf[k + 1] = '\0';
-	}
-}
-
-int gmi_parseurl(const char* url, char* host, int host_len, char* buf,
-		 int url_len, unsigned short* port) {
-	char urlbuf[1024];
-	int proto = PROTO_GEMINI;
-	char* proto_ptr = strstr(url, "://");
-	char* ptr = (char*)url;
-	if (!proto_ptr) {
-		goto skip_proto;			
-	}
-	char proto_buf[16];
-	for(; proto_ptr!=ptr; ptr++) {
-		if (!((*ptr > 'a' && *ptr < 'z') || (*ptr > 'A' && *ptr < 'Z'))) goto skip_proto;
-		if (ptr - url >= (signed)sizeof(proto_buf)) goto skip_proto;
-		proto_buf[ptr-url] = tolower(*ptr);
-	}
-	proto_buf[ptr-url] = '\0';
-	ptr+=3;
-	proto_ptr+=3;
-	if (!strcmp(proto_buf,"gemini")) goto skip_proto;
-	else if (!strcmp(proto_buf,"http")) proto = PROTO_HTTP;
-	else if (!strcmp(proto_buf,"https")) proto = PROTO_HTTPS;
-	else if (!strcmp(proto_buf,"gopher")) proto = PROTO_GOPHER;
-	else if (!strcmp(proto_buf,"file")) proto = PROTO_FILE;
-	else return -1; // unknown protocol
-skip_proto:;
-	if (port && proto == PROTO_GEMINI) *port = 1965;
-	if (!proto_ptr) proto_ptr = ptr;
-	char* host_ptr = strchr(ptr, '/');
-	if (!host_ptr) host_ptr = ptr+strnlen(ptr, MAX_URL);
-	char* port_ptr = strchr(ptr, ':');
-	if (port_ptr && port_ptr < host_ptr) {
-		port_ptr++;	
-		char c = *host_ptr;
-		*host_ptr = '\0';
-		if (port) {
-			*port = atoi(port_ptr);
-			if (*port < 1)
-				return -1; // invalid port
-		}
-		*host_ptr = c;
-		host_ptr = port_ptr - 1;
-	}
-	int utf8 = 0;
-	for(; host_ptr!=ptr; ptr++) {
-		if (host_len <= host_ptr-ptr) {
-			return -1;
-		}
-		host[ptr - proto_ptr] = *ptr;
-		if (utf8) {
-			utf8--;
-			continue;
-		}
-		utf8 += tb_utf8_char_length(*ptr) - 1;
-		if (utf8) continue;
-		if (*ptr < 32) {
-			host[ptr - proto_ptr] = '?';
-			continue;
-		}
-	}
-	host[ptr-proto_ptr] = '\0';
-	if (!buf) return proto;
-	if (url_len < 16) return -1; // buffer too small
-	unsigned int len = 0;
-	switch (proto) {
-	case PROTO_GEMINI:
-		len = strlcpy(urlbuf, "gemini://", url_len);
-		break;
-	case PROTO_HTTP:
-		len = strlcpy(urlbuf, "http://", url_len);
-		break;
-	case PROTO_HTTPS:
-		len = strlcpy(urlbuf, "https://", url_len);
-		break;
-	case PROTO_GOPHER:
-		len = strlcpy(urlbuf, "gopher://", url_len);
-		break;
-	case PROTO_FILE:
-		len = strlcpy(urlbuf, "file://", url_len);
-		break;
-	default:
-		return -1;
-	}
-	size_t l = strlcpy(urlbuf + len, host, sizeof(urlbuf) - len);
-	if (l >= url_len - len) {
-		goto parseurl_overflow;
-	}
-	len += l;
-	if (host_ptr &&
-	    strlcpy(urlbuf + len, host_ptr, url_len - len) >= 
-	    url_len - len)
-		goto parseurl_overflow;
-	if (buf)
-		parse_relative(urlbuf, len + 1, buf);
-	return proto;
-parseurl_overflow:
-	return -2;
-}
-
 int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	if (!tab) return -1;
 	if (!strcmp(url, "about:home")) {
@@ -1057,9 +874,10 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	if (tab->history) tab->history->scroll = tab->scroll;
 	tab->selected = 0;
 	tab->request.host[0] = '\0';
-	int proto = gmi_parseurl(url, tab->request.host, sizeof(tab->request.host),
+	int proto = parse_url(url, tab->request.host, sizeof(tab->request.host),
 				 tab->request.url, sizeof(tab->request.url),
 				 &tab->request.port);
+
 	if (proto == -2) {
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error),
@@ -1121,6 +939,14 @@ void dns_async(union sigval sv) {
 #endif
 
 int gmi_request_dns(struct gmi_tab* tab) {
+	char host[1024];
+	if (idn_to_ascii(tab->request.host, sizeof(tab->request.host), host, sizeof(host))) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Invalid domain name: %s", tab->request.host);
+		tab->show_error = 1;
+		return -1;
+	}
+	strlcpy(tab->request.host, host, sizeof(tab->request.host));
 #if defined(__linux__) && !defined(__MUSL__)
 	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
 	bzero(tab->request.gaicb_ptr, sizeof(struct gaicb));
@@ -1163,6 +989,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_flags |= AI_CANONNAME;
 	errno = 0;
+
         if ((getaddrinfo(tab->request.host, NULL, &hints, &result))) {
                 snprintf(tab->error, sizeof(tab->error),
 			 "Unknown domain name: %s, %s", tab->request.host, strerror(errno));
@@ -1254,8 +1081,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 
 	if (tls_connect_socket(tab->request.tls, tab->request.socket, tab->request.host)) {
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Unable to connect to: %s",
-			 tab->request.host);
+			 "Unable to connect to: %s : %s",
+			 tab->request.host, tls_error(tab->request.tls));
 		return -1;
 	}
 	return 0;
@@ -1264,8 +1091,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 int gmi_request_handshake(struct gmi_tab* tab) {
 	if (tls_connect_socket(tab->request.tls, tab->request.socket, tab->request.host)) {
 		snprintf(tab->error, sizeof(tab->error), 
-			 "Unable to connect to: %s",
-			 tab->request.host);
+			 "Unable to connect to: %s : %s",
+			 tab->request.host, tls_error(tab->request.tls));
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
@@ -1312,14 +1139,25 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 
 	if (tab->request.state == STATE_CANCEL) return -1;
 	char buf[MAX_URL];
-	ssize_t len = gmi_parseuri(tab->request.url, MAX_URL, buf, MAX_URL);
-	if (len >= MAX_URL ||
-	    (len += strlcpy(&buf[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
+	strlcpy(buf, "gemini://", GMI + 1);
+	char toascii[1024];
+	if (idn_to_ascii(&tab->request.url[GMI], sizeof(tab->request.url) - GMI,
+			 toascii, sizeof(toascii))) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Url too long: %s", buf);
+			 "Failed to parse url: %s", &tab->request.url[GMI]);
 		return -1;
 	}
-	if (tls_write(tab->request.tls, buf, len) < len) {
+	ssize_t len = strlcpy(&buf[GMI], toascii, sizeof(buf) - GMI) + GMI;
+	char url[1024];
+	len = parse_query(buf, MAX_URL, url, MAX_URL);
+	if (len >= MAX_URL ||
+	    (len += strlcpy(&url[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Url too long: %s", url);
+		return -1;
+	}
+
+	if (tls_write(tab->request.tls, url, len) < len) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to send data to: %s", tab->request.host);
 		return -1;

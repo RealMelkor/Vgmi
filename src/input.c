@@ -14,6 +14,7 @@ void cfmakeraw(struct termios *t);
 #include "display.h"
 #include "cert.h"
 #include "str.h"
+#include "url.h"
 #include <stdio.h>
 
 int vim_counter() {
@@ -144,7 +145,7 @@ int command() {
 	}
 	if (strcmp(client.input.field, ":gencert") == 0) {
 		char host[256];
-		gmi_parseurl(tab->url, host, sizeof(host), NULL, 0, NULL);
+		parse_url(tab->url, host, sizeof(host), NULL, 0, NULL);
 		if (cert_create(host, tab->error, sizeof(tab->error))) {
 			tab->show_error = 1;
 		}
@@ -249,12 +250,23 @@ int input(struct tb_event ev) {
 	}
 	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2 || ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
-		if (i>((page->code==10||page->code==11)?0:1)) {
+		if (i > ((page->code == 10 || page->code == 11)?0:1)) {
 			if (client.input.field[0] == '/' &&
 			    page->code == 20)
 				tab->search.scroll = 1;
-			strlcpy(&client.input.field[i-1],
-				&client.input.field[i], sizeof(client.input.field)-i);
+			char* ptr = client.input.field;
+			int l = 1;
+			int pos = 0;
+			while (*ptr) {
+				l = tb_utf8_char_length(*ptr);
+				pos++;
+				if (pos == client.input.cursor)
+					break;
+				ptr += l;
+			}
+
+			strlcpy(ptr, ptr + l,
+				sizeof(client.input.field) - (ptr - client.input.field));
 			client.input.cursor--;
 		}
 		return 0;
@@ -382,15 +394,25 @@ int input(struct tb_event ev) {
 			client.input.cursor++;
 		return 0;
 	}
-	unsigned int l = strnlen(client.input.field, sizeof(client.input.field));
-	if (client.input.mode && ev.ch && l < sizeof(client.input.field)) {
-		for (int i = l-1; i >= client.input.cursor; i--) {
-			client.input.field[i+1] = client.input.field[i];
-		}
-		client.input.field[client.input.cursor] = ev.ch;
+	if (client.input.mode && ev.ch ) {
+		char* end = client.input.field;
+		while (*end)
+			end += tb_utf8_char_length(*end);
+		if ((size_t)(end - client.input.field) >= sizeof(client.input.field) - 1)
+			return 0;
+
+		char insert[16];
+		int insert_len = tb_utf8_unicode_to_char(insert, ev.ch);
+		char* start = client.input.field;
+		for (int i = 0; *start && i < client.input.cursor; i++)
+			start += tb_utf8_char_length(*start);
+		for (char* ptr = end; start <= ptr; ptr--)
+			ptr[insert_len] = *ptr;
+
+		memcpy(start, insert, insert_len);
 		client.input.cursor++;
-		l++;
-		client.input.field[l] = '\0';
+		end += insert_len;
+		*end = '\0';
 		if (client.input.field[0] != '/' ||
 		    page->code != 20)
 			return 0;
@@ -462,7 +484,8 @@ int input(struct tb_event ev) {
 		tab->show_error = 0;
 		client.input.mode = 1;
 		snprintf(client.input.field, sizeof(client.input.field), ":o %s", tab->url);
-		client.input.cursor = strnlen(client.input.field, sizeof(client.input.field));
+		client.input.cursor = utf8_len(client.input.field,
+						sizeof(client.input.field));
 		break;
 	case ':':
 		tab->show_error = 0;

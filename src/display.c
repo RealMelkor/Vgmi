@@ -3,6 +3,8 @@
 #include <termbox.h>
 #include "gemini.h"
 #include "display.h"
+#include "wcwidth.h"
+#include "url.h"
 
 void tb_colorline(int x, int y, uintattr_t color) {
         for (int i=x; i<tb_width(); i++)
@@ -29,7 +31,6 @@ void hide_query(char* url, char* urlbuf) {
                 }
         }
         urlbuf[posx] = '\0';
-
 }
 
 void display() {
@@ -42,11 +43,15 @@ void display() {
         tb_clear();
 	
         if (client.input.mode) {
+		int cpos = utf8_width_to(client.input.field,
+					 sizeof(client.input.field),
+					 client.input.cursor);
+
                 if (page->code == 11 || page->code == 10)
-                        tb_set_cursor(client.input.cursor+strnlen(client.input.label,
+                        tb_set_cursor(cpos + utf8_width(client.input.label,
 				      sizeof(client.input.label))+2, tb_height()-1);
                 else
-                        tb_set_cursor(client.input.cursor, tb_height()-1);
+                        tb_set_cursor(cpos, tb_height()-1);
         }
 
         if (page->code == 20 || page->code == 10 || page->code == 11) {
@@ -81,8 +86,7 @@ void display() {
 
         // Show selected link url
         if (tab->selected != 0) {
-                int llen = strnlen(tab->selected_url, sizeof(tab->selected_url));
-		int x = tb_width()-llen-5;
+		int x = tb_width() - utf8_width(tab->selected_url, MAX_URL) - 5;
 		x = x < 10?10:x;
                 tb_printf(x, tb_height()-2, bg, TB_BLUE,
 			  " => %s ", tab->selected_url);
@@ -91,7 +95,7 @@ void display() {
                 int llen = strnlen(tab->request.url, sizeof(tab->request.url));
                 tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, bg,
 			  " [%s] ", urlbuf);
-	} 
+	}
 
         int count = atoi(client.vim.counter);
         if (count) {
