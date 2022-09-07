@@ -482,17 +482,10 @@ int sandbox_init() {
 	}
 
 #ifndef __MUSL__
-	// load dynamic library before restricting process
-	struct addrinfo hints, *result;
-        bzero(&hints, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags |= AI_CANONNAME;
-
-	if (getaddrinfo("example.com", NULL, &hints, &result)) {
-		printf("getaddrinfo failed\n");
-		return -1;
-	}
+	// with glibc, load dynamic library before restricting process
+#include <dlfcn.h>
+	if (!dlopen("libgcc_s.so.1", RTLD_LAZY))
+		printf("failed to load libgcc_s.so.1, unexpected behaviors may occur\n");
 #endif
 	if (landlock_apply(llfd)) {
 		printf("landlock, failed to restrict process : %s\n", strerror(errno));
