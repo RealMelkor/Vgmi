@@ -50,14 +50,14 @@ void parse_relative(const char* urlbuf, int host_len, char* buf) {
 		buf[j] = urlbuf[i];
 		j++;
 		if (urlbuf[i] == '\0') break;
-		if (i + 2 < MAX_URL &&
+		if (i > 0 && i + 2 < MAX_URL &&
 			urlbuf[i - 1] == '/' && urlbuf[i + 0] == '.' &&
 			(urlbuf[i + 1] == '/' || urlbuf[i + 1] == '\0')) {
 			i += 1;
 			j--;
 			continue;
 		}
-		if (!(i + 3 < MAX_URL &&
+		if (!(i > 0 && i + 3 < MAX_URL &&
 			urlbuf[i - 1] == '/' &&
 			urlbuf[i + 0] == '.' && urlbuf[i + 1] == '.' &&
 			(urlbuf[i + 2] == '/' || urlbuf[i + 2] == '\0')))
@@ -77,7 +77,7 @@ void parse_relative(const char* urlbuf, int host_len, char* buf) {
 
 int parse_url(const char* url, char* host, int host_len, char* buf,
 		 int url_len, unsigned short* port) {
-	char urlbuf[1024];
+	char urlbuf[MAX_URL];
 	int proto = PROTO_GEMINI;
 	char* proto_ptr = strstr(url, "://");
 	char* ptr = (char*)url;

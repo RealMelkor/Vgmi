@@ -1,4 +1,9 @@
 /* See LICENSE file for copyright and license details. */
+#if defined(__linux__) && !defined(__MUSL__)
+#include <dlfcn.h>
+#include <stdlib.h>
+void* libgcc_s = NULL;
+#endif
 #ifndef DISABLE_XDG
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
 
@@ -66,6 +71,10 @@ int xdg_init() {
 }
 
 int sandbox_close() {
+#if defined(__linux__) && !defined(__MUSL__)
+	if (libgcc_s)
+		dlclose(libgcc_s);
+#endif
 	close(xdg_pipe[0]);
 	close(xdg_pipe[1]);
 	return 0;
@@ -483,7 +492,7 @@ int sandbox_init() {
 
 #ifndef __MUSL__
 	// with glibc, load dynamic library before restricting process
-#include <dlfcn.h>
+	libgcc_s = dlopen("libgcc_s.so.1", RTLD_LAZY);
 	if (!dlopen("libgcc_s.so.1", RTLD_LAZY))
 		printf("failed to load libgcc_s.so.1, unexpected behaviors may occur\n");
 #endif
@@ -523,6 +532,10 @@ int sandbox_close() {
 
 #if !defined(NO_SANDBOX) && defined(DISABLE_XDG)
 int sandbox_close() {
+#if defined(__linux__) && !defined(__MUSL__)
+	if (libgcc_s)
+		dlclose(libgcc_s);
+#endif
 	return 0;
 }
 #endif

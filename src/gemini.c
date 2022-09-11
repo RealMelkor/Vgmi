@@ -1190,7 +1190,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 			break;
 		}
 		recv += n;
-		buf[recv + 1] = '\0';
+		buf[recv] = '\0';
 		if (strstr(buf, "\r\n")) break;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
@@ -1211,7 +1211,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 			 "Invalid data from: %s (no metadata)", tab->request.host);
 		return -1;
 	}
-	else strlcpy(tab->request.error, ptr+1, sizeof(tab->request.error));
+	strlcpy(tab->request.error, ptr +1, sizeof(tab->request.error));
 
 	int previous_code = tab->page.code;
 	char c = buf[2];
