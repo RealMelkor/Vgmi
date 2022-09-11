@@ -1538,9 +1538,15 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			char path[1024];
 			if (ptr)
 				strlcpy(path, ptr+1, sizeof(path));
-			else
-				snprintf(path, sizeof(path),
-						   "output_%ld.dat", time(NULL));
+			else {
+#ifdef __OpenBSD__
+				char format[] = "output_%lld.dat";
+#else
+				char format[] = "output_%ld.dat";
+#endif
+
+				snprintf(path, sizeof(path), format, time(NULL));
+			}
 			for (unsigned int i = 0; i < sizeof(path) && path[i] && ptr; i++) {
 				char c = path[i];
 				if ((path[i] == '.' && path[i+1] == '.') ||
@@ -1554,7 +1560,12 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			int dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
 			if (dfd < 0) {
 				char buf[1024];
-				snprintf(buf, sizeof(buf), "%ld_%s", time(NULL), path);
+#ifdef __OpenBSD__
+				char format[] = "%lld_%s";
+#else
+				char format[] = "%ld_%s";
+#endif
+				snprintf(buf, sizeof(buf), format, time(NULL), path);
 				strlcpy(path, buf, sizeof(path));
 				dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
 				if (dfd < 0) {
