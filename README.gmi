@@ -21,6 +21,14 @@ Gemini client written in C with vim-like keybindings
 ### aarch64
 =>/static/vgmi/vgmi_linux_aarch64 Linux
 
+## Bug reports
+
+If you find a bug you can send an email at rawmonk@firemail.cc, or send a message to Vaati on GmiChat
+=>gemini://chat.rmf-dev.com GmiChat
+
+It's also possible to open an issue on the Github page
+=>https://github.com/RealMelkor/Vgmi Github
+
 ## Keybindings
 
 * k  - Scroll up
