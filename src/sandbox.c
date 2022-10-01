@@ -128,7 +128,7 @@ int sandbox_init() {
 
 	cap_rights_t rights;
 	cap_rights_init(&rights, CAP_WRITE, CAP_LOOKUP, CAP_READ,
-			CAP_SEEK, CAP_CREATE, CAP_FCNTL);
+			CAP_SEEK, CAP_CREATE, CAP_FCNTL, CAP_FTRUNCATE);
         if (cap_rights_limit(config_fd, &rights)) {
                 printf("cap_rights_limit failed\n");
                 return -1;

@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <sys/types.h>
 #ifdef __linux__
 #define _GNU_SOURCE
 #endif
@@ -680,10 +681,21 @@ int gmi_loadbookmarks() {
 	return 0;
 }
 
+void sanitize(char* str, size_t len) {
+	int n = 0;
+	for (size_t i = 0; i < len; i += n) {
+		n = tb_utf8_char_length(str[i]);
+		if (n > 1 || str[i] >= 32) continue;
+		str[i] = '\0';
+		break;
+	}
+}
+
 void gmi_gettitle(struct gmi_page* page) {
 	if (page->title_cached) return;
 	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
-		strlcpy(page->title, page->meta, sizeof(page->title));
+		size_t len = strlcpy(page->title, page->meta, sizeof(page->title));
+		sanitize(page->title, len);
 		page->title_cached = 1;
 		return;
 	}
@@ -709,8 +721,9 @@ void gmi_gettitle(struct gmi_page* page) {
 	page->title[0] = '\0';
 	if (start == -1 || end == -1) return;
 	size_t len = end - start + 1;
-	strlcpy(page->title, &page->data[start],
+	len = strlcpy(page->title, &page->data[start],
 		len<sizeof(page->title)?len:sizeof(page->title));
+	sanitize(page->title, len);
 }
 
 int gmi_removebookmark(int index) {
@@ -758,9 +771,12 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 }
 
 int gmi_savebookmarks() {
-	int fd = openat(config_fd, "bookmarks.txt", O_CREAT|O_WRONLY|O_TRUNC, 0600);
-	if (fd < 0)
+	int fd = openat(config_fd, "bookmarks.txt",
+			O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
+	if (fd < 0) {
+		printf("Failed to write bookmarks, %s\n", strerror(errno));
 		return -1;
+	}
 	FILE* f = fdopen(fd, "wb");
 	if (!f)
 		return -1;
