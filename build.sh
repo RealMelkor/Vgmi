@@ -18,12 +18,17 @@ fi
 
 hash_file () {
 	file=$1
-	if command -v sha256 > /dev/null
+	if command -v sha256 > /dev/null # OpenBSD
 	then
 		actual_hash="$(sha256 $file | rev | cut -d ' ' -f 1 | rev)"
 		return 1
 	fi
-	if command -v sha256sum > /dev/null
+	if command -v shasum > /dev/null # NetBSD
+	then
+		actual_hash="$(shasum -a 256 $file | cut -d ' ' -f 1)"
+		return 1
+	fi
+	if command -v sha256sum > /dev/null # Linux
 	then
 		actual_hash="$(sha256sum $file | cut -d ' ' -f 1)"
 		return 1
