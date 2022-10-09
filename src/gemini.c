@@ -611,7 +611,7 @@ char home_page[] =
 "* :[number] - Follow the link\n" \
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
-"* :download [name] - Download the current page, the name is optional"
+"* :download [name] - Download the current page, the name is optional\n"
 ;
 
 void gmi_newbookmarks() {
@@ -690,18 +690,18 @@ void sanitize(char* str, size_t len) {
 	}
 }
 
-void gmi_gettitle(struct gmi_page* page) {
+void gmi_gettitle(struct gmi_page* page, const char* url) {
 	if (page->title_cached) return;
+	page->title[0] = '\0';
+	page->title_cached = 1;
 	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
-		size_t len = strlcpy(page->title, page->meta, sizeof(page->title));
-		sanitize(page->title, len);
-		page->title_cached = 1;
-		return;
+		goto use_url;
 	}
 	int start = -1;
 	int end = -1;
+	int line_start = 1;
 	for (int i = 0; i < page->data_len; i++) {
-		if (start == -1 && page->data[i] == '#') {
+		if (line_start && start == -1 && page->data[i] == '#') {
 			for (int j = i+1; j < page->data_len; j++) {
 				if (j && page->data[j-1] == '#' && page->data[j] == '#')
 					break;
@@ -711,18 +711,35 @@ void gmi_gettitle(struct gmi_page* page) {
 				}
 			}
 		}
+		line_start = 0;
+		if (page->data[i] == '\n')
+			line_start = 1;
 		if (start != -1 && page->data[i] == '\n') {
 			end = i;
 			break;
 		}
 	}
-	page->title_cached = 1;
-	page->title[0] = '\0';
-	if (start == -1 || end == -1) return;
+	if (start == -1 || end == -1)
+		goto use_url;
 	size_t len = end - start + 1;
 	len = strlcpy(page->title, &page->data[start],
 		len<sizeof(page->title)?len:sizeof(page->title));
 	sanitize(page->title, len);
+	return;
+use_url:
+	if (!url) {
+		size_t len = strlcpy(page->title, page->meta, sizeof(page->title));
+		sanitize(page->title, len);
+		return;
+	}
+	char* str = strrchr(url, '/');
+	if (!str) {
+		strlcpy(page->title, url, sizeof(page->title));
+		return;
+	}
+	if (str[1] != '\0')
+		str++;
+	strlcpy(page->title, str, sizeof(page->title));
 }
 
 int gmi_removebookmark(int index) {
@@ -749,7 +766,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	}
 	int title_len = 0;
 	if (!title) {
-		gmi_gettitle(&tab->page);
+		gmi_gettitle(&tab->page, tab->url);
 		title = tab->page.title;
 		title_len = strnlen(tab->page.title, sizeof(tab->page.title));
 		if (!title_len) {
@@ -809,10 +826,11 @@ char* gmi_getbookmarks(int* len) {
 
 void gmi_gohome(struct gmi_tab* tab, int add) {
 	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
-	int bm;
+	int bm = 0;
 	char* data = gmi_getbookmarks(&bm);
 	pthread_mutex_lock(&tab->render_mutex);
 	tab->request.data = malloc(sizeof(home_page) + bm);
+	bzero(tab->request.data, sizeof(home_page) + bm);
 	if (!tab->request.data) {
 		fatal();
 		return;
@@ -820,7 +838,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 
 	tab->request.recv = snprintf(tab->request.data,
 				     sizeof(home_page) + bm, home_page, 
-				     data?data:"") + 1;
+				     data?data:"");
 	free(data);
 
 	strlcpy(tab->request.meta, "text/gemini",

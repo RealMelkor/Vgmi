@@ -17,6 +17,15 @@ void cfmakeraw(struct termios *t);
 #include "url.h"
 #include <stdio.h>
 
+int get_cursor_pos() {
+	int pos = 0;
+	for (int i = 0; i < client.input.cursor; i++) {
+		pos += tb_utf8_char_length(client.input.field[pos]);
+		if (!client.input.field[pos]) break;
+	}
+	return pos;
+}
+
 int vim_counter() {
 	int counter = atoi(client.vim.counter);
 	bzero(client.vim.counter, sizeof(client.vim.counter));
@@ -248,7 +257,8 @@ int input(struct tb_event ev) {
 		tb_hide_cursor();
 		return 0;
 	}
-	if (client.input.mode && (ev.key == TB_KEY_BACKSPACE2 || ev.key == TB_KEY_BACKSPACE)) {
+	if (client.input.mode &&
+	    (ev.key == TB_KEY_BACKSPACE2 || ev.key == TB_KEY_BACKSPACE)) {
 		int i = client.input.cursor;
 		if (i > ((page->code == 10 || page->code == 11)?0:1)) {
 			if (client.input.field[0] == '/' &&
@@ -273,7 +283,8 @@ int input(struct tb_event ev) {
 	}
 	if (ev.key == TB_KEY_DELETE) {
 		if (strcmp(tab->url, "about:home")) return 0;
-		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
+		if (tab->selected && tab->selected > 0 &&
+		    tab->selected <= page->links_count) {
 			gmi_removebookmark(tab->selected);
 			tab->selected = 0;
 			gmi_request(tab, tab->url, 0);
@@ -281,7 +292,8 @@ int input(struct tb_event ev) {
 		return 0;
 	}
 	if (ev.key == TB_KEY_BACK_TAB) {
-		if (tab->selected && tab->selected > 0 && tab->selected <= page->links_count) {
+		if (tab->selected && tab->selected > 0 &&
+		    tab->selected <= page->links_count) {
 			int linkid = tab->selected;
 			tab->selected = 0;
 			gmi_goto_new(tab, linkid);
@@ -303,29 +315,34 @@ int input(struct tb_event ev) {
 	if (!client.input.mode && ev.key == TB_KEY_ARROW_DOWN)
 		goto move_down;
 	if (!client.input.mode && ev.key == TB_KEY_TAB) {
-		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
-			tab->selected = atoi(client.vim.counter);
-			bzero(client.vim.counter, sizeof(client.vim.counter));
-			if (tab->selected > page->links_count) {
-				snprintf(tab->error, sizeof(tab->error),
-					 "Invalid link number");
-				tab->selected = 0;
-				tab->show_error = 1;
-			}
-			else if (strlcpy(tab->selected_url, page->links[tab->selected - 1],
-			sizeof(tab->selected_url)) >= sizeof(tab->selected_url)) {
-				snprintf(tab->error, sizeof(tab->error),
-					 "Invalid link, above %lu characters",
-					 sizeof(tab->selected_url));
-				tab->selected = 0;
-				tab->show_error = 1;
-			}
-		}
-		else if (tab->selected) {
+		client.vim.g = 0;
+		if (tab->selected) {
 			gmi_goto(tab, tab->selected);
 			tab->selected = 0;
+			bzero(client.vim.counter, sizeof(client.vim.counter));
+			return 0;
 		}
-		client.vim.g = 0;
+		if (client.vim.counter[0] == '\0' || !atoi(client.vim.counter))
+			return 0;
+		tab->selected = atoi(client.vim.counter);
+		bzero(client.vim.counter, sizeof(client.vim.counter));
+		if (tab->selected > page->links_count) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "Invalid link number");
+			tab->selected = 0;
+			tab->show_error = 1;
+			return 0;
+		}
+		size_t len = strlcpy(tab->selected_url,
+				     page->links[tab->selected - 1],
+				     sizeof(tab->selected_url));
+		if (len >= sizeof(tab->selected_url)) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "Invalid link, above %lu characters",
+				 sizeof(tab->selected_url));
+			tab->selected = 0;
+			tab->show_error = 1;
+		}
 		return 0;
 	}
 	if (!client.input.mode && ev.key == TB_KEY_ENTER) {
@@ -367,10 +384,12 @@ int input(struct tb_event ev) {
 		return command();	
 	}
 	if (client.input.mode && ev.key == TB_KEY_ARROW_LEFT && ev.mod == TB_MOD_CTRL) {
+		int pos = get_cursor_pos();
 		while (client.input.cursor>1) {
+			pos -= tb_utf8_char_length(client.input.field[pos]);
 			client.input.cursor--;
-			if (client.input.field[client.input.cursor] == ' ' ||
-			    client.input.field[client.input.cursor] == '.')
+			if (client.input.field[pos] == ' ' ||
+			    client.input.field[pos] == '.')
 				break;
 		}
 		return 0;
@@ -381,20 +400,24 @@ int input(struct tb_event ev) {
 		return 0;
 	}
 	if (client.input.mode && ev.key == TB_KEY_ARROW_RIGHT && ev.mod == TB_MOD_CTRL) {
-		while (client.input.field[client.input.cursor]) {
+		int pos = get_cursor_pos();
+		while (client.input.field[pos]) {
+			pos += tb_utf8_char_length(client.input.field[pos]);
 			client.input.cursor++;
-			if (client.input.field[client.input.cursor] == ' ' ||
-			    client.input.field[client.input.cursor] == '.')
+			if (!client.input.field[pos]) break;
+			if (client.input.field[pos] == ' ' ||
+			    client.input.field[pos] == '.')
 				break;
 		}
 		return 0;
 	}
 	if (client.input.mode && ev.key == TB_KEY_ARROW_RIGHT) {
-		if (client.input.field[client.input.cursor])
+		int pos = get_cursor_pos();
+		if (client.input.field[pos])
 			client.input.cursor++;
 		return 0;
 	}
-	if (client.input.mode && ev.ch ) {
+	if (client.input.mode && ev.ch) {
 		char* end = client.input.field;
 		while (*end)
 			end += tb_utf8_char_length(*end);
@@ -483,9 +506,11 @@ int input(struct tb_event ev) {
 	case 'u':
 		tab->show_error = 0;
 		client.input.mode = 1;
-		snprintf(client.input.field, sizeof(client.input.field), ":o %s", tab->url);
+		snprintf(client.input.field,
+			 sizeof(client.input.field),
+			 ":o %s", tab->url);
 		client.input.cursor = utf8_len(client.input.field,
-						sizeof(client.input.field));
+					       sizeof(client.input.field));
 		break;
 	case ':':
 		tab->show_error = 0;
@@ -572,8 +597,10 @@ move_down:
 		break;
 	case 'G': // End of file
 		tab->scroll = page->lines-tb_height()+2;
-		if (client.tabs_count != 1) tab->scroll++;
-		if (tb_height()-2-(client.tabs_count>1) > page->lines) tab->scroll = -1;
+		if (client.tabs_count != 1)
+			tab->scroll++;
+		if (tb_height()-2-(client.tabs_count>1) > page->lines)
+			tab->scroll = -1;
 		break;
 	case 'n': // Next occurence
 		tab->search.cursor++;
@@ -590,7 +617,8 @@ move_down:
 			break;
 		tab->show_error = 0;
 		tab->show_info = 0;
-		unsigned int len = strnlen(client.vim.counter, sizeof(client.vim.counter));
+		unsigned int len = strnlen(client.vim.counter,
+					   sizeof(client.vim.counter));
 		if (len == 0 && ev.ch == '0') break;
 		if (len >= sizeof(client.vim.counter)) break;
 		client.vim.counter[len] = ev.ch;

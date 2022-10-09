@@ -162,7 +162,7 @@ void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
 void gmi_polling();
 void gmi_gohome(struct gmi_tab* tab, int add);
-void gmi_gettitle(struct gmi_page* page);
+void gmi_gettitle(struct gmi_page* page, const char* url);
 void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();

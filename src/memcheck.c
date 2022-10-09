@@ -51,8 +51,8 @@ void __free(void* ptr, const char* file, int line, const char* func)
 	if(ptr) {
 		while(i!=allocationCount && ptr!=allocation[i].ptr) i++;
 		if(i==allocationCount) {
-			fprintf(output, "(WARNING Freeing non-allocated memory) free : %p, " \
-					"%s, Line %d : %s\n",
+			fprintf(output, "(WARNING Freeing non-allocated memory) " \
+					"free : %p, %s, Line %d : %s\n",
 				ptr, file, line, func);
 			fflush(output);
 #ifndef EXIT_ON_ERROR
@@ -62,15 +62,14 @@ void __free(void* ptr, const char* file, int line, const char* func)
 			fclose(output);
 			tb_shutdown();
 			printf("mem_check detected a fatal error\n");
-			exit(0);
+			return exit(0);
 #endif
-		} else {
-			for(uint32_t j=i; j!=allocationCount-1; j++)
-				allocation[j] = allocation[j+1];
-			allocationCount--;
-			allocation = realloc(allocation, 
-					     sizeof(struct __allocation) * allocationCount);
 		}
+		for(uint32_t j=i; j!=allocationCount-1; j++)
+			allocation[j] = allocation[j+1];
+		allocationCount--;
+		allocation = realloc(allocation,
+				     sizeof(struct __allocation) * allocationCount);
 	}
 	if(i>allocationCount)
 		fprintf(output, "Error free : %p | %s, Line %d : %s\n",
@@ -87,10 +86,11 @@ void* __malloc(size_t size, const char* file, int line, const char* func)
 	void* ptr = malloc(size);
 	if(ptr)	{
 		allocationCount++;
-		allocation=realloc(allocation,sizeof(struct __allocation)*allocationCount);
-		allocation[allocationCount-1].ptr=ptr;
-		allocation[allocationCount-1].line=line;
-		allocation[allocationCount-1].size=size;
+		allocation = realloc(allocation,
+				     sizeof(struct __allocation) * allocationCount);
+		allocation[allocationCount-1].ptr = ptr;
+		allocation[allocationCount-1].line = line;
+		allocation[allocationCount-1].size = size;
 		allocation[allocationCount-1].file = file;
 		allocation[allocationCount-1].func = func;
 	}
@@ -102,20 +102,21 @@ void* __malloc(size_t size, const char* file, int line, const char* func)
 
 void* __calloc(size_t num, size_t size, const char* file, int line, const char* func)
 {
-    void* ptr = calloc(num, size);
-    if(ptr) {
-        allocationCount++;
-        allocation=realloc(allocation,sizeof(struct __allocation)*allocationCount);
-        allocation[allocationCount-1].ptr=ptr;
-        allocation[allocationCount-1].line=line;
-        allocation[allocationCount-1].size=size;
-        allocation[allocationCount-1].file = file;
-        allocation[allocationCount-1].func = func;
-    }
-    fprintf(output, "calloc : %p, size : %ld | %s, Line %d : %s\n",
-	    ptr, size, file, line, func);
-    fflush(output);
-    return ptr;
+	void* ptr = calloc(num, size);
+	if(ptr) {
+		allocationCount++;
+		allocation = realloc(allocation,
+				     sizeof(struct __allocation) * allocationCount);
+		allocation[allocationCount-1].ptr = ptr;
+		allocation[allocationCount-1].line = line;
+		allocation[allocationCount-1].size = size;
+		allocation[allocationCount-1].file = file;
+		allocation[allocationCount-1].func = func;
+	}
+	fprintf(output, "calloc : %p, size : %ld | %s, Line %d : %s\n",
+	ptr, size, file, line, func);
+	fflush(output);
+	return ptr;
 }
 
 void* __realloc(void* ptr, size_t size, const char* file, int line, const char* func)
@@ -126,9 +127,9 @@ void* __realloc(void* ptr, size_t size, const char* file, int line, const char* 
 		uint32_t i=0;
 		for(i=0; i!=allocationCount && ptr != allocation[i].ptr; i++) ;
 		if(allocationCount>i) {
-			allocation[i].ptr=_ptr;
-			allocation[i].line=line;
-			allocation[i].size=size;
+			allocation[i].ptr = _ptr;
+			allocation[i].line = line;
+			allocation[i].size = size;
 			allocation[i].file = file;
 			allocation[i].func = func;
 		}

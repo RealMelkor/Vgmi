@@ -67,7 +67,7 @@ void display() {
 	// current tab
 	if (client.tabs_count > 1) {
 		tb_colorline(0, 0, bg);
-		gmi_gettitle(page);
+		gmi_gettitle(page, tab->url);
 		int index = 1;
 		struct gmi_tab* ptr = tab;
 		while (ptr->prev) {
