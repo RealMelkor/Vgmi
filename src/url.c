@@ -191,7 +191,7 @@ int parse_query(const char* url, int len, char* buf, int llen) {
 	int inquery = 0;
 	for (int i = 0; j < llen && i < len && url[i]; i++) {
 		if (url[i] == '/') inquery = 0;
-		if (isCharValid(url[i], inquery)) {
+		if (!inquery || isCharValid(url[i], inquery)) {
 			if (url[i] == '?') inquery = 1;
 			buf[j] = url[i];
 			j++;
