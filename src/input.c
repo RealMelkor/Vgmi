@@ -360,6 +360,7 @@ tab_next:
 	case 'H': // Back
 go_back:
 		if (!tab->history || !tab->history->prev) break;
+		tab->selected = 0;
 		if (page->code == 20 || page->code == 10 || page->code == 11) {
 			tab->history->scroll = tab->scroll;
 			if (!tab->history->next) {
@@ -379,6 +380,7 @@ go_back:
 	case 'L': // Forward
 go_forward:
 		if (!tab->history || !tab->history->next) break;
+		tab->selected = 0;
 		if (!tab->history->cached) {
 			tab->history->page = tab->page;
 			tab->history->cached = 1;

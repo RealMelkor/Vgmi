@@ -281,7 +281,6 @@ int gmi_render(struct gmi_tab* tab) {
 		}
 	}
 #endif
-
 	int text = 0;
 	if (strncmp(tab->page.meta, "text/gemini", 11)) {
 		if (strncmp(tab->page.meta, "text/", 5)) {
@@ -734,12 +733,16 @@ use_url:
 	}
 	char* str = strrchr(url, '/');
 	if (!str) {
-		strlcpy(page->title, url, sizeof(page->title));
-		return;
+		len = strlcpy(page->title, url, sizeof(page->title));
+		goto sanitize;
 	}
 	if (str[1] != '\0')
 		str++;
-	strlcpy(page->title, str, sizeof(page->title));
+	len = strlcpy(page->title, str, sizeof(page->title));
+sanitize:
+	for (size_t i = 0; i < len; i++)
+		if (page->title[i] == '?')
+			page->title[i] = 0;
 }
 
 int gmi_removebookmark(int index) {
