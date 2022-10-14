@@ -409,7 +409,7 @@ int gmi_render(struct gmi_tab* tab) {
 				end = 1;
 			}
 			int newline = (tab->page.data[c] == '\n' || x+4 >= w);
-			for (int i=1; 1; i++) {
+			for (int i = 1; ; i++) {
 				if (x + i == w - 1) break;
 				if (i > w - 4) {
 					newline = 0;
@@ -423,12 +423,12 @@ int gmi_render(struct gmi_tab* tab) {
 				if (w - 4 <= x + i) newline = 1;
 			}
 			if (newline) {
-				if (c + 1 != tab->page.data_len)
-					line += 1 + x/w;
+				if (c != tab->page.data_len)
+					line += 1 + (x + 1)/w;
 				if (tab->page.data[c] == '\n') {
 					color = TB_DEFAULT;
 					start = 1;
-				}
+				} else c--;
 				if (tab->page.data[c+1] == ' ') c++;
 				x = 0;
 				continue;
