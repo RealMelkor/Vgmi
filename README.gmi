@@ -20,6 +20,7 @@ Gemini client written in C with vim-like keybindings
 
 ### aarch64
 =>/static/vgmi/vgmi_linux_aarch64 Linux
+=>/static/vgmi/vgmi_freebsd_aarch64 FreeBSD
 
 ## Bug reports
 

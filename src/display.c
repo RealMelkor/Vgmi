@@ -42,10 +42,18 @@ void display() {
 	}
         tb_clear();
 	
+	int input_offset = 0;
         if (client.input.mode) {
 		int cpos = utf8_width_to(client.input.field,
 					 sizeof(client.input.field),
 					 client.input.cursor);
+		int w = tb_width();
+		if (page->code == 10 || page->code == 11)
+			w -= strnlen(client.input.label, sizeof(client.input.label)) + 2;
+		if (cpos >= w) {
+			input_offset = cpos - cpos%w;
+			cpos = cpos%w;
+		}
 
                 if (page->code == 11 || page->code == 10)
                         tb_set_cursor(cpos + utf8_width(client.input.label,
@@ -117,7 +125,7 @@ void display() {
 		tab->show_info = 0;
         } else if (page->code == 10) {
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
-			 "%s: %s", client.input.label, client.input.field);
+			 "%s: %s", client.input.label, client.input.field + input_offset);
         } else if (page->code == 11) {
                 char input_buf[1024];
                 size_t i = 0;
@@ -127,7 +135,8 @@ void display() {
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
 			  "%s: %s", client.input.label, input_buf);
         } else {
-		tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s", client.input.field);
+		tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT, "%s",
+			  client.input.field + input_offset);
 	}
 
 	tb_present();

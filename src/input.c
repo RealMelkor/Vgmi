@@ -510,13 +510,17 @@ int input_field(struct tb_event ev) {
 		}
 		return command();
 	case TB_KEY_ARROW_LEFT:
+	{
+		int min = 1;
+		if (tab->page.code == 10 || tab->page.code == 11)
+			min = 0;
 		if (ev.mod != TB_MOD_CTRL) {
-			if (client.input.cursor>1)
+			if (client.input.cursor > min)
 				client.input.cursor--;
 			return 0;
 		}
 		pos = get_cursor_pos();
-		while (client.input.cursor>1) {
+		while (client.input.cursor > min) {
 			pos -= tb_utf8_char_length(client.input.field[pos]);
 			client.input.cursor--;
 			if (client.input.field[pos] == ' ' ||
@@ -524,6 +528,7 @@ int input_field(struct tb_event ev) {
 				break;
 		}
 		return 0;
+	}
 	case TB_KEY_ARROW_RIGHT:
 		pos = get_cursor_pos();
 		if (ev.mod != TB_MOD_CTRL) {
