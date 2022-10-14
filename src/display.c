@@ -48,10 +48,13 @@ void display() {
 					 sizeof(client.input.field),
 					 client.input.cursor);
 		int w = tb_width();
+		w -= w&1; // make width even so double-width characters don't cause problem
 		if (page->code == 10 || page->code == 11)
-			w -= strnlen(client.input.label, sizeof(client.input.label)) + 2;
+			w -= utf8_width(client.input.label, sizeof(client.input.label)) + 2;
 		if (cpos >= w) {
-			input_offset = cpos - cpos%w;
+			input_offset = utf8_len_to(client.input.field,
+						     sizeof(client.input.field),
+						     cpos - cpos%w);
 			cpos = cpos%w;
 		}
 
@@ -139,6 +142,8 @@ void display() {
 			  client.input.field + input_offset);
 	}
 
+	if (client.input.mode && tb_width() & 1)
+		tb_set_cell(tb_width() - 1, tb_height() -1, ' ', TB_DEFAULT, TB_DEFAULT);
 	tb_present();
 }
 

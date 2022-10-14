@@ -19,6 +19,7 @@ int parse_query(const char* url, int len, char* buf, int llen);
 int utf8_width(char* ptr, size_t len);
 int utf8_len(char* ptr, size_t len);
 int utf8_width_to(char* ptr, size_t len, size_t to);
+int utf8_len_to(char* ptr, size_t len, size_t to_width);
 int parse_link(char* data, int len);
 
 #endif

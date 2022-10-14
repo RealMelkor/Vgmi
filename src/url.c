@@ -40,6 +40,20 @@ int utf8_len(char* ptr, size_t len) {
 
 }
 
+int utf8_len_to(char* ptr, size_t len, size_t to_width) {
+	char* start = ptr;
+	char* max = ptr + len;
+	size_t width = 0;
+	while (*ptr && ptr < max) {
+		uint32_t c;
+		ptr += tb_utf8_char_to_unicode(&c, ptr);
+		width += mk_wcwidth(c);
+		if (width >= to_width)
+			return ptr - start;
+	}
+	return ptr - start;
+}
+
 void parse_relative(const char* urlbuf, int host_len, char* buf) {
 	int j = 0;
 	for (size_t i = 0; i < MAX_URL; i++) {
