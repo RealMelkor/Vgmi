@@ -426,15 +426,14 @@ int cert_verify(char* host, const char* hash,
 		unsigned long long end) {
 	struct cert* found = NULL;
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
-		if (!strcmp(host, cert->host)) {
-			found = cert;
-			break;
-		}
+		if (strcmp(host, cert->host)) continue;
+		found = cert;
+		break;
 	}
 	unsigned long long now = time(NULL);
 	if (found) {
 		if (found->start < now && found->end > now)
-			return strcmp(found->hash, hash)?1:0;
+			return strcmp(found->hash, hash)?-6:0;
 		return -5; // expired
 	}
 	int cfd = getconfigfd();

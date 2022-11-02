@@ -120,6 +120,7 @@ struct gmi_client {
 	struct pollfd* tabs_fds;
 	int tabs_count;
 	struct input {
+		char download[MAX_URL];
 		char label[MAX_URL];
 		char field[MAX_URL * 2];
 		int cursor;
@@ -166,6 +167,13 @@ void gmi_gettitle(struct gmi_page* page, const char* url);
 void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
+
+#if !defined(NO_SANDBOX) && !defined(DISABLE_XDG)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
+int xdg_request(char*);
+#define xdg_open(x) xdg_request(x)
+#endif
+#endif
 
 void fatal();
 int fatalI();

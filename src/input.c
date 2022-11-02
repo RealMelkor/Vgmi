@@ -164,6 +164,22 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
+	if (strcmp(client.input.field, ":exec") == 0) {
+		if (!*client.input.download) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "No file was downloaded");
+			tab->show_error = 1;
+			client.input.field[0] = '\0';
+			return 0;
+		}
+		char file[1024];
+		snprintf(file, sizeof(file), "%s/%s",
+			 download_path, client.input.download);
+		xdg_open(file);
+		client.input.field[0] = '\0';
+		client.input.download[0] = '\0';
+		return 0;
+	}
 	if (strncmp(client.input.field, ":download", sizeof(":download") - 1) == 0) {
 		char* ptr = client.input.field + sizeof(":download") - 1;
 		int space = 0;
@@ -186,8 +202,17 @@ int command() {
 			url = urlbuf;
 		} else if (url) url++;
 		else url = tab->history->url;
-		int fd = openat(getdownloadfd(), *ptr?ptr:url,
+		char* download = *ptr?ptr:url;
+		int fd = openat(getdownloadfd(), download,
 				O_CREAT|O_EXCL|O_RDWR, 0600);
+		char buf[1024];
+		if (fd < 0 && errno == EEXIST) {
+			snprintf(buf, sizeof(buf), "%ld_%s",
+				 time(NULL), download);
+			fd = openat(getdownloadfd(), buf,
+				    O_CREAT|O_EXCL|O_RDWR, 0600);
+			download = buf;
+		}
 		if (fd < 0) {
 			tab->show_error = -1;
 			snprintf(tab->error, sizeof(tab->error),
@@ -205,7 +230,9 @@ int command() {
 		close(fd);
 		tab->show_info = 1;
 		snprintf(tab->info, sizeof(tab->info),
-			 "File downloaded : %s", *ptr?ptr:url);
+			 "File downloaded : %s", download);
+		strlcpy(client.input.download, download,
+			sizeof(client.input.download));
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;

@@ -74,8 +74,6 @@ int main(int argc, char* argv[]) {
 	client.c256 = 1;
 #endif
 
-
-
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
 		if (gmi_loadfile(tab, argv[1]) <= 0) {

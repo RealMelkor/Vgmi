@@ -58,28 +58,6 @@ void* fatalP() {
 	return NULL;
 }
 
-#ifndef DISABLE_XDG
-int xdg_open(char* str) {
-	if (client.xdg) {
-		char buf[4096];
-		snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);
-		if (fork() == 0) {
-			setsid();
-			char* argv[] = {"/bin/sh", "-c", buf, NULL};
-			execvp(argv[0], argv);
-			exit(0);
-		}
-	}
-	return 0;
-}
-
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
-int xdg_request(char*);
-#define xdg_open(x) xdg_request(x)
-#endif
-
-#endif
-
 int gmi_goto(struct gmi_tab* tab, int id) {
 	id--;
 	struct gmi_page* page = &tab->page;
@@ -611,7 +589,7 @@ char home_page[] =
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
 "* :download [name] - Download the current page, the name is optional\n"
-;
+"* :exec - Open the last downloaded file\n";
 
 void gmi_newbookmarks() {
 	int len;
@@ -667,13 +645,12 @@ int gmi_loadbookmarks() {
 	ptr = data;
 	char* str = data;
 	while (++ptr && ptr < data+len) {
-		if (*ptr == '\n') {
-			*ptr = '\0';
-			client.bookmarks[n] = malloc(ptr-str+1);
-			strlcpy(client.bookmarks[n], str, ptr-str+1);
-			n++;
-			str = ptr+1;
-		}
+		if (*ptr != '\n') continue;
+		*ptr = '\0';
+		client.bookmarks[n] = malloc(ptr-str+1);
+		strlcpy(client.bookmarks[n], str, ptr-str+1);
+		n++;
+		str = ptr+1;
 	}
 	free(data);
 	return 0;
@@ -1137,9 +1114,11 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	while ((ret = tls_handshake(tab->request.tls))) {
 		if (time(NULL) - start > TIMEOUT ||
 		    tab->request.state == STATE_CANCEL ||
-		    (ret < 0 && ret !=TLS_WANT_POLLIN))
+		    (ret < 0 &&
+		     ret != TLS_WANT_POLLIN &&
+		     ret != TLS_WANT_POLLOUT))
 			break;
-		if (ret == TLS_WANT_POLLIN)
+		if (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT)
 			nanosleep(&timeout, NULL);
 	}
 	if (ret) {
@@ -1153,23 +1132,30 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
 			  tls_peer_cert_notbefore(tab->request.tls),
 			  tls_peer_cert_notafter(tab->request.tls));
-	if (ret == -5) {
+	switch (ret) {
+	case 0: // success
+		break;
+	case -1: // invalid certificate
+		snprintf(tab->error, sizeof(tab->error),
+			 "Failed to verify server certificate for %s" \
+			 "(The certificate changed)",
+			 tab->request.host);
+		return -1;
+	case -5: // expired
 		snprintf(tab->error, sizeof(tab->error),
 			 "Expired certificate, the certificate for %s has expired",
 			 tab->request.host);
 		return -1;
-	} else if (ret == 1) {
+	case -6: // certificate changed
 		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid certificate, enter \":forget %s\"" \
 			 " to forget the old certificate.",
 			 tab->request.host);
 		return -1;
-	} else if (ret) {
+	default: // failed to write certificate
 		snprintf(tab->error, sizeof(tab->error),
-			 ret==-1?"Failed to verify server certificate for %s" \
-				 "(The certificate changed) %s":
-			 	 "Failed to write %s certificate information : %s",
-			 tab->request.host, ret==-1?"":strerror(errno));
+			 "Failed to write %s certificate information : %s",
+			 tab->request.host, strerror(errno));
 		return -1;
 	}
 
@@ -1799,3 +1785,22 @@ void gmi_free() {
 	free(client.bookmarks);
 	cert_free();
 }
+
+#ifndef DISABLE_XDG
+#ifdef xdg_open
+#undef xdg_open
+#endif
+int xdg_open(char* str) {
+	if (client.xdg) {
+		char buf[4096];
+		snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);
+		if (fork() == 0) {
+			setsid();
+			char* argv[] = {"/bin/sh", "-c", buf, NULL};
+			execvp(argv[0], argv);
+			exit(0);
+		}
+	}
+	return 0;
+}
+#endif
