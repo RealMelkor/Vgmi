@@ -152,7 +152,9 @@ int sandbox_init() {
                 return -1;
         }
         limit = cap_net_limit_init(_capnet,
-                                   CAPNET_NAME2ADDR | CAPNET_CONNECTDNS | CAPNET_CONNECT);
+                                   CAPNET_NAME2ADDR |
+				   CAPNET_CONNECTDNS |
+				   CAPNET_CONNECT);
         if (limit == NULL) {
                 printf("Unable to create limits.\n");
                 return -1;
@@ -253,14 +255,14 @@ int sandbox_init() {
 #include <linux/seccomp.h>
 #include <linux/filter.h>
 #include <linux/unistd.h>
-#if ENABLE_LANDLOCK || (!defined(DISABLE_LANDLOCK) && __has_include(<linux/landlock.h>))
+#if ENABLE_LANDLOCK || (!defined(DISABLE_LANDLOCK) && \
+    __has_include(<linux/landlock.h>))
 	#include <linux/landlock.h>
 	#define ENABLE_LANDLOCK
 #endif
 #include "cert.h"
 
 // --------------
-// copied from : https://roy.marples.name/git/dhcpcd/blob/HEAD:/src/privsep-linux.c
 #define SC_ALLOW_(nr)                                            \
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, nr, 0, 1),   \
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
@@ -269,25 +271,26 @@ int sandbox_init() {
 	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##nr, 0, 1),	\
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
 
-#define SC_ALLOW_ARG(_nr, _arg, _val)						\
-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (_nr), 0, 6),			\
-	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
-	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_LO),		\
-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,					\
-	    ((_val) & 0xffffffff), 0, 3),					\
-	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
-	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_HI),		\
-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,					\
-	    (((uint32_t)((uint64_t)(_val) >> 32)) & 0xffffffff), 0, 1),		\
-	BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),				\
-	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,					\
+#define SC_ALLOW_ARG(_nr, _arg, _val)					\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (_nr), 0, 6),		\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,				\
+	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_LO),	\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,				\
+	    ((_val) & 0xffffffff), 0, 3),				\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,				\
+	    offsetof(struct seccomp_data, args[(_arg)]) + SC_ARG_HI),	\
+	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K,				\
+	    (((uint32_t)((uint64_t)(_val) >> 32)) & 0xffffffff), 0, 1),	\
+	BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),			\
+	BPF_STMT(BPF_LD + BPF_W + BPF_ABS,				\
 	    offsetof(struct seccomp_data, nr))
 // --------------
 
 struct sock_filter filter[] = {
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
-	    (offsetof(struct seccomp_data, arch))),
-	BPF_STMT(BPF_LD | BPF_W | BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		 (offsetof(struct seccomp_data, arch))),
+	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+		 (offsetof(struct seccomp_data, nr))),
         SC_ALLOW(readv),
         SC_ALLOW(writev),
 #ifdef __NR_open
@@ -363,13 +366,14 @@ struct sock_filter filter[] = {
 };
 
 #ifdef ENABLE_LANDLOCK
-static inline int landlock_create_ruleset(const struct landlock_ruleset_attr *attr,
-					  size_t size, uint32_t flags)
+static inline int landlock_create_ruleset(
+	const struct landlock_ruleset_attr *attr, size_t size, uint32_t flags)
 {
 	return syscall(__NR_landlock_create_ruleset, attr, size, flags);
 }
 
-static inline int landlock_add_rule(int ruleset_fd, enum landlock_rule_type type,
+static inline int landlock_add_rule(int ruleset_fd,
+				    enum landlock_rule_type type,
 				    const void *attr, uint32_t flags)
 {
 	return syscall(__NR_landlock_add_rule, ruleset_fd, type, attr, flags);
@@ -387,7 +391,8 @@ int landlock_unveil(int landlock_fd, int fd, int perms)
 		.parent_fd = fd
 	};
 
-	int ret = landlock_add_rule(landlock_fd, LANDLOCK_RULE_PATH_BENEATH, &attr, 0);
+	int ret = landlock_add_rule(landlock_fd, LANDLOCK_RULE_PATH_BENEATH,
+				    &attr, 0);
 	int err = errno;
 	close(attr.parent_fd);
 	errno = err;
@@ -455,8 +460,10 @@ int sandbox_init() {
 #ifdef ENABLE_LANDLOCK
 	int llfd = landlock_init();
 	if (llfd < 0) {
-		printf("[WARNING] Failed to initialize landlock : %s\n", strerror(errno));
-		printf("[WARNING] The filesystem won't be hidden from the program\n");
+		printf("[WARNING] Failed to initialize landlock : %s\n",
+		       strerror(errno));
+		printf("[WARNING] The filesystem won't " \
+		       "be hidden from the program\n");
 		goto skip_landlock;
 	}
 	int home = 0;
@@ -494,10 +501,12 @@ int sandbox_init() {
 	// with glibc, load dynamic library before restricting process
 	libgcc_s = dlopen("/lib64/libgcc_s.so.1", RTLD_LAZY);
 	if (!libgcc_s)
-		printf("failed to load libgcc_s.so.1, unexpected behaviors may occur\n");
+		printf("failed to load libgcc_s.so.1, " \
+		       "unexpected behaviors may occur\n");
 #endif
 	if (landlock_apply(llfd)) {
-		printf("landlock, failed to restrict process : %s\n", strerror(errno));
+		printf("landlock, failed to restrict process : %s\n",
+		       strerror(errno));
 		return -1;
 	}
 skip_landlock:;

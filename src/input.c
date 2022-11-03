@@ -46,7 +46,8 @@ int command() {
 
 	// Trim
 	for (int i=strnlen(client.input.field, sizeof(client.input.field)) - 1;
-	     client.input.field[i] == ' ' || client.input.field[i] == '\t'; i--)
+	     client.input.field[i] == ' ' || client.input.field[i] == '\t';
+	     i--)
 		client.input.field[i] = '\0';
 
 	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
@@ -72,7 +73,8 @@ int command() {
 		client.input.cursor = 0;
 		int id = atoi(&client.input.field[4]);
 		if (id != 0 || 
-		    (client.input.field[4] == '0' && client.input.field[5] == '\0')) {
+		    (client.input.field[4] == '0' &&
+		     client.input.field[5] == '\0')) {
 			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
@@ -86,7 +88,8 @@ int command() {
 		if (strlcpy(urlbuf, &client.input.field[3],
 			    sizeof(urlbuf)) >= sizeof(urlbuf)) {
 			tab->show_error = 1;
-			snprintf(tab->error, sizeof(tab->error), "Url too long");
+			snprintf(tab->error, sizeof(tab->error),
+				 "Url too long");
 			return 0;
 		}
 		client.input.field[0] = '\0';
@@ -124,7 +127,8 @@ int command() {
 	    client.input.field[2] == 'd' &&
 	    client.input.field[3] == 'd' &&
 	   (client.input.field[4] == ' ' || client.input.field[4] == '\0')) {
-		char* title = client.input.field[4] == '\0'?NULL:&client.input.field[5];
+		char* title = client.input.field[4] == '\0'?
+				NULL:&client.input.field[5];
 		gmi_addbookmark(tab, tab->url, title);
 		client.input.field[0] = '\0';
 		tab->selected = 0;
@@ -134,7 +138,8 @@ int command() {
 		}
 		return 0;
 	}
-	if (strncmp(client.input.field, ":forget", sizeof(":forget") - 1) == 0) {
+	if (strncmp(client.input.field, ":forget",
+		    sizeof(":forget") - 1) == 0) {
 		char* ptr = client.input.field + sizeof(":forget") - 1;
 		int space = 0;
 		for (; *ptr; ptr++) {
@@ -180,7 +185,8 @@ int command() {
 		client.input.download[0] = '\0';
 		return 0;
 	}
-	if (strncmp(client.input.field, ":download", sizeof(":download") - 1) == 0) {
+	if (strncmp(client.input.field, ":download",
+		    sizeof(":download") - 1) == 0) {
 		char* ptr = client.input.field + sizeof(":download") - 1;
 		int space = 0;
 		for (; *ptr; ptr++) {
@@ -197,7 +203,8 @@ int command() {
 			while (*url != '/' && url > tab->history->url)
 				url--;
 			if (*url == '/') url++;
-			if (strlcpy(urlbuf, url, ptr - url + 1) >= sizeof(urlbuf))
+			if (strlcpy(urlbuf, url, ptr - url + 1) >=
+			    sizeof(urlbuf))
 				return fatalI();
 			url = urlbuf;
 		} else if (url) url++;
@@ -207,7 +214,11 @@ int command() {
 				O_CREAT|O_EXCL|O_RDWR, 0600);
 		char buf[1024];
 		if (fd < 0 && errno == EEXIST) {
+#ifdef __OpenBSD__
+			snprintf(buf, sizeof(buf), "%lld_%s",
+#else
 			snprintf(buf, sizeof(buf), "%ld_%s",
+#endif
 				 time(NULL), download);
 			fd = openat(getdownloadfd(), buf,
 				    O_CREAT|O_EXCL|O_RDWR, 0600);
@@ -219,7 +230,8 @@ int command() {
 				 "Failed to write file : %s", strerror(errno));
 			return 0;
 		}
-		char* data = strnstr(tab->page.data, "\r\n", tab->page.data_len);
+		char* data = strnstr(tab->page.data, "\r\n",
+				     tab->page.data_len);
 		int data_len = tab->page.data_len;
 		if (!data) data = tab->page.data;
 		else {
@@ -298,7 +310,8 @@ int input_page(struct tb_event ev) {
 		goto move_down;
 	case TB_KEY_TAB:
 		client.vim.g = 0;
-		if (client.vim.counter[0] == '\0' || !atoi(client.vim.counter)) {
+		if (client.vim.counter[0] == '\0' ||
+		    !atoi(client.vim.counter)) {
 			if (!tab->selected)
 				return 0;
 			gmi_goto(tab, tab->selected);
@@ -327,7 +340,8 @@ int input_page(struct tb_event ev) {
 		}
 		return 0;
 	case TB_KEY_ENTER:
-		if (client.vim.counter[0] != '\0' && atoi(client.vim.counter)) {
+		if (client.vim.counter[0] != '\0' &&
+		    atoi(client.vim.counter)) {
 			tab->scroll += atoi(client.vim.counter);
 			bzero(client.vim.counter, sizeof(client.vim.counter));
 		}
@@ -336,12 +350,14 @@ int input_page(struct tb_event ev) {
 		client.vim.g = 0;
 		return 0;
 	case TB_KEY_PGUP:
-		tab->scroll -= vim_counter() * tb_height() - 2 - (client.tabs_count>1);
+		tab->scroll -= vim_counter() * tb_height() -
+			       2 - (client.tabs_count>1);
 		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
 	case TB_KEY_PGDN:
-		tab->scroll += vim_counter() * tb_height() - 2 - (client.tabs_count>1);
+		tab->scroll += vim_counter() * tb_height() -
+			       2 - (client.tabs_count>1);
 		fix_scroll(tab);
 		client.vim.g = 0;
 		return 0;
@@ -414,7 +430,8 @@ go_forward:
 		}
 		if (tab->history->next->cached)
 			tab->page = tab->history->next->page;
-		else if (gmi_request(tab, tab->history->next->url, 1) < 0) break;
+		else if (gmi_request(tab, tab->history->next->url, 1) < 0)
+			break;
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
@@ -505,7 +522,8 @@ int input_field(struct tb_event ev) {
 			}
 
 			strlcpy(ptr, ptr + l,
-				sizeof(client.input.field) - (ptr - client.input.field));
+				sizeof(client.input.field) -
+				(ptr - client.input.field));
 			client.input.cursor--;
 		}
 		return 0;
@@ -516,17 +534,21 @@ int input_field(struct tb_event ev) {
 			char urlbuf[MAX_URL];
 			char* start = strstr(tab->url, "gemini://");
 			char* request = strrchr(tab->url, '?');
-			if (!(start?strchr(&start[GMI], '/'):strchr(tab->url, '/')))
+			if (!(start?
+			    strchr(&start[GMI], '/'):strchr(tab->url, '/')))
 				snprintf(urlbuf, sizeof(urlbuf),
-					 "%s/?%s", tab->url, client.input.field);
+					 "%s/?%s", tab->url,
+					 client.input.field);
 			else if (request && request > strrchr(tab->url, '/')) {
 				*request = '\0';
 				snprintf(urlbuf, sizeof(urlbuf),
-					 "%s?%s", tab->url, client.input.field);
+					 "%s?%s", tab->url,
+					 client.input.field);
 				*request = '?';
 			} else
 				snprintf(urlbuf, sizeof(urlbuf),
-					 "%s?%s", tab->url, client.input.field);
+					 "%s?%s", tab->url,
+					 client.input.field);
 			int bytes = gmi_request(tab, urlbuf, 1);
 			if (bytes>0) {
 				tab = client.tab;
@@ -580,7 +602,8 @@ int input_field(struct tb_event ev) {
 	char* end = client.input.field;
 	while (*end)
 		end += tb_utf8_char_length(*end);
-	if ((size_t)(end - client.input.field) >= sizeof(client.input.field) - 1)
+	if ((size_t)(end - client.input.field) >=
+	    sizeof(client.input.field) - 1)
 		return 0;
 
 	char insert[16];
@@ -664,5 +687,6 @@ int input(struct tb_event ev) {
 
 int tb_interupt() {
 	int sig = 0;
-	return write(global.resize_pipefd[1], &sig, sizeof(sig))==sizeof(sig)?0:-1;
+	return write(global.resize_pipefd[1], &sig,
+		     sizeof(sig))==sizeof(sig)?0:-1;
 }

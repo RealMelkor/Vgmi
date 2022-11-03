@@ -38,7 +38,8 @@ void display() {
         struct gmi_tab* tab = client.tab;
         struct gmi_page* page = &tab->page;
 	if (tab->request.ask == 2) {
-		tab->request.ask = display_ask(tab->request.info, tab->request.action);
+		tab->request.ask = display_ask(tab->request.info,
+					       tab->request.action);
 	}
         tb_clear();
 	
@@ -48,19 +49,22 @@ void display() {
 					 sizeof(client.input.field),
 					 client.input.cursor);
 		int w = tb_width();
-		w -= w&1; // make width even so double-width characters don't cause problem
+		w -= w&1; // make width even so double-width
+			  // characters don't cause problem
 		if (page->code == 10 || page->code == 11)
-			w -= utf8_width(client.input.label, sizeof(client.input.label)) + 2;
+			w -= utf8_width(client.input.label,
+					sizeof(client.input.label)) + 2;
 		if (cpos >= w) {
 			input_offset = utf8_len_to(client.input.field,
-						     sizeof(client.input.field),
-						     cpos - cpos%w);
+						   sizeof(client.input.field),
+						   cpos - cpos%w);
 			cpos = cpos%w;
 		}
 
                 if (page->code == 11 || page->code == 10)
                         tb_set_cursor(cpos + utf8_width(client.input.label,
-				      sizeof(client.input.label))+2, tb_height()-1);
+				      sizeof(client.input.label))+2,
+				      tb_height()-1);
                 else
                         tb_set_cursor(cpos, tb_height()-1);
         }
@@ -86,18 +90,21 @@ void display() {
 			ptr = ptr->prev;
 		}
 		tb_printf(0, 0, TB_BLACK, bg,
-			  " %s [%d/%d]", page->title, index, client.tabs_count);
+			  " %s [%d/%d]", page->title,
+			  index, client.tabs_count);
 	}
 
         // current url
         tb_colorline(0, tb_height()-2, bg);
 	char urlbuf[MAX_URL];
 	hide_query(tab->url, urlbuf);
-	tb_printf(0, tb_height()-2, TB_BLACK, bg, "%s (%s)", urlbuf, tab->page.meta);
+	tb_printf(0, tb_height()-2, TB_BLACK, bg, "%s (%s)",
+		  urlbuf, tab->page.meta);
 
         // Show selected link url
         if (tab->selected != 0) {
-		int x = tb_width() - utf8_width(tab->selected_url, MAX_URL) - 5;
+		int x = tb_width() -
+			utf8_width(tab->selected_url, MAX_URL) - 5;
 		x = x < 10?10:x;
                 tb_printf(x, tb_height()-2, bg, TB_BLUE,
 			  " => %s ", tab->selected_url);
@@ -110,8 +117,8 @@ void display() {
 
         int count = atoi(client.vim.counter);
         if (count) {
-                tb_printf(tb_width() - 8, tb_height() - 1, TB_DEFAULT, TB_DEFAULT,
-			 "%d", count);
+                tb_printf(tb_width() - 8, tb_height() - 1,
+			  TB_DEFAULT, TB_DEFAULT, "%d", count);
         }
 
         // input
@@ -128,11 +135,13 @@ void display() {
 		tab->show_info = 0;
         } else if (page->code == 10) {
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
-			 "%s: %s", client.input.label, client.input.field + input_offset);
+			 "%s: %s", client.input.label,
+			 client.input.field + input_offset);
         } else if (page->code == 11) {
                 char input_buf[1024];
                 size_t i = 0;
-                for (; client.input.field[i] && i < sizeof(client.input.field); i++)
+                for (; client.input.field[i] &&
+		       i < sizeof(client.input.field); i++)
 			input_buf[i] = '*';
                 input_buf[i] = '\0';
                 tb_printf(0, tb_height()-1, TB_DEFAULT, TB_DEFAULT,
@@ -143,7 +152,8 @@ void display() {
 	}
 
 	if (client.input.mode && tb_width() & 1)
-		tb_set_cell(tb_width() - 1, tb_height() -1, ' ', TB_DEFAULT, TB_DEFAULT);
+		tb_set_cell(tb_width() - 1, tb_height() -1, ' ',
+			    TB_DEFAULT, TB_DEFAULT);
 	tb_present();
 }
 
@@ -163,7 +173,8 @@ void display_history() {
                         continue;
                 }
                 int y = 3;
-                for (struct gmi_link* link = tab->history->next; link; link = link->next) {
+                for (struct gmi_link* link = tab->history->next; link;
+		     link = link->next) {
 			hide_query(link->url, urlbuf);
                         tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", urlbuf);
                         y++;
@@ -173,7 +184,8 @@ void display_history() {
                 tb_printf(4, y, TB_DEFAULT, TB_BLUE, "-> %s", urlbuf);
                 y++;
 
-                for (struct gmi_link* link = tab->history->prev; link; link = link->prev) {
+                for (struct gmi_link* link = tab->history->prev; link;
+		     link = link->prev) {
 			hide_query(link->url, urlbuf);
                         tb_printf(4, y, TB_DEFAULT, TB_DEFAULT, "%s", urlbuf);
                         y++;
@@ -181,7 +193,8 @@ void display_history() {
 
                 tb_present();
 
-        } while(((ret = tb_poll_event(&ev)) == TB_OK && ev.type == TB_EVENT_RESIZE)
+        } while(((ret = tb_poll_event(&ev)) == TB_OK &&
+		ev.type == TB_EVENT_RESIZE)
 		|| ret == -14);
 }
 
@@ -205,7 +218,7 @@ int display_ask(char* info, char* action) {
 
                 tb_present();
 
-        } while(((ret = tb_poll_event(&ev)) == TB_OK && ev.type == TB_EVENT_RESIZE)
-		|| ret == -14);
+        } while(((ret = tb_poll_event(&ev)) == TB_OK &&
+		ev.type == TB_EVENT_RESIZE) || ret == -14);
 	return ev.ch == 'y' || ev.ch == 'Y';
 }

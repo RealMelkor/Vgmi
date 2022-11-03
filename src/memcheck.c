@@ -51,8 +51,9 @@ void __free(void* ptr, const char* file, int line, const char* func)
 	if(ptr) {
 		while(i!=allocationCount && ptr!=allocation[i].ptr) i++;
 		if(i==allocationCount) {
-			fprintf(output, "(WARNING Freeing non-allocated memory) " \
-					"free : %p, %s, Line %d : %s\n",
+			fprintf(output,
+				"(WARNING Freeing non-allocated memory) " \
+				"free : %p, %s, Line %d : %s\n",
 				ptr, file, line, func);
 			fflush(output);
 #ifndef EXIT_ON_ERROR
@@ -69,7 +70,8 @@ void __free(void* ptr, const char* file, int line, const char* func)
 			allocation[j] = allocation[j+1];
 		allocationCount--;
 		allocation = realloc(allocation,
-				     sizeof(struct __allocation) * allocationCount);
+				     sizeof(struct __allocation) *
+				     allocationCount);
 	}
 	if(i>allocationCount)
 		fprintf(output, "Error free : %p | %s, Line %d : %s\n",
@@ -87,7 +89,8 @@ void* __malloc(size_t size, const char* file, int line, const char* func)
 	if(ptr)	{
 		allocationCount++;
 		allocation = realloc(allocation,
-				     sizeof(struct __allocation) * allocationCount);
+				     sizeof(struct __allocation) *
+				     allocationCount);
 		allocation[allocationCount-1].ptr = ptr;
 		allocation[allocationCount-1].line = line;
 		allocation[allocationCount-1].size = size;
@@ -100,13 +103,15 @@ void* __malloc(size_t size, const char* file, int line, const char* func)
 	return ptr;
 }
 
-void* __calloc(size_t num, size_t size, const char* file, int line, const char* func)
+void* __calloc(size_t num, size_t size, const char* file,
+	       int line, const char* func)
 {
 	void* ptr = calloc(num, size);
 	if(ptr) {
 		allocationCount++;
 		allocation = realloc(allocation,
-				     sizeof(struct __allocation) * allocationCount);
+				     sizeof(struct __allocation) *
+				     allocationCount);
 		allocation[allocationCount-1].ptr = ptr;
 		allocation[allocationCount-1].line = line;
 		allocation[allocationCount-1].size = size;
@@ -119,7 +124,8 @@ void* __calloc(size_t num, size_t size, const char* file, int line, const char* 
 	return ptr;
 }
 
-void* __realloc(void* ptr, size_t size, const char* file, int line, const char* func)
+void* __realloc(void* ptr, size_t size, const char* file,
+		int line, const char* func)
 {
 	if (ptr==NULL) return __malloc(size, file, line, func);
 	void* _ptr = realloc(ptr, size);
@@ -146,12 +152,16 @@ void __check()
 	if (allocationCount == 0)
 		fprintf(output, "No memory leak detected\n");
 	else {
-		fprintf(output, "%ld memory leaks detected\n", allocationCount);
-		printf("WARNING: Memory leaks detected (%ld)\n", allocationCount);
+		fprintf(output, "%ld memory leaks detected\n",
+			allocationCount);
+		printf("WARNING: Memory leaks detected (%ld)\n",
+			allocationCount);
 	}
 	if (__warnings) {
-		fprintf(output, "%d invalid memory operations detected\n", __warnings);
-		printf("WARNING: %d invalid memory operations detected\n", __warnings);
+		fprintf(output, "%d invalid memory operations detected\n",
+			__warnings);
+		printf("WARNING: %d invalid memory operations detected\n",
+			__warnings);
 	}
 	for(uint32_t i=0; i!=allocationCount; i++)
     		fprintf(output, "Leak : %p, size : %ld | %s, Line %d : %s\n",

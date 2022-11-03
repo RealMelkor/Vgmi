@@ -100,7 +100,9 @@ int parse_url(const char* url, char* host, int host_len, char* buf,
 	}
 	char proto_buf[16];
 	for(; proto_ptr!=ptr; ptr++) {
-		if (!((*ptr > 'a' && *ptr < 'z') || (*ptr > 'A' && *ptr < 'Z'))) goto skip_proto;
+		if (!((*ptr > 'a' && *ptr < 'z') ||
+		    (*ptr > 'A' && *ptr < 'Z')))
+			goto skip_proto;
 		if (ptr - url >= (signed)sizeof(proto_buf)) goto skip_proto;
 		proto_buf[ptr-url] = tolower(*ptr);
 	}
@@ -212,7 +214,8 @@ int parse_query(const char* url, int len, char* buf, int llen) {
 			continue;
 		}
 		char format[8];
-		snprintf(format, sizeof(format), "%%%x", (unsigned char)url[i]);
+		snprintf(format, sizeof(format),
+			 "%%%x", (unsigned char)url[i]);
 		buf[j] = '\0';
 		j = strlcat(buf, format, llen);
 	}
@@ -237,8 +240,9 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 		uint32_t len = outlen - pos;
 		if (unicode) {
 			pos += strlcpy(&out[pos], "xn--", sizeof(out) - pos);
-			if (punycode_encode(i - n, &part[n], NULL,
-					    &len, &out[pos]) != punycode_success)
+			if (punycode_encode(i - n, &part[n],
+					    NULL, &len, &out[pos]) !=
+			    punycode_success)
 				return -1;
 			pos += len;
 		} else {

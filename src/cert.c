@@ -37,7 +37,8 @@ int gethomefd() {
 	if (!pw) return -1;
 	home_fd = open(pw->pw_dir, O_DIRECTORY);
 	strlcpy(home_path, pw->pw_dir, sizeof(home_path));
-	snprintf(download_path, sizeof(download_path), "%s/%s", home_path, download_str);
+	snprintf(download_path, sizeof(download_path), "%s/%s",
+		 home_path, download_str);
 	return home_fd;
 }
 
@@ -79,11 +80,13 @@ int getconfigfd() {
 			return -1;
 	}
 	close(fd);
-	snprintf(config_path, sizeof(config_path), "%s/%s", home_path, "/.config/vgmi");
+	snprintf(config_path, sizeof(config_path), "%s/%s",
+		 home_path, "/.config/vgmi");
 	return config_fd;
 }
 
-int cert_getpath(char* host, char* crt, size_t crt_len, char* key, size_t key_len) {
+int cert_getpath(char* host, char* crt, size_t crt_len,
+		 char* key, size_t key_len) {
 	int len = strnlen(host, 1024);
 	if (strlcpy(crt, host, crt_len) >= crt_len - 4)
 		goto getpath_overflow;
@@ -144,7 +147,8 @@ int cert_create(char* host, char* error, int errlen) {
 	// Key
 	fd = openat(config_fd, key, O_CREAT|O_WRONLY, 0600);
 	if (fd < 0) {
-		snprintf(error, errlen, "Failed to open %s : %s", key, strerror(errno));
+		snprintf(error, errlen, "Failed to open %s : %s",
+			 key, strerror(errno));
 		goto skip_error;
 	}
 	f = fdopen(fd, "wb");
@@ -213,7 +217,8 @@ struct cert {
 struct cert* first_cert = NULL;
 struct cert* last_cert = NULL;
 
-void cert_add(char* host, const char* hash, unsigned long long start, unsigned long long end) {
+void cert_add(char* host, const char* hash, unsigned long long start,
+	      unsigned long long end) {
 	struct cert* cert_ptr = malloc(sizeof(struct cert));
 	if (!cert_ptr) {
 		fatal();
@@ -263,7 +268,8 @@ int cert_load() {
 		if (*ptr == ' ' || *ptr == '\t' || (host?(*ptr == '\n'):0)) {
 			*ptr = '\0';
 			ptr++;
-			while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n') ptr++;
+			while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')
+				ptr++;
 			if (!hash) {
 				hash = ptr;
 				ptr++;
@@ -343,7 +349,8 @@ int cert_getcert(char* host, int reload) {
 	key_pos = ftell(key_f);
 
 	if (!reload) {
-		client.certs = realloc(client.certs, sizeof(*client.certs) * (index + 1));
+		client.certs = realloc(client.certs,
+				       sizeof(*client.certs) * (index + 1));
 		if (!client.certs) return fatalI();
 		bzero(&client.certs[index], sizeof(*client.certs));
 	} else {
@@ -370,7 +377,8 @@ int cert_getcert(char* host, int reload) {
 	client.certs[index].key[key_pos-1] = '\0';
 	client.certs[index].crt_len = crt_pos;
 	client.certs[index].key_len = key_pos;
-	strlcpy(client.certs[index].host, host, sizeof(client.certs[index].host));
+	strlcpy(client.certs[index].host, host,
+		sizeof(client.certs[index].host));
 	if (!reload)
 		client.certs_size++;
 	return index;
@@ -380,7 +388,8 @@ int cert_rewrite() {
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
 
-	int fd = openat(cfd, "known_hosts", O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
+	int fd = openat(cfd, "known_hosts",
+			O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd == -1)
 		return -2;
 #if defined(__FreeBSD__) && !defined(NO_SANDBOX)

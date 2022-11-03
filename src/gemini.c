@@ -85,7 +85,8 @@ int gmi_goto_new(struct gmi_tab* tab, int id) {
 	}
 	struct gmi_tab* old_tab = client.tab;
 	client.tab = gmi_newtab_url(NULL);
-	int ret = gmi_nextlink(client.tab, old_tab->url, old_tab->page.links[id]);
+	int ret = gmi_nextlink(client.tab, old_tab->url,
+			       old_tab->page.links[id]);
 	return ret;
 }
 
@@ -114,7 +115,8 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		size_t l = strlcpy(urlbuf, url, sizeof(urlbuf));
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
-		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >= sizeof(urlbuf) - l)
+		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >=
+		    sizeof(urlbuf) - l)
 			goto nextlink_overflow;
 		int ret = gmi_request(tab, urlbuf, 1);
 		return ret;
@@ -139,7 +141,8 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
 		if (urlbuf[l-1] != '/') {
-			size_t l2 = strlcpy(urlbuf + l, "/", sizeof(urlbuf) - l);
+			size_t l2 = strlcpy(urlbuf + l, "/",
+					    sizeof(urlbuf) - l);
 			if (l2 >= sizeof(urlbuf) - l)
 				goto nextlink_overflow;
 			l += l2;
@@ -175,7 +178,8 @@ void gmi_load(struct gmi_page* page) {
 		if (x == 0 && page->data[c] == '=' && page->data[c+1] == '>') {
 			c += 2;
 			for (; c < page->data_len &&
-			       (page->data[c] == ' ' || page->data[c] == '\t'); c++) ;
+			       (page->data[c] == ' ' || page->data[c] == '\t');
+			     c++) ;
 			char* url = (char*)&page->data[c];
 			c += parse_link(&page->data[c], page->data_len - c);
 			if (page->data[c - 1] == 127)
@@ -183,8 +187,9 @@ void gmi_load(struct gmi_page* page) {
 			char save = page->data[c];
 			page->data[c] = '\0';
 			if (page->links)
-				page->links = realloc(page->links, sizeof(char*) 
-						      * (page->links_count+1));
+				page->links = realloc(page->links,
+						      sizeof(char*) *
+						      (page->links_count+1));
 			else
 				page->links = malloc(sizeof(char*));
 			if (!page->links) {
@@ -223,7 +228,8 @@ int gmi_render(struct gmi_tab* tab) {
 		if (!tab->page.img.tried) {
 			char* ptr = strchr(tab->page.data, '\n');
 			if (!ptr) {
-				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
+				tb_printf(2, -tab->scroll,
+					  TB_DEFAULT, TB_DEFAULT,
 					  "Invalid data: new line not found");
 				tab->page.img.tried = 1;
 				pthread_mutex_unlock(&tab->render_mutex);
@@ -236,13 +242,16 @@ int gmi_render(struct gmi_tab* tab) {
 			}
 			tab->page.img.data = 
 			stbi_load_from_memory((unsigned char*)ptr, 
-						tab->page.data_len -
-						  (int)(ptr-tab->page.data),
-						&tab->page.img.w, &tab->page.img.h,
-						&tab->page.img.channels, 3);
+					      tab->page.data_len -
+					      (int)(ptr-tab->page.data),
+					      &tab->page.img.w,
+					      &tab->page.img.h,
+					      &tab->page.img.channels, 3);
 			if (!tab->page.img.data) {
-				tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
-					  "Failed to decode image: %s;", tab->page.meta);
+				tb_printf(2, -tab->scroll,
+					  TB_DEFAULT, TB_DEFAULT,
+					  "Failed to decode image: %s;",
+					  tab->page.meta);
 				tab->page.img.tried = 1;
 				pthread_mutex_unlock(&tab->render_mutex);
 				return 1;
@@ -263,7 +272,8 @@ int gmi_render(struct gmi_tab* tab) {
 	if (strncmp(tab->page.meta, "text/gemini", 11)) {
 		if (strncmp(tab->page.meta, "text/", 5)) {
 			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
-				  "Unable to render format : %s", tab->page.meta);
+				  "Unable to render format : %s",
+				  tab->page.meta);
 			pthread_mutex_unlock(&tab->render_mutex);
 			return 1;
 		}
@@ -279,7 +289,8 @@ int gmi_render(struct gmi_tab* tab) {
 	char* search = client.input.field[0] == '/'?
 			&client.input.field[1]:
 			tab->search.entry;
-	int search_len = search?strnlen(search, sizeof(client.input.field) - 1):0;
+	int search_len = search?
+			 strnlen(search, sizeof(client.input.field) - 1):0;
 	if (!search_len) search = NULL;
 	int highlight = 0;
 	int hlcolor = (client.c256?58:TB_YELLOW);
@@ -309,7 +320,9 @@ int gmi_render(struct gmi_tab* tab) {
 			ignore = !ignore;	
 		
 		if (!ignore && !text) {
-			for (int i=0; start && tab->page.data[c+i] == '#' && i<3; i++) {
+			for (int i=0;
+			     start && tab->page.data[c+i] == '#' && i<3;
+			     i++) {
 				if (tab->page.data[c+i+1] != '#') {
 					color = TB_RED + i;
 					break;
@@ -326,18 +339,21 @@ int gmi_render(struct gmi_tab* tab) {
 			if (start && tab->page.data[c] == '=' &&
 				     tab->page.data[c+1] == '>') {
 				char buf[32];
-				int len = snprintf(buf, sizeof(buf), "[%d]", links+1);
+				int len = snprintf(buf, sizeof(buf),
+						   "[%d]", links+1);
 				if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
 				    line-tab->scroll <= tb_height()-2) {
 					tb_print(x+2, line-1-tab->scroll,
-						 links+1 == tab->selected?TB_RED:TB_BLUE,
+						 links+1 ==
+						 tab->selected?TB_RED:TB_BLUE,
 						 TB_DEFAULT, buf);
 				}
 				x += len;
 				c += 2;
 
 				while (
-				(tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
+				(tab->page.data[c]==' ' ||
+				 tab->page.data[c]=='\t') && 
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
@@ -348,11 +364,13 @@ int gmi_render(struct gmi_tab* tab) {
 				tab->page.data[c]!='\0') c++;
 
 				while (
-				(tab->page.data[c]==' ' || tab->page.data[c]=='\t') && 
+				(tab->page.data[c]==' ' ||
+				 tab->page.data[c]=='\t') && 
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
-				if (tab->page.data[c]=='\n' || tab->page.data[c]=='\0')
+				if (tab->page.data[c]=='\n' ||
+				    tab->page.data[c]=='\0')
 					c = initial;
 				x+=3;
 				if ((links+1)/10) x--;
@@ -418,7 +436,8 @@ int gmi_render(struct gmi_tab* tab) {
 		uint32_t ch = 0;
 		int size = tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
 		if (size > 0)
-			c += tb_utf8_char_to_unicode(&ch, &tab->page.data[c])-1;
+			c += tb_utf8_char_to_unicode(&ch,
+						     &tab->page.data[c])-1;
 		else if (ch < 32) ch = '?';
 		
 		int wc = mk_wcwidth(ch);
@@ -429,7 +448,8 @@ int gmi_render(struct gmi_tab* tab) {
 				tb_set_cell(x+2, line-1-tab->scroll, ch, color,
 					    highlight?hlcolor:TB_DEFAULT);
 			else
-				tb_set_cell_ex(x+2, line-1-tab->scroll, &ch, wc, color,
+				tb_set_cell_ex(x+2, line-1-tab->scroll,
+					       &ch, wc, color,
 					       highlight?hlcolor:TB_DEFAULT);
 		}
 		if (highlight > 0)
@@ -455,9 +475,11 @@ int gmi_render(struct gmi_tab* tab) {
 	if (tab->scroll+h == line) pos = h - size;
 	for (int y = (client.tabs_count>1); y < h+(client.tabs_count>1); y++)
 		if (y >= pos && y < pos + size)
-			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?246:TB_CYAN);
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT,
+				    client.c256?246:TB_CYAN);
 		else
-			tb_set_cell(w-1, y, ' ', TB_DEFAULT, client.c256?233:TB_BLACK);
+			tb_set_cell(w-1, y, ' ', TB_DEFAULT,
+				    client.c256?233:TB_BLACK);
 	pthread_mutex_unlock(&tab->render_mutex);
 	return line;
 }
@@ -584,7 +606,7 @@ char home_page[] =
 "* :o [url] - Open an url\n" \
 "* :s [search] - Search the Geminispace using geminispace.info\n" \
 "* :nt [url] - Open a new tab, the url is optional\n" \
-"* :add [name] - Add the current url to the bookmarks, the name is optional\n" \
+"* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
 "* :[number] - Follow the link\n" \
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
@@ -679,7 +701,8 @@ void gmi_gettitle(struct gmi_page* page, const char* url) {
 	for (int i = 0; i < page->data_len; i++) {
 		if (line_start && start == -1 && page->data[i] == '#') {
 			for (int j = i+1; j < page->data_len; j++) {
-				if (j && page->data[j-1] == '#' && page->data[j] == '#')
+				if (j && page->data[j-1] == '#' &&
+				    page->data[j] == '#')
 					break;
 				if (page->data[j] != ' ') {
 					start = j;
@@ -704,7 +727,8 @@ void gmi_gettitle(struct gmi_page* page, const char* url) {
 	return;
 use_url:
 	if (!url) {
-		size_t len = strlcpy(page->title, page->meta, sizeof(page->title));
+		size_t len = strlcpy(page->title, page->meta,
+				     sizeof(page->title));
 		sanitize(page->title, len);
 		return;
 	}
@@ -794,7 +818,8 @@ char* gmi_getbookmarks(int* len) {
 	int n = 0;
 	for (int i = 0; client.bookmarks[i]; i++) {
 		char line[2048];
-		long length = snprintf(line, sizeof(line), "=>%s\n ", client.bookmarks[i]);
+		long length = snprintf(line, sizeof(line), "=>%s\n ",
+				       client.bookmarks[i]);
 		data = realloc(data, n+length+1);
 		if (!data) return fatalP();
 		strlcpy(&data[n], line, length);
@@ -868,7 +893,8 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, client.tab->thread.pair))
 		return NULL;
 	pthread_create(&client.tab->thread.thread, NULL,
-		       (void *(*)(void *))gmi_request_thread, (void*)client.tab);
+		       (void *(*)(void *))gmi_request_thread,
+		       (void*)client.tab);
 	client.tab->thread.started = 1;
 	if (url)
 		gmi_request(client.tab, url, 1);
@@ -887,9 +913,10 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 	if (tab->history) tab->history->scroll = tab->scroll;
 	tab->selected = 0;
 	tab->request.host[0] = '\0';
-	int proto = parse_url(url, tab->request.host, sizeof(tab->request.host),
-				 tab->request.url, sizeof(tab->request.url),
-				 &tab->request.port);
+	int proto = parse_url(url,
+			      tab->request.host, sizeof(tab->request.host),
+			      tab->request.url, sizeof(tab->request.url),
+			      &tab->request.port);
 
 	if (proto == -2) {
 		tab->show_error = 1;
@@ -915,7 +942,8 @@ int gmi_request_init(struct gmi_tab* tab, const char* url, int add) {
 		tab->request.tls = tls_client();
 	}
 	if (!tab->request.tls) {
-		snprintf(tab->error, sizeof(tab->error), "Failed to initialize TLS");
+		snprintf(tab->error, sizeof(tab->error),
+			 "Failed to initialize TLS");
 		tab->show_error = 1;
 		return -1;
 	}
@@ -953,7 +981,8 @@ void dns_async(union sigval sv) {
 
 int gmi_request_dns(struct gmi_tab* tab) {
 	char host[1024];
-	if (idn_to_ascii(tab->request.host, sizeof(tab->request.host), host, sizeof(host))) {
+	if (idn_to_ascii(tab->request.host, sizeof(tab->request.host),
+			 host, sizeof(host))) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Invalid domain name: %s", tab->request.host);
 		tab->show_error = 1;
@@ -986,7 +1015,8 @@ int gmi_request_dns(struct gmi_tab* tab) {
 		nanosleep(&timeout, NULL);
 	}
 	
-	if (tab->request.resolved != 1 || tab->request.gaicb_ptr->ar_result == NULL) {
+	if (tab->request.resolved != 1 ||
+	    tab->request.gaicb_ptr->ar_result == NULL) {
 		gai_cancel(tab->request.gaicb_ptr);
 		free(tab->request.gaicb_ptr);
 		snprintf(tab->error, sizeof(tab->error),
@@ -1005,7 +1035,8 @@ int gmi_request_dns(struct gmi_tab* tab) {
 
         if ((getaddrinfo(tab->request.host, NULL, &hints, &result))) {
                 snprintf(tab->error, sizeof(tab->error),
-			 "Unknown domain name: %s, %s", tab->request.host, strerror(errno));
+			 "Unknown domain name: %s, %s",
+			 tab->request.host, strerror(errno));
 		tab->show_error = 1;
 		return -1;
         }
@@ -1017,18 +1048,22 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	bzero(&addr6, sizeof(addr6));
 
 	if (result->ai_family == AF_INET) {
-		addr4.sin_addr = ((struct sockaddr_in*)result->ai_addr)->sin_addr;
+		addr4.sin_addr =
+			((struct sockaddr_in*)result->ai_addr)->sin_addr;
 		addr4.sin_family = AF_INET;
 		addr4.sin_port = htons(tab->request.port);
 		tab->request._addr.addr4 = addr4;
-		tab->request.addr = (struct sockaddr*)&tab->request._addr.addr4;
+		tab->request.addr =
+			(struct sockaddr*)&tab->request._addr.addr4;
 	}
 	else if (result->ai_family == AF_INET6) {
-		addr6.sin6_addr = ((struct sockaddr_in6*)result->ai_addr)->sin6_addr;
+		addr6.sin6_addr =
+			((struct sockaddr_in6*)result->ai_addr)->sin6_addr;
 		addr6.sin6_family = AF_INET6;
 		addr6.sin6_port = htons(tab->request.port);
 		tab->request._addr.addr6 = addr6;
-		tab->request.addr = (struct sockaddr*)&tab->request._addr.addr6;
+		tab->request.addr =
+			(struct sockaddr*)&tab->request._addr.addr6;
 	} else {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Unexpected error, invalid address family %s",
@@ -1066,9 +1101,11 @@ int gmi_request_connect(struct gmi_tab* tab) {
 			sizeof(struct sockaddr_in6);
 
 	int connected = 0;
-	int failed = connect(tab->request.socket, tab->request.addr, addr_size);
+	int failed = connect(tab->request.socket,
+			     tab->request.addr, addr_size);
 	failed = failed?(errno != EAGAIN && errno != EWOULDBLOCK &&
-		    errno != EINPROGRESS && errno != EALREADY && errno != 0):failed;
+			 errno != EINPROGRESS && errno != EALREADY &&
+			 errno != 0):failed;
 	while (!failed) {
 		struct pollfd fds[2];
 		fds[0].fd = tab->thread.pair[0];
@@ -1080,7 +1117,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 			tab->request.state == STATE_CANCEL) break;
 		int value;
 		socklen_t len = sizeof(value);
-		int ret = getsockopt(tab->request.socket, SOL_SOCKET, SO_ERROR, &value, &len);
+		int ret = getsockopt(tab->request.socket, SOL_SOCKET,
+				     SO_ERROR, &value, &len);
 		connected = (value == 0 && ret == 0);
 		break;
 	}
@@ -1092,7 +1130,8 @@ int gmi_request_connect(struct gmi_tab* tab) {
 		return -1;
 	}
 
-	if (tls_connect_socket(tab->request.tls, tab->request.socket, tab->request.host)) {
+	if (tls_connect_socket(tab->request.tls, tab->request.socket,
+			       tab->request.host)) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Unable to connect to: %s : %s",
 			 tab->request.host, tls_error(tab->request.tls));
@@ -1102,7 +1141,9 @@ int gmi_request_connect(struct gmi_tab* tab) {
 }
 
 int gmi_request_handshake(struct gmi_tab* tab) {
-	if (tls_connect_socket(tab->request.tls, tab->request.socket, tab->request.host)) {
+	if (tls_connect_socket(tab->request.tls,
+			       tab->request.socket,
+			       tab->request.host)) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Unable to connect to: %s : %s",
 			 tab->request.host, tls_error(tab->request.tls));
@@ -1129,7 +1170,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 		return -1;
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
-	ret = cert_verify(tab->request.host, tls_peer_cert_hash(tab->request.tls),
+	ret = cert_verify(tab->request.host,
+			  tls_peer_cert_hash(tab->request.tls),
 			  tls_peer_cert_notbefore(tab->request.tls),
 			  tls_peer_cert_notafter(tab->request.tls));
 	switch (ret) {
@@ -1143,7 +1185,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 		return -1;
 	case -5: // expired
 		snprintf(tab->error, sizeof(tab->error),
-			 "Expired certificate, the certificate for %s has expired",
+			 "Expired certificate, " \
+			 "the certificate for %s has expired",
 			 tab->request.host);
 		return -1;
 	case -6: // certificate changed
@@ -1163,7 +1206,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	char buf[MAX_URL];
 	strlcpy(buf, "gemini://", GMI + 1);
 	char toascii[1024];
-	if (idn_to_ascii(&tab->request.url[GMI], sizeof(tab->request.url) - GMI,
+	if (idn_to_ascii(&tab->request.url[GMI],
+			 sizeof(tab->request.url) - GMI,
 			 toascii, sizeof(toascii))) {
 		snprintf(tab->error, sizeof(tab->error),
 			 "Failed to parse url: %s", &tab->request.url[GMI]);
@@ -1202,7 +1246,8 @@ int gmi_request_header(struct gmi_tab* tab) {
 				 tab->request.host);
 			return -1;
 		}
-		int n = tls_read(tab->request.tls, &buf[recv], sizeof(buf) - recv);
+		int n = tls_read(tab->request.tls, &buf[recv],
+				 sizeof(buf) - recv);
 		if (n == TLS_WANT_POLLIN) {
 			nanosleep(&timeout, NULL);
 			continue;
@@ -1219,7 +1264,8 @@ int gmi_request_header(struct gmi_tab* tab) {
 	
 	if (recv <= 0) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "[%d] Invalid data from: %s", recv, tab->request.host);
+			 "[%d] Invalid data from: %s",
+			 recv, tab->request.host);
 		return -1;
 	}
 	if (!strstr(buf, "\r\n")) {
@@ -1230,7 +1276,8 @@ int gmi_request_header(struct gmi_tab* tab) {
 	char* ptr = strchr(buf, ' ');
 	if (!ptr) {
 		snprintf(tab->error, sizeof(tab->error),
-			 "Invalid data from: %s (no metadata)", tab->request.host);
+			 "Invalid data from: %s (no metadata)",
+			 tab->request.host);
 		return -1;
 	}
 	strlcpy(tab->request.error, ptr +1, sizeof(tab->request.error));
@@ -1273,11 +1320,12 @@ int gmi_request_header(struct gmi_tab* tab) {
 		   && (strncmp(tab->request.meta, "image/", 6))
 #endif
 		   )) {
-			if (tab->history) {
-				strlcpy(tab->url, tab->history->url, sizeof(tab->url));
-			} else {
-				strlcpy(tab->url, "about:home", sizeof(tab->url));
-			}
+			if (tab->history)
+				strlcpy(tab->url, tab->history->url,
+					sizeof(tab->url));
+			else
+				strlcpy(tab->url, "about:home",
+					sizeof(tab->url));
 			tab->request.ask = 2;
 			snprintf(tab->request.info, sizeof(tab->request.info), 
 				 "# Non-renderable meta-data : %s",
@@ -1392,7 +1440,8 @@ int gmi_request_body(struct gmi_tab* tab) {
 		if (bytes < 1) {
 			snprintf(tab->error, sizeof(tab->error),
 				 "Invalid data from %s: %s",
-				 tab->request.host, tls_error(tab->request.tls));
+				 tab->request.host,
+				 tls_error(tab->request.tls));
 			return -1;
 		}
 		tab->request.data = realloc(tab->request.data, 
@@ -1417,8 +1466,10 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		    client.shutdown || signal == 0xFFFFFFFF) break;
 		bzero(&tab->request, sizeof(tab->request));
 		tab->request.state = STATE_STARTED;
-		int ret = gmi_request_init(tab, tab->thread.url, tab->thread.add);
-		if (tab->request.state == STATE_CANCEL || ret || gmi_request_dns(tab)) {
+		int ret = gmi_request_init(tab, tab->thread.url,
+					   tab->thread.add);
+		if (tab->request.state == STATE_CANCEL ||
+		    ret || gmi_request_dns(tab)) {
 			if (tab->request.tls) {
 				tls_close(tab->request.tls);
 				tls_free(tab->request.tls);
@@ -1442,7 +1493,8 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			continue;
 		}
 		ret = -1;
-		if (!gmi_request_handshake(tab) && tab->request.state != STATE_CANCEL) {
+		if (!gmi_request_handshake(tab) &&
+		    tab->request.state != STATE_CANCEL) {
 			ret = gmi_request_header(tab);
 			if (!ret || ret == 2) gmi_request_body(tab);
 		}
@@ -1462,11 +1514,12 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		if (ret == -1 || ret == -2) {
 			free(tab->request.data);
 			tab->request.data = NULL;
-			if (tab->history) {
-				strlcpy(tab->url, tab->history->url, sizeof(tab->url));
-			} else {
-				strlcpy(tab->url, "about:home", sizeof(tab->url));
-			}
+			if (tab->history)
+				strlcpy(tab->url, tab->history->url,
+					sizeof(tab->url));
+			else
+				strlcpy(tab->url, "about:home",
+					sizeof(tab->url));
 			tab->show_error = 1;
 			tab->request.recv = -1;
 			tab->page.code = 20;
@@ -1479,13 +1532,15 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			tls_free(tab->request.tls);
 			tab->request.tls= NULL;
 		}
-		if (tab->request.recv > 0 && (tab->page.code == 11 || tab->page.code == 10)) {
+		if (tab->request.recv > 0 &&
+		    (tab->page.code == 11 || tab->page.code == 10)) {
 			free(tab->request.data);
 			tab->request.data = NULL;
 			strlcpy(tab->url, tab->request.url, sizeof(tab->url));
 			continue;
 		}
-		if (tab->request.recv > 0 && (tab->page.code == 31 || tab->page.code == 30)) {
+		if (tab->request.recv > 0 &&
+		    (tab->page.code == 31 || tab->page.code == 30)) {
 			char* ptr = strchr(tab->request.data, ' ');
 			if (!ptr) {
 				free(tab->request.data);
@@ -1512,8 +1567,11 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			tab->request.recv = r;
 			continue;
 		}
-		if (!tab->request.download && tab->request.recv > 0 && tab->page.code == 20) {
-			struct gmi_link* link_ptr = tab->history?tab->history->prev:NULL;
+		if (!tab->request.download &&
+		    tab->request.recv > 0 &&
+		    tab->page.code == 20) {
+			struct gmi_link* link_ptr = tab->history?
+						    tab->history->prev:NULL;
 			for (int i = 0; i < MAX_CACHE; i++) {
 				if (!link_ptr) break;
 				link_ptr = link_ptr->prev;
@@ -1530,8 +1588,10 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				gmi_freepage(&tab->page);
 			bzero(&tab->page, sizeof(struct gmi_page));
 			tab->page.code = 20;
-			strlcpy(tab->page.meta, tab->request.meta, sizeof(tab->page.meta));
-			strlcpy(tab->url, tab->request.url, sizeof(tab->url));
+			strlcpy(tab->page.meta, tab->request.meta,
+				sizeof(tab->page.meta));
+			strlcpy(tab->url, tab->request.url,
+				sizeof(tab->url));
 			tab->page.data_len = tab->request.recv;
 			tab->page.data = tab->request.data;
 			gmi_load(&tab->page);
@@ -1544,8 +1604,11 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			tab->scroll = -1;
 			pthread_mutex_unlock(&tab->render_mutex);
 		}
-		if (tab->request.download && tab->request.recv > 0 && tab->page.code == 20) {
-			int len = strnlen(tab->request.url, sizeof(tab->request.url));
+		if (tab->request.download &&
+		    tab->request.recv > 0 &&
+		    tab->page.code == 20) {
+			int len = strnlen(tab->request.url,
+					  sizeof(tab->request.url));
 			if (tab->request.url[len-1] == '/')
 				tab->request.url[len-1] = '\0';
 			char* ptr = strrchr(tab->request.url, '/');
@@ -1567,9 +1630,11 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				char format[] = "output_%ld.dat";
 #endif
 
-				snprintf(path, sizeof(path), format, time(NULL));
+				snprintf(path, sizeof(path),
+					 format, time(NULL));
 			}
-			for (unsigned int i = 0; i < sizeof(path) && path[i] && ptr; i++) {
+			for (unsigned int i = 0;
+			     i < sizeof(path) && path[i] && ptr; i++) {
 				char c = path[i];
 				if ((path[i] == '.' && path[i+1] == '.') ||
 				    !(c == '.' ||
@@ -1579,20 +1644,25 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				     ))
 					path[i] = '_';
 			}
-			int dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
-			if (dfd < 0) {
+			int dfd = openat(fd, path,
+					 O_CREAT|O_EXCL|O_WRONLY, 0600);
+			if (dfd < 0 && errno == EEXIST) {
 				char buf[1024];
 #ifdef __OpenBSD__
 				char format[] = "%lld_%s";
 #else
 				char format[] = "%ld_%s";
 #endif
-				snprintf(buf, sizeof(buf), format, time(NULL), path);
+				snprintf(buf, sizeof(buf), format,
+					 time(NULL), path);
 				strlcpy(path, buf, sizeof(path));
-				dfd = openat(fd, path, O_CREAT|O_EXCL|O_WRONLY, 0600);
+				dfd = openat(fd, path,
+					     O_CREAT|O_EXCL|O_WRONLY, 0600);
 				if (dfd < 0) {
-					snprintf(tab->error, sizeof(tab->error),
-						 "Failed to write to the download folder");
+					snprintf(tab->error,
+						 sizeof(tab->error),
+						 "Failed to write to " \
+						 "the download folder");
 					tab->show_error = 1;
 					goto request_end;
 				}
@@ -1600,59 +1670,58 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			f = fdopen(dfd, "wb");
 			if (!f) {
 				snprintf(tab->error, sizeof(tab->error),
-					 "Failed to write the downloaded file");
+					 "Failed to write " \
+					 "the downloaded file");
 				tab->show_error = 1;
 				goto request_end;
-			} else {
+			}
 #if defined(__FreeBSD__) && !defined(NO_SANDBOX)
-				if (make_writeonly(f)) {
-					client.shutdown = 1;
-					break;
-				}
+			if (make_writeonly(f)) {
+				client.shutdown = 1;
+				break;
+			}
 #endif
-				char* ptr = strchr(tab->request.data, '\n')+1;
-				if (ptr) {
-					fwrite(ptr, 1, 
-					       tab->request.recv - (ptr-tab->request.data),
-					       f);
-					fclose(f);
+			ptr = strchr(tab->request.data, '\n')+1;
+			if (!ptr) {
+				tab->show_error = 1;
+				snprintf(tab->error, sizeof(tab->error),
+					 "Server sent invalid data");
+				goto request_end;
+			}
+			fwrite(ptr, 1, 
+			       tab->request.recv -
+			       (ptr-tab->request.data), f);
+			fclose(f);
 #ifndef DISABLE_XDG
-					int fail = 0;
-					if (client.xdg) {
-						tab->request.ask = 2;
-						snprintf(tab->request.info,
-							 sizeof(tab->request.info), 
-							 "# %s download",
-							 tab->request.meta);
-						strlcpy(tab->request.action, "open", 
-							sizeof(tab->request.action));
-						tb_interupt();
-						while (tab->request.ask == 2) 
-							nanosleep(&timeout, NULL);
-						if (tab->request.ask) {
-							char file[1024];
-							snprintf(file, sizeof(file), "%s/%s", 
-								 download_path, path);
-							fail = xdg_open(file);
-						}
-					}
-					if (fail) {
-						tab->show_error = 1;
-						snprintf(tab->error, sizeof(tab->info),
-							"Failed to open %s", path);
-					} else
-#endif
-					{
-						tab->show_info = 1;
-						snprintf(tab->info, sizeof(tab->info),
-							"File downloaded to %s", path);
-					}
-						 
-				} else {
-					tab->show_error = 1;
-					snprintf(tab->error, sizeof(tab->error),
-						 "Server sent invalid data");
+			int fail = 0;
+			if (client.xdg) {
+				tab->request.ask = 2;
+				snprintf(tab->request.info,
+					 sizeof(tab->request.info), 
+					 "# %s download",
+					 tab->request.meta);
+				strlcpy(tab->request.action, "open", 
+					sizeof(tab->request.action));
+				tb_interupt();
+				while (tab->request.ask == 2) 
+					nanosleep(&timeout, NULL);
+				if (tab->request.ask) {
+					char file[1024];
+					snprintf(file, sizeof(file), "%s/%s", 
+						 download_path, path);
+					fail = xdg_open(file);
 				}
+			}
+			if (fail) {
+				tab->show_error = 1;
+				snprintf(tab->error, sizeof(tab->info),
+					"Failed to open %s", path);
+			} else
+#endif
+			{
+				tab->show_info = 1;
+				snprintf(tab->info, sizeof(tab->info),
+					"File downloaded to %s", path);
 			}
 request_end:
 			free(tab->request.data);
@@ -1670,7 +1739,8 @@ int gmi_request(struct gmi_tab *tab, const char *url, int add) {
 	tab->thread.add = add;
 	strlcpy(tab->thread.url, url, sizeof(tab->thread.url));
 	int signal = 0;
-	if (send(tab->thread.pair[1], &signal, sizeof(signal), 0) != sizeof(signal))
+	if (send(tab->thread.pair[1], &signal, sizeof(signal), 0) !=
+	    sizeof(signal))
 		return -1;
 	return 0;
 }
