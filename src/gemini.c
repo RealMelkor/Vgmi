@@ -577,7 +577,7 @@ void gmi_freetab(struct gmi_tab* tab) {
 }
 
 char home_page[] = 
-"20 text/gemini\r\n# Vgmi\n\n" \
+"20 text/gemini\r\n# Vgmi - " VERSION "\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
 "## Bookmarks\n\n" \
 "%s\n" \
@@ -1570,6 +1570,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		if (!tab->request.download &&
 		    tab->request.recv > 0 &&
 		    tab->page.code == 20) {
+			tab->search.entry[0] = '\0';
 			struct gmi_link* link_ptr = tab->history?
 						    tab->history->prev:NULL;
 			for (int i = 0; i < MAX_CACHE; i++) {
