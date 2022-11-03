@@ -58,10 +58,10 @@ mkdir -p ../lib
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
-	h="3ab5e5eaef69ce20c6b170ee64d785b42235f48f2e62b095fca5d7b6672b8b28"
-	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.3.tar.gz"
-	tar -zxf libressl-3.5.3.tar.gz
-	cd libressl-3.5.3
+	h="acfac61316e93b919c28d62d53037ca734de85c46b4d703f19fd8395cf006774"
+	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.6.1.tar.gz"
+	tar -zxf libressl-3.6.1.tar.gz
+	cd libressl-3.6.1
 	if [ "$(uname)" == SunOS ] ;
 	then
 		CC=gcc MAKE=gmake ./configure

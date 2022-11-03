@@ -170,6 +170,12 @@ int command() {
 		return 0;
 	}
 	if (strcmp(client.input.field, ":exec") == 0) {
+#ifdef DISABLE_XDG
+                tab->show_error = 1;
+                snprintf(tab->error, sizeof(tab->error),
+                         "xdg is disabled");
+                return 0;
+#else
 		if (!*client.input.download) {
 			snprintf(tab->error, sizeof(tab->error),
 				 "No file was downloaded");
@@ -184,6 +190,7 @@ int command() {
 		client.input.field[0] = '\0';
 		client.input.download[0] = '\0';
 		return 0;
+#endif
 	}
 	if (strncmp(client.input.field, ":download",
 		    sizeof(":download") - 1) == 0) {
