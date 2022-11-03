@@ -176,6 +176,9 @@ int xdg_request(char*);
 #define xdg_open(x) xdg_request(x)
 #endif
 #endif
+#ifndef xdg_open
+int xdg_open(char*);
+#endif
 
 void fatal();
 int fatalI();
