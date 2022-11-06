@@ -490,7 +490,8 @@ int gmi_render(struct gmi_tab* tab) {
 }
 
 void gmi_addtohistory(struct gmi_tab* tab) {
-	if (!(!tab->history || (tab->history && !tab->history->next))) return;
+	if (!(!tab->history || (tab->history && !tab->history->next)))
+		return;
 	gmi_cleanforward(tab);
 	struct gmi_link* link = malloc(sizeof(struct gmi_link));
 	if (!link) {
