@@ -6,11 +6,10 @@
 #include "img.h"
 
 #ifdef TERMINAL_IMG_VIEWER
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 #include <termbox.h>
 #include "gemini.h"
-
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 int color_abs(int c, int x, int i) {
 	return abs(c-=i>215?i*10-2152:x*40+!!x*55);

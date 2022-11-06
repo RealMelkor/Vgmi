@@ -34,7 +34,7 @@ void hide_query(char* url, char* urlbuf) {
 }
 
 void display() {
-	int bg = client.c256?252:TB_WHITE;
+	int bg = GREY;
         struct gmi_tab* tab = client.tab;
         struct gmi_page* page = &tab->page;
 	if (tab->request.ask == 2) {
@@ -75,7 +75,7 @@ void display() {
                 page->lines = gmi_render(tab);
 		if (client.tabs_count > 1) tab->scroll++;
         } else if (tab->error[0] != '\0') {
-                tb_printf(2, 1+(client.tabs_count>1), TB_RED, TB_DEFAULT,
+                tb_printf(2, 1+(client.tabs_count>1), RED, TB_DEFAULT,
 			  "# %s", tab->error);
         }
 
@@ -89,7 +89,7 @@ void display() {
 			index++;
 			ptr = ptr->prev;
 		}
-		tb_printf(0, 0, TB_BLACK, bg,
+		tb_printf(0, 0, BLACK, bg,
 			  " %s [%d/%d]", page->title,
 			  index, client.tabs_count);
 	}
@@ -98,7 +98,7 @@ void display() {
         tb_colorline(0, tb_height()-2, bg);
 	char urlbuf[MAX_URL];
 	hide_query(tab->url, urlbuf);
-	tb_printf(0, tb_height()-2, TB_BLACK, bg, "%s (%s)",
+	tb_printf(0, tb_height()-2, BLACK, bg, "%s (%s)",
 		  urlbuf, tab->page.meta);
 
         // Show selected link url
@@ -106,12 +106,12 @@ void display() {
 		int x = tb_width() -
 			utf8_width(tab->selected_url, MAX_URL) - 5;
 		x = x < 10?10:x;
-                tb_printf(x, tb_height()-2, bg, TB_BLUE,
+                tb_printf(x, tb_height()-2, bg, BLUE,
 			  " => %s ", tab->selected_url);
         } else if (tab->request.state != STATE_DONE) {
 		hide_query(tab->request.url, urlbuf);
                 int llen = strnlen(tab->request.url, sizeof(tab->request.url));
-                tb_printf(tb_width()-llen-5, tb_height()-2, TB_BLACK, bg,
+                tb_printf(tb_width()-llen-5, tb_height()-2, BLACK, bg,
 			  " [%s] ", urlbuf);
 	}
 
@@ -124,13 +124,13 @@ void display() {
         // input
         if (tab->show_error) {
                 tb_hide_cursor();
-                tb_colorline(0, tb_height()-1, TB_RED);
-                tb_print(0, tb_height()-1, TB_WHITE, TB_RED, tab->error);
+                tb_colorline(0, tb_height()-1, RED);
+                tb_print(0, tb_height()-1, WHITE, RED, tab->error);
                 client.input.field[0] = '\0';
 	} else if (tab->show_info) {
                 tb_hide_cursor();
-                tb_colorline(0, tb_height()-1, TB_GREEN);
-                tb_print(0, tb_height()-1, TB_WHITE, TB_GREEN, tab->info);
+                tb_colorline(0, tb_height()-1, GREEN);
+                tb_print(0, tb_height()-1, WHITE, GREEN, tab->info);
                 client.input.field[0] = '\0';
 		tab->show_info = 0;
         } else if (page->code == 10) {
@@ -166,7 +166,7 @@ void display_history() {
                 struct gmi_tab* tab = client.tab;
 
                 tb_clear();
-                tb_print(2, 1, TB_RED, TB_DEFAULT, "# History");
+                tb_print(2, 1, RED, TB_DEFAULT, "# History");
 
                 if (!tab->history) {
                         tb_present();
@@ -181,7 +181,7 @@ void display_history() {
                 }
 
 		hide_query(tab->history->url, urlbuf);
-                tb_printf(4, y, TB_DEFAULT, TB_BLUE, "-> %s", urlbuf);
+                tb_printf(4, y, TB_DEFAULT, BLUE, "-> %s", urlbuf);
                 y++;
 
                 for (struct gmi_link* link = tab->history->prev; link;
@@ -205,7 +205,7 @@ int display_ask(char* info, char* action) {
         do {
 
                 tb_clear();
-                tb_printf(2, 1, TB_RED, TB_DEFAULT, "%s", info);
+                tb_printf(2, 1, RED, TB_DEFAULT, "%s", info);
 		int w = tb_width();
 		int h = tb_height();
 		const char* line1 = "Press 'y' to %s";
@@ -213,7 +213,7 @@ int display_ask(char* info, char* action) {
 		int x1 = w/2-(strlen(line1)+strnlen(action, w/2))/2;
 		int x2	 = w/2-strlen(line2)/2;
                 tb_printf(x1, h/2-1, TB_DEFAULT, TB_DEFAULT, line1, action);
-                tb_printf(x1+7, h/2-1, TB_GREEN, TB_DEFAULT, "y");
+                tb_printf(x1+7, h/2-1, GREEN, TB_DEFAULT, "y");
                 tb_printf(x2, h/2, TB_DEFAULT, TB_DEFAULT, line2);
 
                 tb_present();

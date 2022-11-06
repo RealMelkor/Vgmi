@@ -27,6 +27,7 @@ struct gmi_page {
 	int code;
 	int lines;
 	char meta[MAX_META];
+#ifdef TERMINAL_IMG_VIEWER
 	struct img {
 		int tried;
 		unsigned char* data;
@@ -34,6 +35,7 @@ struct gmi_page {
 		int h;
 		int channels;
 	} img;
+#endif
 	int no_header;
 };
 
@@ -185,23 +187,17 @@ int fatalI();
 void* fatalP();
 
 #include "img.h"
-#ifdef TERMINAL_IMG_VIEWER
-#undef TB_WHITE
-#define TB_WHITE 15
-#undef TB_BLACK
-#define TB_BLACK 16
-#undef TB_BLUE
-#define TB_BLUE 25
-#undef TB_RED
-#define TB_RED 9
-#undef TB_GREEN
-#define TB_GREEN 2
-#undef TB_CYAN
-#define TB_CYAN 14
-#undef TB_MAGENTA
-#define TB_MAGENTA 13
-#undef TB_ITALIC
-#define TB_ITALIC 0
-#endif
+
+#define WHITE (client.c256?15:TB_WHITE)
+#define BLACK (client.c256?16:TB_BLACK)
+#define BLUE (client.c256?25:TB_BLUE)
+#define RED (client.c256?9:TB_RED)
+#define GREEN (client.c256?2:TB_GREEN)
+#define CYAN (client.c256?14:TB_CYAN)
+#define MAGENTA (client.c256?13:TB_MAGENTA)
+#define YELLOW (client.c256?58:TB_YELLOW)
+#define GREY (client.c256?252:TB_WHITE)
+#define ITALIC (client.c256?0:TB_ITALIC)
+
 
 #endif

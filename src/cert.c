@@ -264,7 +264,7 @@ int cert_load() {
 	char* hash = NULL;
 	char* start = NULL;
 	char* end = NULL;
-	while (ptr < data + length) {
+	while (ptr < data + length - 1) {
 		if (*ptr == ' ' || *ptr == '\t' || (host?(*ptr == '\n'):0)) {
 			*ptr = '\0';
 			ptr++;

@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
 	if (strcmp("st-256color", term) == 0) {
 		setenv("TERM", "screen-256color", 1);
 	}
-	if (strcmp("st", term) == 0) {
+	else if (strcmp("st", term) == 0) {
 		setenv("TERM", "screen", 1);
 	}
 #ifndef DISABLE_XDG
@@ -62,17 +62,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (gmi_init()) return 0;
-#ifdef TERMINAL_IMG_VIEWER
 	if (tb_set_output_mode(TB_OUTPUT_256)) {
 		printf("Terminal doesn't support 256 colors mode\n");
-		gmi_free();
-#if defined(__FreeBSD__) || defined(__linux__)
-		close(ttyfd);
-#endif
-		return -1;
-	}
-	client.c256 = 1;
-#endif
+	} else client.c256 = 1;
 
 	struct gmi_tab* tab = gmi_newtab_url(NULL);
 	if (argc > 1) {
