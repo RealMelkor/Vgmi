@@ -622,7 +622,7 @@ char home_page[] =
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
 "* :download [name] - Download the current page, the name is optional\n"
-"* :exec - Open the last downloaded file\n";
+"* :exec - Open the last downloaded file";
 
 void gmi_newbookmarks() {
 	int len;

@@ -81,10 +81,9 @@ int main(int argc, char* argv[]) {
 
 	while (!client.shutdown) {
 		display();
-		if (!((ret = tb_poll_event(&ev)) == TB_OK || ret == -14)) {
+		if (!((ret = tb_poll_event(&ev)) == TB_OK || ret == -14) ||
+		    input(ev))
 			break;
-		}
-		if (input(ev)) break;
 	}
 	tb_shutdown();
 #if defined(__FreeBSD__) || defined(__linux__)
