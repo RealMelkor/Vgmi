@@ -181,10 +181,10 @@ int command() {
 	}
 	if (strcmp(client.input.field, ":exec") == 0) {
 #ifdef DISABLE_XDG
-                tab->show_error = 1;
-                snprintf(tab->error, sizeof(tab->error),
-                         "xdg is disabled");
-                return 0;
+		tab->show_error = 1;
+		snprintf(tab->error, sizeof(tab->error),
+			 "xdg is disabled");
+		return 0;
 #else
 		if (!*client.input.download) {
 			snprintf(tab->error, sizeof(tab->error),
@@ -409,13 +409,17 @@ int input_page(struct tb_event ev) {
 		break;
 	case 'h': // Tab left
 tab_prev:
-		for (int i = vim_counter(); client.tab->prev && i > 0; i--)
+		for (int i = vim_counter(); client.tab->prev && i > 0; i--) {
 			client.tab = client.tab->prev;
+			fix_scroll(client.tab);
+		}
 		break;
 	case 'l': // Tab right
 tab_next:
-		for (int i = vim_counter(); client.tab->next && i > 0; i--)
+		for (int i = vim_counter(); client.tab->next && i > 0; i--) {
 			client.tab = client.tab->next;
+			fix_scroll(client.tab);
+		}
 		break;
 	case 'H': // Back
 go_back:
@@ -436,6 +440,7 @@ go_back:
 			tab->page = tab->history->page;
 			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
 		} else if (gmi_request(tab, tab->history->url, 1) < 0) break;
+		fix_scroll(client.tab);
 		break;
 	case 'L': // Forward
 go_forward:
@@ -453,6 +458,7 @@ go_forward:
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
 		strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+		fix_scroll(client.tab);
 		break;
 	case 'k': // UP
 move_up:

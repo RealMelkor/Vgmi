@@ -63,6 +63,9 @@ int xdg_init() {
 	}
 #endif
 #endif
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+	setproctitle("vgmi.xdg");
+#endif
 #ifdef __linux__
 	prctl(PR_SET_NAME, "vgmi [xdg]", 0, 0, 0);
 #endif
