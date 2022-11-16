@@ -159,14 +159,24 @@ int command() {
 		return 0;
 	}
 	if (strcmp(client.input.field, ":gencert") == 0) {
+		client.input.field[0] = '\0';
+		tab->selected = 0;
+		if (!strncmp(tab->url, "about:home", sizeof(tab->url))) {
+			tab->show_error = 1;
+			snprintf(tab->error, sizeof(tab->error),
+				 "Cannot create a certificate for this page");
+			return 0;
+		}
 		char host[256];
 		parse_url(tab->url, host, sizeof(host), NULL, 0, NULL);
 		if (cert_create(host, tab->error, sizeof(tab->error))) {
 			tab->show_error = 1;
+			return 0;
 		}
 		cert_getcert(host, 1);
-		client.input.field[0] = '\0';
-		tab->selected = 0;
+		tab->show_info = 1;
+		snprintf(tab->info, sizeof(tab->info),
+			 "Certificate generated for %s", host);
 		return 0;
 	}
 	if (strcmp(client.input.field, ":exec") == 0) {

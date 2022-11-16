@@ -7,7 +7,7 @@
 #include "url.h"
 
 void tb_colorline(int x, int y, uintattr_t color) {
-        for (int i=x; i<tb_width(); i++)
+        for (int i=x; i < tb_width(); i++)
                 tb_set_cell(i, y, ' ', color, color);
 }
 
@@ -25,8 +25,8 @@ void hide_query(char* url, char* urlbuf) {
                 if (!hide && url[i] == '?') {
                         hide = 1;
                         urlbuf[posx] = '<';
-                        urlbuf[posx+1] = '*';
-                        urlbuf[posx+2] = '>';
+                        urlbuf[posx + 1] = '*';
+                        urlbuf[posx + 2] = '>';
                         posx+=3;
                 }
         }

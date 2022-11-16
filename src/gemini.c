@@ -167,7 +167,7 @@ void gmi_load(struct gmi_page* page) {
 	page->links = NULL;
 	page->links_count = 0;
 	page->lines = 0;
-	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini")-1)) {
+	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
 		page->links = NULL;
 		page->links_count = 0;
 		page->lines = 0;
