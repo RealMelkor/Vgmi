@@ -290,6 +290,7 @@ unknown:
 int input_page(struct tb_event ev) {
 	struct gmi_tab* tab = client.tab;
 	struct gmi_page* page = &tab->page;
+	int counter;
 	switch (ev.key) {
 	case TB_KEY_ESC:
 		tab->selected = 0;
@@ -407,16 +408,34 @@ int input_page(struct tb_event ev) {
 		if (!tab->history) break;
 		gmi_request(tab, tab->history->url, 0);
 		break;
-	case 'h': // Tab left
+	case 'T': // Tab left
 tab_prev:
-		for (int i = vim_counter(); client.tab->prev && i > 0; i--) {
+		if (!client.vim.g) break;
+		client.vim.g = 0;
+		counter = vim_counter();
+		if (client.tab->next && !client.tab->prev) {
+			while (client.tab->next) client.tab = client.tab->next;
+			if (counter < 2)
+				break;
+			counter--;
+		}
+		for (int i = counter; client.tab->prev && i > 0; i--) {
 			client.tab = client.tab->prev;
 			fix_scroll(client.tab);
 		}
 		break;
-	case 'l': // Tab right
+	case 't': // Tab right
 tab_next:
-		for (int i = vim_counter(); client.tab->next && i > 0; i--) {
+		if (!client.vim.g) break;
+		client.vim.g = 0;
+		counter = vim_counter();
+		if (!client.tab->next && client.tab->prev) {
+			while (client.tab->prev) client.tab = client.tab->prev;
+			if (counter < 2)
+				break;
+			counter--;
+		}
+		for (int i = counter; client.tab->next && i > 0; i--) {
 			client.tab = client.tab->next;
 			fix_scroll(client.tab);
 		}

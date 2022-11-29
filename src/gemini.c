@@ -595,8 +595,8 @@ char home_page[] =
 "## Keybindings\n\n" \
 "* k - Scroll up\n" \
 "* j - Scroll down\n" \
-"* h - Switch to the previous tab\n" \
-"* l - Switch to the next tab\n" \
+"* gT - Switch to the previous tab\n" \
+"* gt - Switch to the next tab\n" \
 "* H - Go back in the history\n" \
 "* L - Go forward in the history\n" \
 "* gg - Go at the top of the page\n" \

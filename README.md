@@ -8,8 +8,8 @@
 
 * k  - Scroll up
 * j  - Scroll down
-* h  - Switch to the previous tab
-* l  - Switch to the next tab
+* gT  - Switch to the previous tab
+* gt  - Switch to the next tab
 * H  - Go back in the history
 * L  - Go forward in the history
 * gg - Go at the top of the page
