@@ -319,8 +319,13 @@ int gmi_render(struct gmi_tab* tab) {
 		if (!text && start &&
 		    tab->page.data[c] == '`' &&
 		    tab->page.data[c + 1] == '`' &&
-		    tab->page.data[c + 2] == '`') 
-			ignore = !ignore;	
+		    tab->page.data[c + 2] == '`') {
+			ignore = !ignore;
+			c += 3;
+			continue;
+		}
+		if (ignore)
+			color = AQUA;
 		
 		if (!ignore && !text) {
 			for (int i=0;
