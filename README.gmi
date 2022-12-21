@@ -46,7 +46,7 @@ It's also possible to open an issue on the Github page
 * f  - Show the history
 * r  - Reload the page
 * [number]Tab - Select link
-* Tab - Follow selected link
+* Tab - Scroll to the line number
 * Shift+Tab - Open selected link in a new tab
 * Del - Delete the selected link from the bookmarks
 

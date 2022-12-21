@@ -197,7 +197,7 @@ void* fatalP();
 #define MAGENTA (client.c256?13:TB_MAGENTA)
 #define YELLOW (client.c256?58:TB_YELLOW)
 #define GREY (client.c256?252:TB_WHITE)
-#define AQUA (client.c256?86:ITALIC|TB_WHITE)
+#define ORANGE (client.c256?172:ITALIC|TB_WHITE)
 #define ITALIC (client.c256?0:TB_ITALIC)
 
 #endif

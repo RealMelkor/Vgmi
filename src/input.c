@@ -33,7 +33,7 @@ int vim_counter() {
 }
 
 void fix_scroll(struct gmi_tab* tab) {
-	int h = tab->page.lines - tb_height() + 2 + (client.tabs_count>1);
+	int h = tab->page.lines - tb_height() + 2 + (client.tabs_count > 1);
 	if (tab->scroll > h)
 		tab->scroll = h;
 	if (tab->scroll < 0)
@@ -268,7 +268,11 @@ int command() {
 	}
 	if (client.input.field[0] == ':' && (atoi(&client.input.field[1]) ||
 	   (client.input.field[1] == '0' && client.input.field[2] == '\0'))) {
-		gmi_goto(tab, atoi(&client.input.field[1]));
+		client.tab->scroll = atoi(&client.input.field[1]) - 1 -
+				     !!client.tabs_count;
+		if (client.tab->scroll < 0)
+			client.tab->scroll = -!!client.tabs_count;
+		fix_scroll(client.tab);
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;
@@ -413,14 +417,13 @@ tab_prev:
 		if (!client.vim.g) break;
 		client.vim.g = 0;
 		counter = vim_counter();
-		if (client.tab->next && !client.tab->prev) {
-			while (client.tab->next) client.tab = client.tab->next;
-			if (counter < 2)
-				break;
-			counter--;
-		}
-		for (int i = counter; client.tab->prev && i > 0; i--) {
-			client.tab = client.tab->prev;
+		if (!client.tab->next && !client.tab->prev) break;
+		for (int i = counter; i > 0; i--) {
+			if (client.tab->prev)
+				client.tab = client.tab->prev;
+			else
+				while (client.tab->next)
+					client.tab = client.tab->next;
 			fix_scroll(client.tab);
 		}
 		break;
@@ -428,15 +431,14 @@ tab_prev:
 tab_next:
 		if (!client.vim.g) break;
 		client.vim.g = 0;
-		counter = vim_counter();
-		if (!client.tab->next && client.tab->prev) {
-			while (client.tab->prev) client.tab = client.tab->prev;
-			if (counter < 2)
-				break;
-			counter--;
-		}
-		for (int i = counter; client.tab->next && i > 0; i--) {
-			client.tab = client.tab->next;
+		counter = vim_counter() % client.tabs_count;
+		if (!client.tab->next && !client.tab->prev) break;
+		for (int i = counter; i > 0; i--) {
+			if (client.tab->next)
+				client.tab = client.tab->next;
+			else
+				while (client.tab->prev)
+					client.tab = client.tab->prev;
 			fix_scroll(client.tab);
 		}
 		break;

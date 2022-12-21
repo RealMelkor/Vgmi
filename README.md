@@ -34,7 +34,7 @@ You can prefix a movement key with a number to repeat it.
 * :s [search]		- Search the Geminispace using geminispace.info
 * :nt [url]		- Open a new tab, the url is optional
 * :add [name]   	- Add the current url to the bookmarks, the name is optional
-* :[number]		- Follow the link 
+* :[number]		- Scroll to the line number
 * :gencert		- Generate a certificate for the current capsule
 * :forget [host]	- Forget the certificate for the host
 * :download [name]	- Download the current page, the name is optional

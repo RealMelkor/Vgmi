@@ -10,7 +10,7 @@ LDFLAGS = -s -L./lib -ltls -lcrypto -lm -lpthread -lssl -lanl -ldl
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
 #LDFLAGS = -s -static -L./lib -ltls -lcrypto -lm -lpthread -lssl
 
-FLAGS = -DTERMINAL_IMG_VIEWER
+FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 
 SRC = $(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}

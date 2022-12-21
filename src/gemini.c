@@ -325,7 +325,7 @@ int gmi_render(struct gmi_tab* tab) {
 			continue;
 		}
 		if (ignore)
-			color = AQUA;
+			color = ORANGE;
 		
 		if (!ignore && !text) {
 			for (int i=0;
@@ -623,7 +623,7 @@ char home_page[] =
 "* :s [search] - Search the Geminispace using geminispace.info\n" \
 "* :nt [url] - Open a new tab, the url is optional\n" \
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
-"* :[number] - Follow the link\n" \
+"* :[number] - Scroll to the line number\n" \
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
 "* :download [name] - Download the current page, the name is optional\n"

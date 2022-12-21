@@ -6,7 +6,7 @@ CC?= cc
 CFLAGS+= -O2 -Wall -Wpedantic -Wextra -I/usr/local/include -I./include
 LDFLAGS+= -s -L./lib -lcasper -lcap_net -L/usr/local/lib -ltls -lcrypto \
 		-lpthread -lm -lssl
-FLAGS = -DTERMINAL_IMG_VIEWER
+FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 SRC = ${:!ls src/*.c!}
 OBJ = ${SRC:.c=.o}
 
