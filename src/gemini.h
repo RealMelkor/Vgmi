@@ -163,6 +163,7 @@ struct gmi_tab* gmi_newtab();
 struct gmi_tab* gmi_newtab_url(const char* url);
 int gmi_loadfile(struct gmi_tab* tab, char* path);
 void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title);
+int gmi_savebookmarks();
 void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
 void gmi_polling();

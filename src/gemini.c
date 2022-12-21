@@ -805,6 +805,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	else
 		snprintf(client.bookmarks[n], len, "%s", url);
 	client.bookmarks[n+1] = NULL;
+	gmi_savebookmarks();
 }
 
 int gmi_savebookmarks() {
