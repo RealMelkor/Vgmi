@@ -18,7 +18,7 @@ fi
 
 hash_file () {
 	file=$1
-	if command -v sha256 > /dev/null # OpenBSD
+	if command -v sha256 > /dev/null # OpenBSD, FreeBSD
 	then
 		actual_hash="$(sha256 $file | rev | cut -d ' ' -f 1 | rev)"
 		return 1
@@ -28,7 +28,7 @@ hash_file () {
 		actual_hash="$(shasum -a 256 $file | cut -d ' ' -f 1)"
 		return 1
 	fi
-	if command -v sha256sum > /dev/null # Linux
+	if command -v sha256sum > /dev/null # Linux, Illumos
 	then
 		actual_hash="$(sha256sum $file | cut -d ' ' -f 1)"
 		return 1
@@ -54,7 +54,7 @@ mkdir -p build
 cd build
 mkdir -p ../lib
 
-# LibreSSL 3.5.3
+# LibreSSL 3.6.1
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
@@ -87,7 +87,7 @@ cp termbox2-2.0.0/termbox.h ../include/
 
 # stb_image 2.27
 h="91f435e0fc6a620018b878b9859c74dff60d28046f87e649191ad6f35a98c722"
-check_hash $h "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h"
+check_hash $h "https://raw.githubusercontent.com/nothings/stb/8b5f1f37b5b75829fc72d38e7b5d4bcbf8a26d55/stb_image.h"
 cp stb_image.h ../include/
 
 cd ../

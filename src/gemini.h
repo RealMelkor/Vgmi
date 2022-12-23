@@ -2,7 +2,7 @@
 #ifndef _GEMINI_H_
 #define _GEMINI_H_
 
-#define VERSION "1.4"
+#define VERSION "1.5"
 
 #include <netdb.h>
 #include <unistd.h>
