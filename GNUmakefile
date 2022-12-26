@@ -9,6 +9,9 @@ LDFLAGS = -s -L./lib -ltls -lcrypto -lm -lpthread -lssl -lanl -ldl
 # MUSL
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
 #LDFLAGS = -s -static -L./lib -ltls -lcrypto -lm -lpthread -lssl
+# MacOS
+#CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
+#LDFLAGS = -s -L./lib -ltls -lcrypto -lm -lpthread -lssl -ldl
 
 FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 

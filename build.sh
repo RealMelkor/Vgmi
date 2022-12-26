@@ -23,7 +23,7 @@ hash_file () {
 		actual_hash="$(sha256 $file | rev | cut -d ' ' -f 1 | rev)"
 		return 1
 	fi
-	if command -v shasum > /dev/null # NetBSD
+	if command -v shasum > /dev/null # NetBSD, MacOS
 	then
 		actual_hash="$(shasum -a 256 $file | cut -d ' ' -f 1)"
 		return 1
@@ -80,10 +80,9 @@ then
 fi
 
 # Termbox2 2.0.0
-h="da2e8c2f30d784e9b3cdfea4332257beef471976556b9ddb6e994ca5adf389af"
-check_hash $h "https://github.com/termbox/termbox2/archive/refs/tags/v2.0.0.zip"
-unzip v2.0.0.zip
-cp termbox2-2.0.0/termbox.h ../include/
+h="0ebef83bf8acfacea1cfc8ed78886eb46bd28f915e1217c07577bf08801a95b8"
+check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/9627635ca71cd0378b58c2305e3f731faa26132b/termbox.h"
+cp termbox.h ../include/
 
 # stb_image 2.27
 h="91f435e0fc6a620018b878b9859c74dff60d28046f87e649191ad6f35a98c722"
@@ -96,5 +95,10 @@ then
 	sed -i -e "/CC/s/^#//" Makefile
 	sed -i -e "/LIBS/s/^#//" Makefile
 	sed -i -e "/CFLAGS/s/^#//" Makefile
+fi
+if [ "$(uname)" == Darwin ] ;
+then
+	sed -i -e "/LDFLAGS/s/^#//" GNUmakefile
+	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
 fi
 make
