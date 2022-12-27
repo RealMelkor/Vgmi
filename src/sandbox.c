@@ -671,8 +671,18 @@ int sandbox_init() {
 		return -1;
 	}
 #endif
-	int fd = getconfigfd();
-	if (fd == -1) return -1;
+	if (getconfigfd() < 0) {
+		printf("Failed to get cache folder\n");
+		return -1;
+	}
+	if (getdownloadfd() < 0) {
+		printf("Failed to get download folder\n");
+		return -1;
+	}
+	if (cert_load()) {
+		printf("Failed to load known host\n");
+		return -1;
+	}
 	sandbox_bookmark();
 
 	struct addrinfo hints, *result;
@@ -683,8 +693,7 @@ int sandbox_init() {
 
 	getaddrinfo("example.com", NULL, &hints, &result);
 
-	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ,
-			       PRIV_FILE_WRITE, NULL};
+	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_WRITE, NULL};
 	if (init_privs(privs)) return -1;
 
 	return 0;

@@ -1868,11 +1868,13 @@ int gmi_init() {
 		gmi_newbookmarks();
 	}
 
+#if !defined(sun) || defined(NO_SANDBOX)
 	if (cert_load()) {
 		tb_shutdown();
 		printf("Failed to load known hosts\n");
 		return -1;
 	}
+#endif
 		
 	return 0;
 }

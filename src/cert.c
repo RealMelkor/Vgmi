@@ -206,7 +206,6 @@ skip_error:
 int fatalI();
 void fatal();
 
-struct cert;
 struct cert {
 	struct cert* next;
 	char hash[256];
@@ -264,12 +263,14 @@ int cert_load() {
 	char* hash = NULL;
 	char* start = NULL;
 	char* end = NULL;
-	while (ptr < data + length - 1) {
+	while (ptr < data + length) {
+		if (ptr == data + length - 1) goto add;
 		if (*ptr == ' ' || *ptr == '\t' || (host?(*ptr == '\n'):0)) {
 			*ptr = '\0';
 			ptr++;
 			while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')
 				ptr++;
+add:
 			if (!hash) {
 				hash = ptr;
 				ptr++;
@@ -285,7 +286,6 @@ int cert_load() {
 				ptr++;
 				continue;
 			}
-
 			cert_add(host, hash,
 				 strtoull(start, NULL, 10),
 				 strtoull(end, NULL, 10));
