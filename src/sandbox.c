@@ -72,7 +72,7 @@ int xdg_init() {
 	}
 #endif
 #ifdef sun
-	const char* privs[] = {PRIV_PROC_FORK, NULL};
+	const char* privs[] = {PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
         if (init_privs(privs)) {
 		exit(-1);
 	}
@@ -190,6 +190,7 @@ int sandbox_close() {
 #ifndef XDG_DISABLE
 	xdg_close();
 #endif
+	return 0;
 }
 
 int makefd_readonly(int fd) {
@@ -277,6 +278,7 @@ int sandbox_close() {
 #ifndef XDG_DISABLE
 	xdg_close();
 #endif
+	return 0;
 }
 
 #elif __linux__
@@ -563,6 +565,7 @@ int sandbox_close() {
 #ifndef XDG_DISABLE
 	xdg_close();
 #endif
+	return 0;
 }
 
 #elif sun
@@ -660,9 +663,14 @@ int sandbox_savebookmarks() {
 int bm_pipe[2];
 
 int sandbox_init() {
+#ifndef DISABLE_XDG
+	if (xdg_init()) {
+		printf("xdg failure\n");
+		return -1;
+	}
+#endif
 	int fd = getconfigfd();
 	if (fd == -1) return -1;
-
 	sandbox_bookmark();
 
 	struct addrinfo hints, *result;
@@ -673,7 +681,7 @@ int sandbox_init() {
 
 	getaddrinfo("example.com", NULL, &hints, &result);
 
-	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ, NULL};
+	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
 	if (init_privs(privs)) return -1;
 
 	return 0;

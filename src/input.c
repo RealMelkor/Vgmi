@@ -15,6 +15,7 @@ void cfmakeraw(struct termios *t);
 #include "cert.h"
 #include "str.h"
 #include "url.h"
+#include "sandbox.h"
 #include <stdio.h>
 
 int get_cursor_pos() {

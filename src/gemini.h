@@ -173,16 +173,6 @@ void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
 void gmi_free();
 
-#if !defined(NO_SANDBOX) && !defined(DISABLE_XDG)
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
-int xdg_request(char*);
-#define xdg_open(x) xdg_request(x)
-#endif
-#endif
-#ifndef xdg_open
-int xdg_open(char*);
-#endif
-
 void fatal();
 int fatalI();
 void* fatalP();

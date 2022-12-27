@@ -4,6 +4,18 @@
 int sandbox_init();
 int sandbox_close();
 #ifndef NO_SANDBOX
+
+#ifndef DISABLE_XDG
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__) || defined(sun)
+int xdg_request(char*);
+#define xdg_open(x) xdg_request(x)
+#endif
+#endif
+
+#ifndef xdg_open
+int xdg_open(char*);
+#endif
+
 #ifdef __FreeBSD__
 
 extern int config_folder;
