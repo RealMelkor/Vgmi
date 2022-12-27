@@ -1,8 +1,13 @@
 /* See LICENSE file for copyright and license details. */
+#include <string.h>
+#include <errno.h>
 #if defined(__linux__) && !defined(__MUSL__)
 #include <dlfcn.h>
 #include <stdlib.h>
 void* libgcc_s = NULL;
+#endif
+#ifdef __linux__
+#include <sys/prctl.h>
 #endif
 
 #ifndef NO_SANDBOX
@@ -13,21 +18,17 @@ int init_privs(const char **privs);
 #endif
 
 #ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__) || defined(sun)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || \
+    defined(__linux__) || defined(sun)
 
 int xdg_pipe[2] = {-1, -1};
 int xdg_open(char*);
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <errno.h>
-#ifdef __linux__
-#include <sys/prctl.h>
-#endif
 #include <termbox.h>
 
 int xdg_request(char* str) {
@@ -72,7 +73,8 @@ int xdg_init() {
 	}
 #endif
 #ifdef sun
-	const char* privs[] = {PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
+	const char* privs[] = {PRIV_PROC_FORK, PRIV_PROC_EXEC,
+			       PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
         if (init_privs(privs)) {
 		exit(-1);
 	}
@@ -187,7 +189,7 @@ int sandbox_init() {
 }
 
 int sandbox_close() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	xdg_close();
 #endif
 	return 0;
@@ -275,7 +277,7 @@ int sandbox_init() {
 }
 
 int sandbox_close() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	xdg_close();
 #endif
 	return 0;
@@ -562,7 +564,7 @@ int sandbox_close() {
 	if (libgcc_s)
 		dlclose(libgcc_s);
 #endif
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	xdg_close();
 #endif
 	return 0;
@@ -681,14 +683,15 @@ int sandbox_init() {
 
 	getaddrinfo("example.com", NULL, &hints, &result);
 
-	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
+	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ,
+			       PRIV_FILE_WRITE, NULL};
 	if (init_privs(privs)) return -1;
 
 	return 0;
 }
 
 int sandbox_close() {
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	xdg_close();
 #endif
 	close(bm_pair[1]);

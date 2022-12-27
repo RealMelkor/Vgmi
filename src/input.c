@@ -227,9 +227,9 @@ int command() {
 			url = urlbuf;
 		} else if (url) url++;
 		else url = tab->history->url;
-		char* download = *ptr?ptr:url;
+		char* download = *ptr ? ptr : url;
 		int fd = openat(getdownloadfd(), download,
-				O_CREAT|O_EXCL|O_RDWR, 0600);
+				O_CREAT|O_EXCL|O_WRONLY, 0600);
 		char buf[1024];
 		if (fd < 0 && errno == EEXIST) {
 #ifdef __OpenBSD__
@@ -239,7 +239,7 @@ int command() {
 #endif
 				 time(NULL), download);
 			fd = openat(getdownloadfd(), buf,
-				    O_CREAT|O_EXCL|O_RDWR, 0600);
+				    O_CREAT|O_EXCL|O_WRONLY, 0600);
 			download = buf;
 		}
 		if (fd < 0) {

@@ -6,7 +6,8 @@ int sandbox_close();
 #ifndef NO_SANDBOX
 
 #ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__) || defined(sun)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || \
+    defined(__linux__) || defined(sun)
 int xdg_request(char*);
 #define xdg_open(x) xdg_request(x)
 #endif
