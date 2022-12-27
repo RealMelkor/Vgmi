@@ -5,10 +5,17 @@
 void* libgcc_s = NULL;
 #endif
 
-#ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
+#ifndef NO_SANDBOX
+#ifdef sun
+#include <priv.h>
+int init_privs(const char **privs);
+#endif
+#endif
 
-int xdg_pipe[2];
+#ifndef DISABLE_XDG
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__) || defined(sun)
+
+int xdg_pipe[2] = {-1, -1};
 int xdg_open(char*);
 
 #include <string.h>
@@ -49,21 +56,29 @@ int xdg_init() {
 		return 0;
 	}
 	close(xdg_pipe[1]);
-#ifdef __OpenBSD__
+
 #ifndef NO_SANDBOX
+#ifdef __OpenBSD__
 	if (unveil("/bin/sh", "x") ||
 	    unveil("/usr/bin/which", "x") ||
 	    unveil("/usr/local/bin/xdg-open", "x") ||
 	    unveil(NULL, NULL)) {
 		close(xdg_pipe[1]);
-		exit(0);
+		exit(-1);
 	}
 	if (pledge("stdio rpath exec proc", NULL)) {
 		close(xdg_pipe[1]);
-		exit(0);
+		exit(-1);
+	}
+#endif
+#ifdef sun
+	const char* privs[] = {PRIV_PROC_FORK, NULL};
+        if (init_privs(privs)) {
+		exit(-1);
 	}
 #endif
 #endif
+
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	setproctitle("vgmi.xdg");
 #endif
@@ -74,14 +89,11 @@ int xdg_init() {
 	exit(0);
 }
 
-int sandbox_close() {
-#if defined(__linux__) && !defined(__MUSL__)
-	if (libgcc_s)
-		dlclose(libgcc_s);
-#endif
-	close(xdg_pipe[0]);
-	close(xdg_pipe[1]);
-	return 0;
+void xdg_close() {
+	if (xdg_pipe[0] > -1)
+		close(xdg_pipe[0]);
+	if (xdg_pipe[1] > -1)
+		close(xdg_pipe[1]);
 }
 
 #endif
@@ -174,6 +186,12 @@ int sandbox_init() {
 	return 0;
 }
 
+int sandbox_close() {
+#ifndef XDG_DISABLE
+	xdg_close();
+#endif
+}
+
 int makefd_readonly(int fd) {
 	cap_rights_t rights;
         cap_rights_init(&rights, CAP_SEEK, CAP_READ);
@@ -253,6 +271,12 @@ int sandbox_init() {
 		return -1;
 	}
 	return 0;
+}
+
+int sandbox_close() {
+#ifndef XDG_DISABLE
+	xdg_close();
+#endif
 }
 
 #elif __linux__
@@ -531,6 +555,16 @@ skip_landlock:;
 	return 0;
 }
 
+int sandbox_close() {
+#if defined(__linux__) && !defined(__MUSL__)
+	if (libgcc_s)
+		dlclose(libgcc_s);
+#endif
+#ifndef XDG_DISABLE
+	xdg_close();
+#endif
+}
+
 #elif sun
 
 #include <stdio.h>
@@ -623,7 +657,8 @@ int sandbox_savebookmarks() {
 	return i == 0xFFFFFFFF;
 }
 
-// fork process to write new client certificates
+int bm_pipe[2];
+
 int sandbox_init() {
 	int fd = getconfigfd();
 	if (fd == -1) return -1;
@@ -645,6 +680,9 @@ int sandbox_init() {
 }
 
 int sandbox_close() {
+#ifndef XDG_DISABLE
+	xdg_close();
+#endif
 	close(bm_pair[1]);
 	close(bm_pair[0]);
 	return 0;
