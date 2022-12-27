@@ -808,6 +808,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	gmi_savebookmarks();
 }
 
+#ifndef gmi_savebookmarks // sandboxed on Illumos
 int gmi_savebookmarks() {
 	int fd = openat(config_fd, "bookmarks.txt",
 			O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
@@ -828,8 +829,8 @@ int gmi_savebookmarks() {
 		fprintf(f, "%s\n", client.bookmarks[i]);
 	fclose(f);
 	return 0;
-
 }
+#endif
 
 char* gmi_getbookmarks(int* len) {
 	char* data = NULL;

@@ -1,9 +1,10 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef _CAPSICUM_H_
-#define _CAPSICUM_H_
+#ifndef _SANDBOX_H_
+#define _SANDBOX_H_
 int sandbox_init();
 int sandbox_close();
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifndef NO_SANDBOX
+#ifdef __FreeBSD__
 
 extern int config_folder;
 #include <netdb.h>
@@ -19,7 +20,15 @@ int makefd_writeseek(int fd);
 #define getaddrinfo(a, b, c, d) sandbox_getaddrinfo(a, b, c, d)
 #define connect(a, b, c) sandbox_connect(a, b, c)
 
-#endif
+#endif // freebsd
+
+#ifdef sun
+#define gmi_savebookmarks() sandbox_savebookmarks()
+int sandbox_savebookmarks();
+#endif // sun
+#endif // sandbox
+
 #include <signal.h>
 void sigsys_handler(int signo, siginfo_t *info, void *unused);
+
 #endif

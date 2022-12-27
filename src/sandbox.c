@@ -4,6 +4,7 @@
 #include <stdlib.h>
 void* libgcc_s = NULL;
 #endif
+
 #ifndef DISABLE_XDG
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__)
 
@@ -84,10 +85,12 @@ int sandbox_close() {
 }
 
 #endif
-#endif
+#endif // #ifndef DISABLE_XDG
 
 #ifndef NO_SANDBOX
+
 #ifdef __FreeBSD__
+
 #include <stdio.h>
 #include <sys/capsicum.h>
 #include <sys/socket.h>
@@ -202,7 +205,9 @@ int makefd_writeseek(int fd) {
 int make_writeonly(FILE* f) {
 	return makefd_writeonly(fileno(f));
 }
+
 #elif __OpenBSD__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -251,6 +256,7 @@ int sandbox_init() {
 }
 
 #elif __linux__
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -525,29 +531,138 @@ skip_landlock:;
 	return 0;
 }
 
+#elif sun
+
+#include <stdio.h>
+#include <string.h>
+#include <priv.h>
+#include <errno.h>
+#include <strings.h>
+#include <fcntl.h>
+#include "cert.h"
+#include "gemini.h"
+
+int init_privs(const char **privs) {
+	priv_set_t *pset;
+	if ((pset = priv_allocset()) == NULL) {
+		printf("priv_allocset: %s", strerror(errno));
+		return -1;
+	}
+	priv_emptyset(pset);
+	for (int i = 0; privs[i]; i++) {
+		if (priv_addset(pset, privs[i]) != 0) {
+			printf("priv_addset: %s", strerror(errno));
+			return -1;
+		}
+	}
+	if (setppriv(PRIV_SET, PRIV_PERMITTED, pset) != 0 ||
+	    setppriv(PRIV_SET, PRIV_LIMIT, pset) != 0 ||
+	    setppriv(PRIV_SET, PRIV_INHERITABLE, pset) != 0) {
+		printf("setppriv: %s", strerror(errno));
+		return -1;
+	}
+	priv_freeset(pset);
+	return 0;
+}
+
+// bookmarks
+int bm_pair[2];
+int sandbox_bookmark() {
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, bm_pair)) {
+                printf("pipe failed\n");
+                return -1;
+        }
+        int pid = fork();
+        if (pid != 0) {
+                close(bm_pair[0]);
+                return 0;
+        }
+        close(bm_pair[1]);
+	const char* privs[] = {PRIV_FILE_WRITE, NULL};
+	if (init_privs(privs)) exit(-1);
+	char buf[1024];
+	int fd = -1;
+        while (1) {
+                int len = recv(bm_pair[0], buf, fd == -1 ? 4 : sizeof(buf), 0);
+                if (len <= 0)
+                        break;
+		if (len == 4 && *(uint32_t*)buf == 0xFFFFFFFF) {
+			fd = openat(config_fd, "bookmarks.txt",
+				    O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
+			if (fd < 0) exit(-1);
+			continue;
+		}
+		if (fd < 0) continue;
+		write(fd, buf, len);
+		if (*(uint32_t*)&buf[len - 4] == 0xFFFFFFFF) {
+			fsync(fd);
+			close(fd);
+			fd = -1;
+			uint32_t i = -1;
+			send(bm_pair[0], &i, sizeof(i), 0);
+		}
+        }
+	if (fd > -1) close(fd);
+	close(bm_pair[0]);
+	exit(-1);
+}
+
+int sandbox_savebookmarks() {
+	uint32_t i = -1;
+	if (send(bm_pair[1], &i, sizeof(i), 0) != sizeof(i))
+		return -1;
+	for (int i = 0; client.bookmarks[i]; i++) {
+		send(bm_pair[1], client.bookmarks[i],
+		     strlen(client.bookmarks[i]), 0);
+		char c = '\n';
+		send(bm_pair[1], &c, 1, 0);
+	}
+	if (send(bm_pair[1], &i, sizeof(i), 0) != sizeof(i))
+		return -1;
+	recv(bm_pair[1], &i, sizeof(i), 0);
+	return i == 0xFFFFFFFF;
+}
+
+// fork process to write new client certificates
+int sandbox_init() {
+	int fd = getconfigfd();
+	if (fd == -1) return -1;
+
+	sandbox_bookmark();
+
+	struct addrinfo hints, *result;
+        bzero(&hints, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags |= AI_CANONNAME;
+
+	getaddrinfo("example.com", NULL, &hints, &result);
+
+	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ, NULL};
+	if (init_privs(privs)) return -1;
+
+	return 0;
+}
+
+int sandbox_close() {
+	close(bm_pair[1]);
+	close(bm_pair[0]);
+	return 0;
+}
+
 #else
+#warning No sandbox found for the current operating system
 #define NO_SANDBOX
 #endif
-#endif
+
+#endif // #ifndef NO_SANDBOX
 
 #ifdef NO_SANDBOX
 int sandbox_init() {
 	return 0;
 }
 
-#if !(defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__linux__))
 int sandbox_close() {
-	return 0;
-}
-#endif
-#endif
-
-#if !defined(NO_SANDBOX) && defined(DISABLE_XDG)
-int sandbox_close() {
-#if defined(__linux__) && !defined(__MUSL__)
-	if (libgcc_s)
-		dlclose(libgcc_s);
-#endif
 	return 0;
 }
 #endif

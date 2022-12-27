@@ -13,9 +13,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__sun__)
+#define TTYFD
+#endif
 
 int main(int argc, char* argv[]) {
-#if defined(__FreeBSD__) || defined(__linux__)
+#ifdef TTYFD
 	int ttyfd = open("/dev/tty", O_RDWR);
 	if (ttyfd < 0) {
 		printf("Failed to open tty\n");
@@ -26,7 +29,7 @@ int main(int argc, char* argv[]) {
 	const char* term = getenv("TERM");
 	if (!term) {
 		printf("Failed to detect terminal\n");
-#if defined(__FreeBSD__) || defined(__linux__)
+#ifdef TTYFD
 		close(ttyfd);
 #endif
 		return -1;
@@ -46,13 +49,13 @@ int main(int argc, char* argv[]) {
 
 	if (sandbox_init()) {
 		printf("Failed to sandbox\n");
-#if defined(__FreeBSD__) || defined(__linux__)
+#ifdef TTYFD
 		close(ttyfd);
 #endif
 		return -1;
 	}
 
-#if defined(__FreeBSD__) || defined(__linux__)
+#ifdef TTYFD
 	if (tb_init_fd(ttyfd) == TB_ERR_INIT_OPEN) {
 #else
 	if (tb_init() == TB_ERR_INIT_OPEN) {
@@ -86,7 +89,7 @@ int main(int argc, char* argv[]) {
 			break;
 	}
 	tb_shutdown();
-#if defined(__FreeBSD__) || defined(__linux__)
+#ifdef TTYFD
 	close(ttyfd);
 #endif
 	gmi_free();
