@@ -1,8 +1,10 @@
 /* See LICENSE file for copyright and license details. */
 #ifndef _SANDBOX_H_
 #define _SANDBOX_H_
+
 int sandbox_init();
 int sandbox_close();
+
 #ifndef NO_SANDBOX
 
 #ifndef DISABLE_XDG
@@ -39,7 +41,10 @@ int makefd_writeseek(int fd);
 #define gmi_savebookmarks() sandbox_savebookmarks()
 int sandbox_savebookmarks();
 #endif // sun
-#endif // sandbox
+
+#else // no sandbox
+int xdg_open(char*);
+#endif
 
 #include <signal.h>
 void sigsys_handler(int signo, siginfo_t *info, void *unused);
