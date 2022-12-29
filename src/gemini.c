@@ -659,7 +659,7 @@ int gmi_loadbookmarks() {
 	FILE* f = fdopen(fd, "rb");
 	if (!f)
 		return -1;
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	if (makefd_readonly(fd)) {
 		fclose(f);
 		return -1;
@@ -808,29 +808,38 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	gmi_savebookmarks();
 }
 
-#ifndef gmi_savebookmarks // sandboxed on Illumos
 int gmi_savebookmarks() {
+#ifdef SANDBOX_SUN
+	int fd = wr_pair[1];
+	if (send(fd, &WR_BOOKMARKS, sizeof(WR_BOOKMARKS), 0) !=
+	    sizeof(WR_BOOKMARKS))
+		return -1;
+#else
 	int fd = openat(config_fd, "bookmarks.txt",
 			O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd < 0) {
 		printf("Failed to write bookmarks, %s\n", strerror(errno));
 		return -1;
 	}
-	FILE* f = fdopen(fd, "wb");
-	if (!f)
-		return -1;
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	if (makefd_writeonly(fd)) {
 		fclose(f);
 		return -1;
 	}
 #endif
-	for (int i = 0; client.bookmarks[i]; i++)
-		fprintf(f, "%s\n", client.bookmarks[i]);
-	fclose(f);
+#endif
+	for (int i = 0; client.bookmarks[i]; i++) {
+		write(fd, client.bookmarks[i], strlen(client.bookmarks[i]));
+		char c = '\n';
+		write(fd, &c, 1);
+	}
+#ifdef SANDBOX_SUN
+	send(fd, &WR_END, sizeof(WR_END), 0);
+#else
+	close(f);
+#endif
 	return 0;
 }
-#endif
 
 char* gmi_getbookmarks(int* len) {
 	char* data = NULL;
@@ -1208,6 +1217,11 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 			 "(The certificate changed)",
 			 tab->request.host);
 		return -1;
+	case -3: // sandbox error
+		snprintf(tab->error, sizeof(tab->error),
+			 "Sandbox error when verifying server certificate " \
+			 "for %s", tab->request.host);
+		return -1;
 	case -5: // expired
 		snprintf(tab->error, sizeof(tab->error),
 			 "Expired certificate, " \
@@ -1222,8 +1236,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 		return -1;
 	default: // failed to write certificate
 		snprintf(tab->error, sizeof(tab->error),
-			 "Failed to write %s certificate information : %s",
-			 tab->request.host, strerror(errno));
+			 "Failed to write %s certificate information : %s [%d]",
+			 tab->request.host, strerror(errno), ret);
 		return -1;
 	}
 
@@ -1642,7 +1656,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			if (tab->request.url[len-1] == '/')
 				tab->request.url[len-1] = '\0';
 			char* ptr = strrchr(tab->request.url, '/');
-			FILE* f;
+#ifndef SANDBOX_SUN
 			int fd = getdownloadfd();	
 			if (fd < 0) {
 				snprintf(tab->error, sizeof(tab->error),
@@ -1650,9 +1664,10 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				tab->show_error = 1;
 				goto request_end;
 			}
+#endif
 			char path[1024];
 			if (ptr)
-				strlcpy(path, ptr+1, sizeof(path));
+				strlcpy(path, ptr + 1, sizeof(path));
 			else {
 #ifdef __OpenBSD__
 				char format[] = "output_%lld.dat";
@@ -1674,6 +1689,11 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				     ))
 					path[i] = '_';
 			}
+#ifdef SANDBOX_SUN
+			if (sandbox_download(tab, path))
+				goto request_end;
+			int dfd = wr_pair[1];
+#else
 			int dfd = openat(fd, path,
 					 O_CREAT|O_EXCL|O_WRONLY, 0600);
 			if (dfd < 0 && errno == EEXIST) {
@@ -1697,31 +1717,29 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 					goto request_end;
 				}
 			}
-			f = fdopen(dfd, "wb");
-			if (!f) {
-				snprintf(tab->error, sizeof(tab->error),
-					 "Failed to write " \
-					 "the downloaded file");
-				tab->show_error = 1;
-				goto request_end;
-			}
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
-			if (make_writeonly(f)) {
+#ifdef SANDBOX_FREEBSD
+			if (makefd_writeonly(dfd)) {
 				client.shutdown = 1;
 				break;
 			}
 #endif
-			ptr = strchr(tab->request.data, '\n')+1;
+#endif
+			ptr = strchr(tab->request.data, '\n') + 1;
 			if (!ptr) {
 				tab->show_error = 1;
 				snprintf(tab->error, sizeof(tab->error),
 					 "Server sent invalid data");
 				goto request_end;
 			}
-			fwrite(ptr, 1, 
-			       tab->request.recv -
-			       (ptr-tab->request.data), f);
-			fclose(f);
+#ifdef SANDBOX_SUN
+			sandbox_dl_length(tab->request.recv -
+					  (ptr-tab->request.data));
+#endif
+			write(dfd, ptr,
+			      tab->request.recv - (ptr-tab->request.data));
+#ifndef SANDBOX_SUN
+			close(dfd);
+#endif
 #ifndef DISABLE_XDG
 			int fail = 0;
 			if (client.xdg) {
@@ -1783,7 +1801,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 		tab->show_error = 1;
 		return -1;
 	}
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	if (make_readonly(f)) {
 		fclose(f);
 		client.shutdown = 1;

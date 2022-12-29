@@ -228,6 +228,11 @@ int command() {
 		} else if (url) url++;
 		else url = tab->history->url;
 		char* download = *ptr ? ptr : url;
+#ifdef SANDBOX_SUN
+		if (sandbox_download(tab, download))
+			return -1;
+		int fd = wr_pair[1];
+#else
 		int fd = openat(getdownloadfd(), download,
 				O_CREAT|O_EXCL|O_WRONLY, 0600);
 		char buf[1024];
@@ -248,16 +253,22 @@ int command() {
 				 "Failed to write file : %s", strerror(errno));
 			return 0;
 		}
+#endif
 		char* data = strnstr(tab->page.data, "\r\n",
 				     tab->page.data_len);
-		int data_len = tab->page.data_len;
+		uint64_t data_len = tab->page.data_len;
 		if (!data) data = tab->page.data;
 		else {
 			data += 2;
 			data_len -= (data - tab->page.data);
 		}
+#ifdef SANDBOX_SUN
+		sandbox_dl_length(data_len);
+#endif
 		write(fd, data, data_len);
+#ifndef SANDBOX_SUN
 		close(fd);
+#endif
 		tab->show_info = 1;
 		snprintf(tab->info, sizeof(tab->info),
 			 "File downloaded : %s", download);

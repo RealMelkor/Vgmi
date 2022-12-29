@@ -152,7 +152,7 @@ int cert_create(char* host, char* error, int errlen) {
 		goto skip_error;
 	}
 	f = fdopen(fd, "wb");
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	if (makefd_writeonly(fd)) {
 		snprintf(error, errlen, "Failed to limit %s", key);
 		goto skip_error;
@@ -174,7 +174,7 @@ int cert_create(char* host, char* error, int errlen) {
 		goto skip_error;
 	}
 	f = fdopen(fd, "wb");
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	if (makefd_writeonly(fd)) {
 		snprintf(error, errlen, "Failed to limit %s", crt);
 		goto skip_error;
@@ -334,7 +334,7 @@ int cert_getcert(char* host, int reload) {
 	}
 	FILE* crt_f = fdopen(crt_fd, "rb");
 	FILE* key_f = fdopen(key_fd, "rb");
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
 	makefd_readonly(crt_fd);
 	makefd_readonly(key_fd);
 #endif
@@ -384,6 +384,13 @@ int cert_getcert(char* host, int reload) {
 	return index;
 }
 
+#ifdef SANDBOX_SUN
+int cert_rewrite() {
+	int fd = wr_pair[1];
+	if (send(fd, &WR_KNOWNHOSTS, sizeof(WR_KNOWNHOSTS), 0) !=
+	    sizeof(WR_KNOWNHOSTS))
+		return -3;
+#else
 int cert_rewrite() {
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
@@ -392,24 +399,31 @@ int cert_rewrite() {
 			O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 	if (fd == -1)
 		return -2;
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
         if (makefd_writeonly(fd))
                 return -3;
 #endif
-	FILE* f = fdopen(fd, "w");
-	if (!f) return -3;
 
+#endif
 	char buf[2048];
 	for (struct cert* cert = first_cert; cert; cert = cert->next) {
 		int len = snprintf(buf, 2048, "%s %s %llu %llu\n",
 				   cert->host, cert->hash,
 				   cert->start, cert->end);
 		if (write(fd, buf, len) != len) {
-			fclose(f);
+#ifdef SANDBOX_SUN
+			send(fd, &WR_END, sizeof(WR_END), 0);
+#else
+			close(fd);
+#endif
 			return -1;
 		}
 	}
-	fclose(f);
+#ifdef SANDBOX_SUN
+	send(fd, &WR_END, sizeof(WR_END), 0);
+#else
+	close(fd);
+#endif
 	return 0;
 }
 
@@ -442,9 +456,15 @@ int cert_verify(char* host, const char* hash,
 	unsigned long long now = time(NULL);
 	if (found) {
 		if (found->start < now && found->end > now)
-			return strcmp(found->hash, hash)?-6:0;
+			return strcmp(found->hash, hash) ? -6 : 0;
 		return -5; // expired
 	}
+#ifdef SANDBOX_SUN
+	int fd = wr_pair[1];
+	if (send(fd, &WR_KNOWNHOST_ADD, sizeof(WR_KNOWNHOST_ADD), 0) !=
+	    sizeof(WR_KNOWNHOST_ADD))
+		return -3;
+#else
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
 
@@ -452,9 +472,10 @@ int cert_verify(char* host, const char* hash,
 	if (fd == -1)
 		return -2;
 	if (!fdopen(fd, "a")) return -3;
-#if defined(__FreeBSD__) && !defined(NO_SANDBOX)
+#ifdef SANDBOX_FREEBSD
         if (makefd_writeonly(fd))
                 return -3;
+#endif
 #endif
 	char buf[2048];
 	int len = snprintf(buf, 2048, "%s %s %lld %lld\n",
@@ -464,7 +485,11 @@ int cert_verify(char* host, const char* hash,
 		return -4;
 	}
 
+#if defined(sun) && !defined(NO_SANDBOX)
+	send(fd, &WR_END, sizeof(WR_END), 0);
+#else
 	close(fd);
+#endif
 	cert_add(host, hash, start, end);
 	return 0;
 }

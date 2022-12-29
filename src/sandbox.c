@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include "sandbox.h"
 #include <string.h>
 #include <errno.h>
 #if defined(__linux__) && !defined(__MUSL__)
@@ -604,65 +605,149 @@ int init_privs(const char **privs) {
 	return 0;
 }
 
-// bookmarks
-int bm_pair[2];
-int sandbox_bookmark() {
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, bm_pair)) {
-                printf("pipe failed\n");
+/*
+
+   Illumos sandbox components
+
+   fork,exec,read,write : xdg
+   write : bookmark, known_host, certs_write, download
+   read : certs_read
+
+*/
+
+// write request
+unsigned int WR_BOOKMARKS = 0xFFFFFFFF;
+unsigned int WR_KNOWNHOSTS = 0xEEEEEEEE;
+unsigned int WR_KNOWNHOST_ADD = 0xEEEEFFFF;
+unsigned int WR_DOWNLOAD = 0xDDDDDDDD;
+unsigned int WR_CERTIFICATE = 0xCCCCCCCC;
+unsigned int WR_END = 0xBBBBBBBB;
+
+int wr_pair[2];
+
+int sandbox_download(struct gmi_tab* tab, const char* path) {
+	if (send(wr_pair[1], &WR_DOWNLOAD, sizeof(WR_DOWNLOAD), 0) !=
+	    sizeof(WR_DOWNLOAD)) {
+sandbox_error:
+		tab->show_error = -1;
+		snprintf(tab->error, sizeof(tab->error),
+			 "Sandbox error");
+		return -1;
+	}
+	int path_len = strlen(path);
+	if (send(wr_pair[1], path, path_len, 0) != path_len)
+		goto sandbox_error;
+	int res;
+	if (recv(wr_pair[1], &res, sizeof(res), 0) != sizeof(res))
+		goto sandbox_error;
+	if (res) {
+		tab->show_error = -1;
+		snprintf(tab->error, sizeof(tab->error),
+			 "Failed to write file : %s",
+			 strerror(res));
+		return -1;
+	}
+	return 0;
+}
+
+int sandbox_dl_length(unsigned long long length) {
+	return send(wr_pair[1], &length, sizeof(length), 0);
+}
+
+int sandbox_listen() {
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, wr_pair)) {
+                printf("socketpair: %s\n", strerror(errno));
                 return -1;
         }
         int pid = fork();
         if (pid != 0) {
-                close(bm_pair[0]);
+                close(wr_pair[0]);
                 return 0;
         }
-        close(bm_pair[1]);
+        close(wr_pair[1]);
 	const char* privs[] = {PRIV_FILE_WRITE, NULL};
 	if (init_privs(privs)) exit(-1);
 	char buf[1024];
 	int fd = -1;
+	uint64_t length = 0;
         while (1) {
-                int len = recv(bm_pair[0], buf, fd == -1 ? 4 : sizeof(buf), 0);
+		int l = fd == -1 ?
+			4 : (length > 0 && length < sizeof(buf) ?
+			length : sizeof(buf));
+                int len = recv(wr_pair[0], buf, l, 0);
                 if (len <= 0)
                         break;
-		if (len == 4 && *(uint32_t*)buf == 0xFFFFFFFF) {
+		if (fd > -1) goto transfer;
+		if (len != 4) continue;
+		if (*(uint32_t*)buf == WR_DOWNLOAD) {
+			// recv file name
+			len = recv(wr_pair[0], buf, sizeof(buf) - 1, 0);
+			if (len < 1) {
+				len = -1;
+				send(wr_pair[0], &len, sizeof(len), 0);
+				continue;
+			}
+			// clean file name from slash
+			for (int i = 0; i < len; i++) {
+				if (buf[i] == '/')
+					buf[i] = '_';
+			}
+			buf[len] = '\0';
+			fd = openat(download_fd, buf,
+				    O_CREAT|O_WRONLY|O_EXCL, 0600);
+			// send back errno if failed to open file, 0 if sucess
+			len = (fd < 0) ? errno : 0;
+			send(wr_pair[0], &len, sizeof(len), 0);
+			if (fd < 0) // exit here on error
+				continue;
+			// recv file length
+                	len = recv(wr_pair[0], buf, sizeof(length), 0);
+			if (len != sizeof(length)) {
+				close(fd);
+				fd = -1;
+			}
+			length = *(uint64_t*)buf;
+		}
+		if (*(uint32_t*)buf == WR_CERTIFICATE) {
+			// get hostname, generate certificate for hostname
+
+		}
+		if (*(uint32_t*)buf == WR_BOOKMARKS) {
 			fd = openat(config_fd, "bookmarks.txt",
 				    O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 			if (fd < 0) exit(-1);
-			continue;
 		}
-		if (fd < 0) continue;
+		if (*(uint32_t*)buf == WR_KNOWNHOSTS) {
+			fd = openat(config_fd, "known_hosts",
+				    O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
+			if (fd < 0) exit(-1);
+		}
+		if (*(uint32_t*)buf == WR_KNOWNHOST_ADD) {
+                        fd = openat(config_fd, "known_hosts",
+                                    O_CREAT|O_APPEND|O_WRONLY, 0600);
+                        if (fd < 0) exit(-1);
+                }
+		continue;
+transfer:
 		write(fd, buf, len);
-		if (*(uint32_t*)&buf[len - 4] == 0xFFFFFFFF) {
+		if (length) {
+			if (length < (unsigned)len) len = length;
+			length -= len;
+			if (length > 0) continue;
+			goto close;
+		}
+		if (*(uint32_t*)&buf[len - 4] == WR_END) {
+			send(wr_pair[0], &WR_END, sizeof(WR_END), 0);
+close:
 			fsync(fd);
 			close(fd);
 			fd = -1;
-			uint32_t i = -1;
-			send(bm_pair[0], &i, sizeof(i), 0);
 		}
         }
 	if (fd > -1) close(fd);
-	close(bm_pair[0]);
+	close(wr_pair[0]);
 	exit(-1);
 }
-
-int sandbox_savebookmarks() {
-	uint32_t i = -1;
-	if (send(bm_pair[1], &i, sizeof(i), 0) != sizeof(i))
-		return -1;
-	for (int i = 0; client.bookmarks[i]; i++) {
-		send(bm_pair[1], client.bookmarks[i],
-		     strlen(client.bookmarks[i]), 0);
-		char c = '\n';
-		send(bm_pair[1], &c, 1, 0);
-	}
-	if (send(bm_pair[1], &i, sizeof(i), 0) != sizeof(i))
-		return -1;
-	recv(bm_pair[1], &i, sizeof(i), 0);
-	return i == 0xFFFFFFFF;
-}
-
-int bm_pipe[2];
 
 int sandbox_init() {
 #ifndef DISABLE_XDG
@@ -683,7 +768,10 @@ int sandbox_init() {
 		printf("Failed to load known host\n");
 		return -1;
 	}
-	sandbox_bookmark();
+	if (sandbox_listen()) {
+		printf("Failed to initialize sandbox\n");
+		return -1;
+	}
 
 	struct addrinfo hints, *result;
         bzero(&hints, sizeof(hints));
@@ -693,7 +781,7 @@ int sandbox_init() {
 
 	getaddrinfo("example.com", NULL, &hints, &result);
 
-	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_WRITE, NULL};
+	const char* privs[] = {PRIV_NET_ACCESS, NULL};
 	if (init_privs(privs)) return -1;
 
 	return 0;
@@ -703,8 +791,8 @@ int sandbox_close() {
 #ifndef DISABLE_XDG
 	xdg_close();
 #endif
-	close(bm_pair[1]);
-	close(bm_pair[0]);
+	close(wr_pair[1]);
+	close(wr_pair[0]);
 	return 0;
 }
 

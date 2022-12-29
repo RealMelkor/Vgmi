@@ -21,6 +21,8 @@ int xdg_open(char*);
 
 #ifdef __FreeBSD__
 
+#define SANDBOX_FREEBSD
+
 extern int config_folder;
 #include <netdb.h>
 #include <fcntl.h>
@@ -32,14 +34,34 @@ int makefd_readonly(int fd);
 int make_writeonly(FILE* f);
 int makefd_writeonly(int fd);
 int makefd_writeseek(int fd);
+#ifndef SB_IGNORE
 #define getaddrinfo(a, b, c, d) sandbox_getaddrinfo(a, b, c, d)
 #define connect(a, b, c) sandbox_connect(a, b, c)
+#endif
 
 #endif // freebsd
 
 #ifdef sun
-#define gmi_savebookmarks() sandbox_savebookmarks()
+
+#define SANDBOX_SUN
+
+extern unsigned int WR_BOOKMARKS;
+extern unsigned int WR_KNOWNHOSTS;
+extern unsigned int WR_KNOWNHOST_ADD;
+extern unsigned int WR_DOWNLOAD;
+extern unsigned int WR_CERTIFICATE;
+extern unsigned int WR_END;
+
 int sandbox_savebookmarks();
+struct gmi_tab;
+int sandbox_download(struct gmi_tab* tab, const char* path);
+int sandbox_dl_length(unsigned long long length);
+extern int wr_pair[2];
+
+#ifndef SB_IGNORE
+#define gmi_savebookmarks() sandbox_savebookmarks()
+#endif
+
 #endif // sun
 
 #else // no sandbox

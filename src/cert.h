@@ -19,6 +19,7 @@ int getdownloadpath();
 void cert_free();
 int cert_load();
 extern int config_fd;
+extern int download_fd;
 extern char download_path[1024];
 
 #endif
