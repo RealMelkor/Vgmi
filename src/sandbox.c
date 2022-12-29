@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#define SB_IGNORE
 #include "sandbox.h"
 #include <string.h>
 #include <errno.h>
@@ -650,8 +651,29 @@ sandbox_error:
 	return 0;
 }
 
-int sandbox_dl_length(unsigned long long length) {
+int sandbox_dl_length(size_t length) {
 	return send(wr_pair[1], &length, sizeof(length), 0);
+}
+
+int sandbox_cert_create(char* host, char* error, int errlen) {
+	if (send(wr_pair[1], &WR_CERTIFICATE, sizeof(WR_CERTIFICATE), 0) !=
+	    sizeof(WR_CERTIFICATE)) {
+sandbox_error:
+		snprintf(error, errlen, "Sandbox error : %s", strerror(errno));
+		return -1;
+	}
+	int len = strlen(host);
+	if (send(wr_pair[1], host, len, 0) != len)
+		goto sandbox_error;
+	int err;
+	if (recv(wr_pair[1], &err, sizeof(len), 0) != sizeof(err))
+		goto sandbox_error;
+	if (err) { // error
+		len = recv(wr_pair[1], error, errlen - 1, 0);
+		if (len < 0) len = 0;
+		error[len] = '\0';
+	}
+	return err;
 }
 
 int sandbox_listen() {
@@ -709,8 +731,18 @@ int sandbox_listen() {
 			length = *(uint64_t*)buf;
 		}
 		if (*(uint32_t*)buf == WR_CERTIFICATE) {
-			// get hostname, generate certificate for hostname
-
+			len = recv(wr_pair[0], buf, sizeof(buf) - 1, 0);
+			if (len < 1) {
+				len = -1;
+				send(wr_pair[0], &len, sizeof(len), 0);
+				continue;
+			}
+			buf[len] = '\0';
+			char err[1024];
+			int ret = cert_create(buf, err, sizeof(err));
+			send(wr_pair[0], &ret, sizeof(ret), 0);
+			if (ret)
+				send(wr_pair[0], err, strlen(err), 0);
 		}
 		if (*(uint32_t*)buf == WR_BOOKMARKS) {
 			fd = openat(config_fd, "bookmarks.txt",

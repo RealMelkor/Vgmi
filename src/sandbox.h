@@ -2,6 +2,8 @@
 #ifndef _SANDBOX_H_
 #define _SANDBOX_H_
 
+#include <stddef.h>
+
 int sandbox_init();
 int sandbox_close();
 
@@ -55,11 +57,13 @@ extern unsigned int WR_END;
 int sandbox_savebookmarks();
 struct gmi_tab;
 int sandbox_download(struct gmi_tab* tab, const char* path);
-int sandbox_dl_length(unsigned long long length);
+int sandbox_dl_length(size_t length);
+int sandbox_cert_create(char* host, char* error, int errlen);
 extern int wr_pair[2];
 
 #ifndef SB_IGNORE
 #define gmi_savebookmarks() sandbox_savebookmarks()
+#define cert_create(X, Y, Z) sandbox_cert_create(X, Y, Z)
 #endif
 
 #endif // sun

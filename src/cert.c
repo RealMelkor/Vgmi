@@ -96,7 +96,7 @@ int cert_getpath(char* host, char* crt, size_t crt_len,
 		goto getpath_overflow;
         if (strlcpy(&key[len], ".key", key_len - len) + len >= key_len)
 		goto getpath_overflow;
-	return len+4;
+	return len + 4;
 getpath_overflow:
 	snprintf(client.tab->error,
 		 sizeof(client.tab->error),
@@ -104,6 +104,9 @@ getpath_overflow:
 	return -1;
 }
 
+#ifdef SANDBOX_SUN
+#undef cert_create
+#endif
 int cert_create(char* host, char* error, int errlen) {
 	FILE* f = NULL;
 	int fd;
@@ -133,7 +136,7 @@ int cert_create(char* host, char* error, int errlen) {
 
 	X509_NAME* name = X509_get_subject_name(x509);
 	if (X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
-	   (unsigned char *)host, -1, -1, 0) != 1) 
+	   (unsigned char*)host, -1, -1, 0) != 1)
 		goto failed;
 	
 	if (X509_set_issuer_name(x509, name) != 1) goto failed;

@@ -836,7 +836,7 @@ int gmi_savebookmarks() {
 #ifdef SANDBOX_SUN
 	send(fd, &WR_END, sizeof(WR_END), 0);
 #else
-	close(f);
+	close(fd);
 #endif
 	return 0;
 }
