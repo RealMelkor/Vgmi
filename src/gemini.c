@@ -811,8 +811,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 int gmi_savebookmarks() {
 #ifdef SANDBOX_SUN
 	int fd = wr_pair[1];
-	if (send(fd, &WR_BOOKMARKS, sizeof(WR_BOOKMARKS), 0) !=
-	    sizeof(WR_BOOKMARKS))
+	if (send(fd, &WR_BOOKMARKS, sizeof(SBC), 0) != sizeof(SBC))
 		return -1;
 #else
 	int fd = openat(config_fd, "bookmarks.txt",
@@ -834,7 +833,7 @@ int gmi_savebookmarks() {
 		write(fd, &c, 1);
 	}
 #ifdef SANDBOX_SUN
-	send(fd, &WR_END, sizeof(WR_END), 0);
+	send(fd, &WR_END, sizeof(SBC), 0);
 #else
 	close(fd);
 #endif
@@ -1870,7 +1869,13 @@ int gmi_init() {
 #ifndef DISABLE_XDG
 	int xdg = client.xdg;
 #endif
+#ifdef SANDBOX_SUN
+	char** bookmarks = client.bookmarks;
+#endif
 	bzero(&client, sizeof(client));
+#ifdef SANDBOX_SUN
+	client.bookmarks = bookmarks;
+#endif
 #ifndef DISABLE_XDG
 	client.xdg = xdg;
 #endif
@@ -1882,11 +1887,11 @@ int gmi_init() {
 		return -1;
 	}
 
+#ifndef SANDBOX_SUN
 	if (gmi_loadbookmarks()) {
 		gmi_newbookmarks();
 	}
 
-#if !defined(sun) || defined(NO_SANDBOX)
 	if (cert_load()) {
 		tb_shutdown();
 		printf("Failed to load known hosts\n");

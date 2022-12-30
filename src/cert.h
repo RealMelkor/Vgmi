@@ -11,6 +11,7 @@ int cert_getpath(char* host, char* crt, int crt_len, char* key, int key_len);
 int cert_verify(char* host, const char* hash,
 		unsigned long long start, unsigned long long end);
 int cert_forget(char* host);
+int cert_loadcert(const char* host, struct cert_cache* cert);
 int cert_getcert(char* host, int reload);
 int gethomefd();
 int getconfigfd();

@@ -586,20 +586,20 @@ int sandbox_close() {
 int init_privs(const char **privs) {
 	priv_set_t *pset;
 	if ((pset = priv_allocset()) == NULL) {
-		printf("priv_allocset: %s", strerror(errno));
+		printf("priv_allocset: %s\n", strerror(errno));
 		return -1;
 	}
 	priv_emptyset(pset);
 	for (int i = 0; privs[i]; i++) {
 		if (priv_addset(pset, privs[i]) != 0) {
-			printf("priv_addset: %s", strerror(errno));
+			printf("priv_addset: %s\n", strerror(errno));
 			return -1;
 		}
 	}
 	if (setppriv(PRIV_SET, PRIV_PERMITTED, pset) != 0 ||
 	    setppriv(PRIV_SET, PRIV_LIMIT, pset) != 0 ||
 	    setppriv(PRIV_SET, PRIV_INHERITABLE, pset) != 0) {
-		printf("setppriv: %s", strerror(errno));
+		printf("setppriv: %s\n", strerror(errno));
 		return -1;
 	}
 	priv_freeset(pset);
@@ -617,14 +617,24 @@ int init_privs(const char **privs) {
 */
 
 // write request
-unsigned int WR_BOOKMARKS = 0xFFFFFFFF;
-unsigned int WR_KNOWNHOSTS = 0xEEEEEEEE;
-unsigned int WR_KNOWNHOST_ADD = 0xEEEEFFFF;
-unsigned int WR_DOWNLOAD = 0xDDDDDDDD;
-unsigned int WR_CERTIFICATE = 0xCCCCCCCC;
-unsigned int WR_END = 0xBBBBBBBB;
+#define _WR_BOOKMARKS 0xFFFFFFFF
+#define _WR_KNOWNHOSTS 0xEEEEEEEE
+#define _WR_KNOWNHOST_ADD 0xEEEEFFFF
+#define _WR_DOWNLOAD 0xDDDDDDDD
+#define _WR_CERTIFICATE 0xCCCCCCCC
+#define _WR_END 0xBBBBBBBB
+#define _RD_CERTIFICATE 0xFFFFFFFF
+
+unsigned int WR_BOOKMARKS = _WR_BOOKMARKS;
+unsigned int WR_KNOWNHOSTS = _WR_KNOWNHOSTS;
+unsigned int WR_KNOWNHOST_ADD = _WR_KNOWNHOST_ADD;
+unsigned int WR_DOWNLOAD = _WR_DOWNLOAD;
+unsigned int WR_CERTIFICATE = _WR_CERTIFICATE;
+unsigned int WR_END = _WR_END;
+unsigned int RD_CERTIFICATE = _RD_CERTIFICATE;
 
 int wr_pair[2];
+int rd_pair[2];
 
 int sandbox_download(struct gmi_tab* tab, const char* path) {
 	if (send(wr_pair[1], &WR_DOWNLOAD, sizeof(WR_DOWNLOAD), 0) !=
@@ -656,8 +666,7 @@ int sandbox_dl_length(size_t length) {
 }
 
 int sandbox_cert_create(char* host, char* error, int errlen) {
-	if (send(wr_pair[1], &WR_CERTIFICATE, sizeof(WR_CERTIFICATE), 0) !=
-	    sizeof(WR_CERTIFICATE)) {
+	if (send(wr_pair[1], &WR_CERTIFICATE, sizeof(SBC), 0) != sizeof(SBC)) {
 sandbox_error:
 		snprintf(error, errlen, "Sandbox error : %s", strerror(errno));
 		return -1;
@@ -666,7 +675,7 @@ sandbox_error:
 	if (send(wr_pair[1], host, len, 0) != len)
 		goto sandbox_error;
 	int err;
-	if (recv(wr_pair[1], &err, sizeof(len), 0) != sizeof(err))
+	if (recv(wr_pair[1], &err, sizeof(err), 0) != sizeof(err))
 		goto sandbox_error;
 	if (err) { // error
 		len = recv(wr_pair[1], error, errlen - 1, 0);
@@ -674,6 +683,49 @@ sandbox_error:
 		error[len] = '\0';
 	}
 	return err;
+}
+
+int sandbox_listen_rd() {
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, rd_pair)) {
+                printf("socketpair: %s\n", strerror(errno));
+                return -1;
+        }
+        int pid = fork();
+        if (pid != 0) {
+                close(rd_pair[0]);
+                return 0;
+        }
+        close(rd_pair[1]);
+	const char* privs[] = {PRIV_FILE_READ, NULL};
+	if (init_privs(privs)) exit(-1);
+	char buf[1024];
+        while (1) {
+		uint16_t dlen; // domain name length
+                int len = recv(rd_pair[0], buf, sizeof(SBC), 0);
+		if (len != sizeof(SBC) || *(SBC*)buf != RD_CERTIFICATE)
+			break;
+                len = recv(rd_pair[0], &dlen, sizeof(dlen), 0);
+		if (len != sizeof(dlen) || dlen >= sizeof(buf))
+			break;
+		if (recv(rd_pair[0], buf, dlen, 0) != dlen)
+			break;
+		struct cert_cache cert;
+		if (cert_loadcert(buf, &cert)) {
+			buf[0] = -1;
+			send(rd_pair[0], buf, 1, 0);
+			continue;
+		}
+		len = 0;
+		send(rd_pair[0], &len, 1, 0);
+		send(rd_pair[0], &cert.crt_len, sizeof(size_t), 0);
+		send(rd_pair[0], &cert.key_len, sizeof(size_t), 0);
+		send(rd_pair[0], cert.crt, cert.crt_len, 0);
+		send(rd_pair[0], cert.key, cert.key_len, 0);
+		free(cert.crt);
+		free(cert.key);
+	}
+	close(wr_pair[0]);
+	exit(-1);
 }
 
 int sandbox_listen() {
@@ -699,9 +751,25 @@ int sandbox_listen() {
                 int len = recv(wr_pair[0], buf, l, 0);
                 if (len <= 0)
                         break;
-		if (fd > -1) goto transfer;
+		if (fd > -1) {
+			write(fd, buf, len);
+			int sync = 0;
+			if (length) {
+				if (length < (unsigned)len) len = length;
+				length -= len;
+				if (length > 0) continue;
+				sync = 1;
+			}
+			if (*(SBC*)&buf[len - 4] == WR_END || sync) {
+				fsync(fd);
+				close(fd);
+				fd = -1;
+			}
+		}
+
 		if (len != 4) continue;
-		if (*(uint32_t*)buf == WR_DOWNLOAD) {
+		switch (*(SBC*)buf) {
+		case _WR_DOWNLOAD:
 			// recv file name
 			len = recv(wr_pair[0], buf, sizeof(buf) - 1, 0);
 			if (len < 1) {
@@ -729,8 +797,8 @@ int sandbox_listen() {
 				fd = -1;
 			}
 			length = *(uint64_t*)buf;
-		}
-		if (*(uint32_t*)buf == WR_CERTIFICATE) {
+			break;
+		case _WR_CERTIFICATE:
 			len = recv(wr_pair[0], buf, sizeof(buf) - 1, 0);
 			if (len < 1) {
 				len = -1;
@@ -743,37 +811,22 @@ int sandbox_listen() {
 			send(wr_pair[0], &ret, sizeof(ret), 0);
 			if (ret)
 				send(wr_pair[0], err, strlen(err), 0);
-		}
-		if (*(uint32_t*)buf == WR_BOOKMARKS) {
+			break;
+		case _WR_BOOKMARKS:
 			fd = openat(config_fd, "bookmarks.txt",
 				    O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 			if (fd < 0) exit(-1);
-		}
-		if (*(uint32_t*)buf == WR_KNOWNHOSTS) {
+			break;
+		case _WR_KNOWNHOSTS:
 			fd = openat(config_fd, "known_hosts",
 				    O_CREAT|O_WRONLY|O_CLOEXEC|O_TRUNC, 0600);
 			if (fd < 0) exit(-1);
-		}
-		if (*(uint32_t*)buf == WR_KNOWNHOST_ADD) {
+			break;
+		case _WR_KNOWNHOST_ADD:
                         fd = openat(config_fd, "known_hosts",
                                     O_CREAT|O_APPEND|O_WRONLY, 0600);
                         if (fd < 0) exit(-1);
-                }
-		continue;
-transfer:
-		write(fd, buf, len);
-		if (length) {
-			if (length < (unsigned)len) len = length;
-			length -= len;
-			if (length > 0) continue;
-			goto close;
-		}
-		if (*(uint32_t*)&buf[len - 4] == WR_END) {
-			send(wr_pair[0], &WR_END, sizeof(WR_END), 0);
-close:
-			fsync(fd);
-			close(fd);
-			fd = -1;
+			break;
 		}
         }
 	if (fd > -1) close(fd);
@@ -800,7 +853,14 @@ int sandbox_init() {
 		printf("Failed to load known host\n");
 		return -1;
 	}
+	if (gmi_loadbookmarks()) {
+		gmi_newbookmarks();
+	}
 	if (sandbox_listen()) {
+		printf("Failed to initialize sandbox\n");
+		return -1;
+	}
+	if (sandbox_listen_rd()) {
 		printf("Failed to initialize sandbox\n");
 		return -1;
 	}

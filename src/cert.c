@@ -375,10 +375,43 @@ int cert_getcert(char* host, int reload) {
         }
         if (reload != 2) reload = 0;
 
-        struct cert_cache cert;
-        if (cert_loadcert(host, &cert)) {
+        struct cert_cache cert = {0};
+#ifdef SANDBOX_SUN
+	if (send(rd_pair[1], &RD_CERTIFICATE, sizeof(SBC), 0) != sizeof(SBC))
+		return -1;
+	uint16_t i16 = strlen(host);
+	if (send(rd_pair[1], &i16, sizeof(i16), 0) != sizeof(i16))
+		return -1;
+	if (send(rd_pair[1], host, i16, 0) != i16)
+		return -1;
+	char c;
+	if (recv(rd_pair[1], &c, sizeof(c), 0) != 1 || c)
+		return -1;
+
+	if (recv(rd_pair[1], &cert.crt_len, sizeof(cert.crt_len), 0) !=
+	    sizeof(cert.crt_len))
+		return -1;
+	if (recv(rd_pair[1], &cert.key_len, sizeof(cert.key_len), 0) !=
+	    sizeof(cert.key_len))
+		return -1;
+	cert.crt = malloc(cert.crt_len);
+	if (!cert.crt) return -1;
+	cert.key = malloc(cert.key_len);
+	if (!cert.key) {
+		free(cert.crt);
+		return -1;
+	}
+	if (recv(rd_pair[1], cert.crt, cert.crt_len, 0) != (signed)cert.crt_len
+	|| recv(rd_pair[1], cert.key, cert.key_len, 0) != (signed)cert.key_len)
+	{
+		free(cert.crt);
+		free(cert.key);
+		return -1;
+	}
+#else
+        if (cert_loadcert(host, &cert))
                 return -1;
-        }
+#endif
 
         if (!reload) {
                 client.certs = realloc(client.certs,
@@ -398,8 +431,7 @@ int cert_getcert(char* host, int reload) {
 #ifdef SANDBOX_SUN
 int cert_rewrite() {
 	int fd = wr_pair[1];
-	if (send(fd, &WR_KNOWNHOSTS, sizeof(WR_KNOWNHOSTS), 0) !=
-	    sizeof(WR_KNOWNHOSTS))
+	if (send(fd, &WR_KNOWNHOSTS, sizeof(SBC), 0) != sizeof(SBC))
 		return -3;
 #else
 int cert_rewrite() {
@@ -423,7 +455,7 @@ int cert_rewrite() {
 				   cert->start, cert->end);
 		if (write(fd, buf, len) != len) {
 #ifdef SANDBOX_SUN
-			send(fd, &WR_END, sizeof(WR_END), 0);
+			send(fd, &WR_END, sizeof(SBC), 0);
 #else
 			close(fd);
 #endif
@@ -431,7 +463,7 @@ int cert_rewrite() {
 		}
 	}
 #ifdef SANDBOX_SUN
-	send(fd, &WR_END, sizeof(WR_END), 0);
+	send(fd, &WR_END, sizeof(SBC), 0);
 #else
 	close(fd);
 #endif
@@ -472,8 +504,7 @@ int cert_verify(char* host, const char* hash,
 	}
 #ifdef SANDBOX_SUN
 	int fd = wr_pair[1];
-	if (send(fd, &WR_KNOWNHOST_ADD, sizeof(WR_KNOWNHOST_ADD), 0) !=
-	    sizeof(WR_KNOWNHOST_ADD))
+	if (send(fd, &WR_KNOWNHOST_ADD, sizeof(SBC), 0) != sizeof(SBC))
 		return -3;
 #else
 	int cfd = getconfigfd();
@@ -496,8 +527,8 @@ int cert_verify(char* host, const char* hash,
 		return -4;
 	}
 
-#if defined(sun) && !defined(NO_SANDBOX)
-	send(fd, &WR_END, sizeof(WR_END), 0);
+#ifdef SANDBOX_SUN
+	send(fd, &WR_END, sizeof(SBC), 0);
 #else
 	close(fd);
 #endif

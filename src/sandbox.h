@@ -47,12 +47,14 @@ int makefd_writeseek(int fd);
 
 #define SANDBOX_SUN
 
-extern unsigned int WR_BOOKMARKS;
-extern unsigned int WR_KNOWNHOSTS;
-extern unsigned int WR_KNOWNHOST_ADD;
-extern unsigned int WR_DOWNLOAD;
-extern unsigned int WR_CERTIFICATE;
-extern unsigned int WR_END;
+#define SBC unsigned int
+extern SBC WR_BOOKMARKS;
+extern SBC WR_KNOWNHOSTS;
+extern SBC WR_KNOWNHOST_ADD;
+extern SBC WR_DOWNLOAD;
+extern SBC WR_CERTIFICATE;
+extern SBC WR_END;
+extern SBC RD_CERTIFICATE;
 
 int sandbox_savebookmarks();
 struct gmi_tab;
@@ -60,6 +62,7 @@ int sandbox_download(struct gmi_tab* tab, const char* path);
 int sandbox_dl_length(size_t length);
 int sandbox_cert_create(char* host, char* error, int errlen);
 extern int wr_pair[2];
+extern int rd_pair[2];
 
 #ifndef SB_IGNORE
 #define gmi_savebookmarks() sandbox_savebookmarks()
