@@ -85,7 +85,7 @@ int getconfigfd() {
 	return config_fd;
 }
 
-int cert_getpath(char* host, char* crt, size_t crt_len,
+int cert_getpath(const char* host, char* crt, size_t crt_len,
 		 char* key, size_t key_len) {
 	int len = strnlen(host, 1024);
 	if (strlcpy(crt, host, crt_len) >= crt_len - 4)
@@ -304,87 +304,95 @@ add:
 	return 0;
 }
 
-int cert_getcert(char* host, int reload) {
-
-	int index = 0;
-	while (client.certs && index < client.certs_size) {
-		if (!strcmp(client.certs[index].host, host)) {
-			if (reload) {
-				reload = 2;
-				break;
-			}
-			return index;
-		}
-		index++;
-	}
-	if (reload != 2) reload = 0;
-
+int cert_loadcert(const char* host, struct cert_cache* cert) {
         char crt[1024];
         char key[1024];
         if (cert_getpath(host, crt, sizeof(crt), key, sizeof(key)) == -1) {
-		return -1;
+                return -1;
         }
         size_t crt_pos = 0;
         size_t key_pos = 0;
-	int crt_fd = openat(config_fd, crt, 0);
-	if (crt_fd < 0) {
-		return -2;
-	}
-	int key_fd = openat(config_fd, key, 0);
-	if (key_fd < 0) {
-		close(key_fd);
-		return -2;
-	}
-	FILE* crt_f = fdopen(crt_fd, "rb");
-	FILE* key_f = fdopen(key_fd, "rb");
+        int crt_fd = openat(config_fd, crt, 0);
+        if (crt_fd < 0) {
+                return -2;
+        }
+        int key_fd = openat(config_fd, key, 0);
+        if (key_fd < 0) {
+                close(key_fd);
+                return -2;
+        }
+        FILE* crt_f = fdopen(crt_fd, "rb");
+        FILE* key_f = fdopen(key_fd, "rb");
 #ifdef SANDBOX_FREEBSD
-	makefd_readonly(crt_fd);
-	makefd_readonly(key_fd);
+        makefd_readonly(crt_fd);
+        makefd_readonly(key_fd);
 #endif
-	if (!crt_f || !key_f) {
-		close(crt_fd);
-		close(key_fd);
-		return -3;
-	}
-	fseek(crt_f, 0, SEEK_END);
-	crt_pos = ftell(crt_f);
-	fseek(key_f, 0, SEEK_END);
-	key_pos = ftell(key_f);
+        if (!crt_f || !key_f) {
+                close(crt_fd);
+                close(key_fd);
+                return -3;
+        }
+        fseek(crt_f, 0, SEEK_END);
+        crt_pos = ftell(crt_f);
+        fseek(key_f, 0, SEEK_END);
+        key_pos = ftell(key_f);
 
-	if (!reload) {
-		client.certs = realloc(client.certs,
-				       sizeof(*client.certs) * (index + 1));
-		if (!client.certs) return fatalI();
-		bzero(&client.certs[index], sizeof(*client.certs));
-	} else {
-		free(client.certs[index].crt);
-		free(client.certs[index].key);
-	}
-	client.certs[index].crt = malloc(crt_pos);
-	if (!client.certs[index].crt) return fatalI();
-	client.certs[index].key = malloc(key_pos);
-	if (!client.certs[index].key) return fatalI();
+        cert->crt = malloc(crt_pos);
+        if (!cert->crt) return fatalI();
+        cert->key = malloc(key_pos);
+        if (!cert->key) return fatalI();
 
-	fseek(crt_f, 0, SEEK_SET);
-	fseek(key_f, 0, SEEK_SET);
-	if (fread(client.certs[index].crt, 1, crt_pos, crt_f) != crt_pos ||
-	    fread(client.certs[index].key, 1, key_pos, key_f) != key_pos) {
-		fclose(crt_f);
-		fclose(key_f);
-		return -3;
-	}
+        fseek(crt_f, 0, SEEK_SET);
+        fseek(key_f, 0, SEEK_SET);
+        if (fread(cert->crt, 1, crt_pos, crt_f) != crt_pos ||
+            fread(cert->key, 1, key_pos, key_f) != key_pos) {
+                fclose(crt_f);
+                fclose(key_f);
+                return -3;
+        }
 
-	fclose(crt_f);
-	fclose(key_f);
-	client.certs[index].crt[crt_pos-1] = '\0';
-	client.certs[index].key[key_pos-1] = '\0';
-	client.certs[index].crt_len = crt_pos;
-	client.certs[index].key_len = key_pos;
-	strlcpy(client.certs[index].host, host,
-		sizeof(client.certs[index].host));
-	if (!reload)
-		client.certs_size++;
-	return index;
+        fclose(crt_f);
+        fclose(key_f);
+        cert->crt[crt_pos - 1] = '\0';
+        cert->key[key_pos - 1] = '\0';
+        cert->crt_len = crt_pos;
+        cert->key_len = key_pos;
+        strlcpy(cert->host, host, sizeof(cert->host));
+        return 0;
+}
+
+int cert_getcert(char* host, int reload) {
+        int index = 0;
+        while (client.certs && index < client.certs_size) {
+                if (!strcmp(client.certs[index].host, host)) {
+                        if (reload) {
+                                reload = 2;
+                                break;
+                        }
+                        return index;
+                }
+                index++;
+        }
+        if (reload != 2) reload = 0;
+
+        struct cert_cache cert;
+        if (cert_loadcert(host, &cert)) {
+                return -1;
+        }
+
+        if (!reload) {
+                client.certs = realloc(client.certs,
+                                       sizeof(*client.certs) * (index + 1));
+                if (!client.certs) return fatalI();
+                bzero(&client.certs[index], sizeof(*client.certs));
+        } else {
+                free(client.certs[index].crt);
+                free(client.certs[index].key);
+        }
+        client.certs[index] = cert;
+        if (!reload)
+                client.certs_size++;
+        return index;
 }
 
 #ifdef SANDBOX_SUN
