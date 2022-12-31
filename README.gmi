@@ -11,11 +11,11 @@ Gemini client written in C with vim-like keybindings
 ## Statically linked binaries
 
 ### x86_64
-=>gemini://rmf-dev.com/static/vgmi/vgmi_linux_x86_64 Linux
-=>gemini://rmf-dev.com/static/vgmi/vgmi_openbsd_x86_64 OpenBSD
-=>gemini://rmf-dev.com/static/vgmi/vgmi_netbsd_x86_64 NetBSD
-=>gemini://rmf-dev.com/static/vgmi/vgmi_freebsd_x86_64 FreeBSD
-=>gemini://rmf-dev.com/static/vgmi/vgmi_illumos_x86_64 Illumos
+=>/static/vgmi/vgmi_linux_x86_64 Linux
+=>/static/vgmi/vgmi_openbsd_x86_64 OpenBSD
+=>/static/vgmi/vgmi_netbsd_x86_64 NetBSD
+=>/static/vgmi/vgmi_freebsd_x86_64 FreeBSD
+=>/static/vgmi/vgmi_illumos_x86_64 Illumos
 
 ### aarch64
 =>/static/vgmi/vgmi_linux_aarch64 Linux
@@ -75,6 +75,9 @@ On OpenBSD, Vgmi uses Unveil to limit access to the filesystem and Pledge to res
 
 ### Linux
 On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict the filesystem
+
+### Illumos
+On Illumos, Vgmi uses Privileges, separating read, write and networking privileges in different processes
 
 ## Dependencies
 

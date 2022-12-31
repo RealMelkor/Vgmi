@@ -51,6 +51,9 @@ On OpenBSD, Vgmi uses Unveil to limit access to the filesystem and Pledge to res
 ### Linux
 On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict the filesystem
 
+### Illumos
+On Illumos, Vgmi uses Privileges, separating read, write and networking privileges in different processes
+
 ## Dependencies
 
 * [LibreSSL][1] - fork of OpenSSL developed by the OpenBSD project
