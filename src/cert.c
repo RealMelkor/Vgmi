@@ -23,6 +23,7 @@
 #include "gemini.h"
 #include "sandbox.h"
 #include "str.h"
+#include "xdg.h"
 
 char home_path[1024];
 char download_path[1024];
@@ -37,6 +38,11 @@ int gethomefd() {
 	if (!pw) return -1;
 	home_fd = open(pw->pw_dir, O_DIRECTORY);
 	strlcpy(home_path, pw->pw_dir, sizeof(home_path));
+#ifndef DISABLE_XDG
+	if (!xdg_path(download_path, sizeof(download_path))) {
+		return home_fd;
+	}
+#endif
 	snprintf(download_path, sizeof(download_path), "%s/%s",
 		 home_path, download_str);
 	return home_fd;
@@ -48,14 +54,20 @@ int getdownloadfd() {
 		return download_fd;
 	if (home_fd == -1 && gethomefd() == -1)
 		return -1;
+#ifndef DISABLE_XDG
+	download_fd = open(download_path, O_DIRECTORY);
+	if (download_fd > -1) return download_fd;
+#endif
 	download_fd = openat(home_fd, download_str, O_DIRECTORY);
-	if (download_fd < 0) {
-		mkdirat(home_fd, download_str, 0700);
-		download_fd = openat(home_fd, download_str, O_DIRECTORY);
-		if (download_fd < 0)
-			return -1;
-	}
-	return download_fd;
+	if (download_fd > -1) return download_fd;
+
+	if (mkdirat(home_fd, download_str, 0700))
+		return -1;
+
+	download_fd = openat(home_fd, download_str, O_DIRECTORY);
+	if (download_fd > -1) return download_fd;
+
+	return -1;
 }
 
 int config_fd = -1;

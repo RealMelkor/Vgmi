@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #define SB_IGNORE
 #include "sandbox.h"
+#include "xdg.h"
 #include <string.h>
 #include <errno.h>
 #if defined(__linux__) && !defined(__MUSL__)
@@ -18,90 +19,6 @@ void* libgcc_s = NULL;
 int init_privs(const char **privs);
 #endif
 #endif
-
-#ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || \
-    defined(__linux__) || defined(sun)
-
-int xdg_pipe[2] = {-1, -1};
-int xdg_open(char*);
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <termbox.h>
-
-int xdg_request(char* str) {
-	int len = strnlen(str, 1024)+1;
-	return write(xdg_pipe[1], str, len) != len;
-}
-
-void xdg_listener() {
-	char buf[4096];
-	while (1) {
-		int len = read(xdg_pipe[0], buf, sizeof(buf));
-		if (len <= 0)
-			break;
-		xdg_open(buf);
-	}
-}
-
-int xdg_init() {
-	if (pipe(xdg_pipe)) {
-                printf("pipe failed\n");
-                return -1;
-	}
-	int pid = fork();	
-	if (pid != 0) {
-		close(xdg_pipe[0]);
-		return 0;
-	}
-	close(xdg_pipe[1]);
-
-#ifndef NO_SANDBOX
-#ifdef __OpenBSD__
-	if (unveil("/bin/sh", "x") ||
-	    unveil("/usr/bin/which", "x") ||
-	    unveil("/usr/local/bin/xdg-open", "x") ||
-	    unveil(NULL, NULL)) {
-		close(xdg_pipe[1]);
-		exit(-1);
-	}
-	if (pledge("stdio rpath exec proc", NULL)) {
-		close(xdg_pipe[1]);
-		exit(-1);
-	}
-#endif
-#ifdef sun
-	const char* privs[] = {PRIV_PROC_FORK, PRIV_PROC_EXEC,
-			       PRIV_FILE_READ, PRIV_FILE_WRITE, NULL};
-        if (init_privs(privs)) {
-		exit(-1);
-	}
-#endif
-#endif
-
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-	setproctitle("vgmi.xdg");
-#endif
-#ifdef __linux__
-	prctl(PR_SET_NAME, "vgmi [xdg]", 0, 0, 0);
-#endif
-	xdg_listener();
-	exit(0);
-}
-
-void xdg_close() {
-	if (xdg_pipe[0] > -1)
-		close(xdg_pipe[0]);
-	if (xdg_pipe[1] > -1)
-		close(xdg_pipe[1]);
-}
-
-#endif
-#endif // #ifndef DISABLE_XDG
 
 #ifndef NO_SANDBOX
 

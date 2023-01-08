@@ -194,10 +194,7 @@ int command() {
 			client.input.field[0] = '\0';
 			return 0;
 		}
-		char file[1024];
-		snprintf(file, sizeof(file), "%s/%s",
-			 download_path, client.input.download);
-		xdg_open(file);
+		xdg_open(client.input.download);
 		client.input.field[0] = '\0';
 		client.input.download[0] = '\0';
 		return 0;

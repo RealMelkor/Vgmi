@@ -1752,12 +1752,8 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				tb_interupt();
 				while (tab->request.ask == 2) 
 					nanosleep(&timeout, NULL);
-				if (tab->request.ask) {
-					char file[1024];
-					snprintf(file, sizeof(file), "%s/%s", 
-						 download_path, path);
-					fail = xdg_open(file);
-				}
+				if (tab->request.ask)
+					fail = xdg_open(path);
 			}
 			if (fail) {
 				tab->show_error = 1;
@@ -1911,22 +1907,3 @@ void gmi_free() {
 	free(client.bookmarks);
 	cert_free();
 }
-
-#ifndef DISABLE_XDG
-#ifdef xdg_open
-#undef xdg_open
-#endif
-int xdg_open(char* str) {
-	if (client.xdg) {
-		char buf[4096];
-		snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);
-		if (fork() == 0) {
-			setsid();
-			char* argv[] = {"/bin/sh", "-c", buf, NULL};
-			execvp(argv[0], argv);
-			exit(0);
-		}
-	}
-	return 0;
-}
-#endif
