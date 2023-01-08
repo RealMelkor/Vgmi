@@ -13,7 +13,9 @@ int sandbox_close();
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || \
     defined(__linux__) || defined(sun)
 int xdg_request(char*);
+#ifndef SB_IGNORE
 #define xdg_open(x) xdg_request(x)
+#endif
 #endif
 #endif
 
