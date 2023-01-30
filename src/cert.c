@@ -340,8 +340,14 @@ int cert_loadcert(const char* host, struct cert_cache* cert) {
         makefd_readonly(key_fd);
 #endif
         if (!crt_f || !key_f) {
-                close(crt_fd);
-                close(key_fd);
+		if (crt_f)
+			fclose(crt_f);
+		else
+			close(crt_fd);
+		if (key_f)
+			fclose(key_f);
+		else
+			close(key_fd);
                 return -3;
         }
         fseek(crt_f, 0, SEEK_END);
