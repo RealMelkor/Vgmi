@@ -740,6 +740,6 @@ int input(struct tb_event ev) {
 
 int tb_interupt() {
 	int sig = 0;
-	return write(global.resize_pipefd[1], &sig,
-		     sizeof(sig))==sizeof(sig)?0:-1;
+	return write(global.resize_pipefd[1], &sig, sizeof(sig)) ==
+		sizeof(sig) ? 0 : -1;
 }

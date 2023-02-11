@@ -312,7 +312,7 @@ int gmi_render(struct gmi_tab* tab) {
 			continue;
 		}
 		if (tab->page.data[c] == '\t') {
-			x+=4;
+			x += 8 - x%8;
 			continue;
 		}
 		if (tab->page.data[c] == '\r') continue;
@@ -329,9 +329,9 @@ int gmi_render(struct gmi_tab* tab) {
 		
 		if (!ignore && !text) {
 			for (int i=0;
-			     start && tab->page.data[c+i] == '#' && i<3;
+			     start && tab->page.data[c + i] == '#' && i<3;
 			     i++) {
-				if (tab->page.data[c+i+1] != '#') {
+				if (tab->page.data[c + i + 1] != '#') {
 					color = RED + i;
 					break;
 				}
@@ -348,7 +348,7 @@ int gmi_render(struct gmi_tab* tab) {
 				     tab->page.data[c + 1] == '>') {
 				char buf[32];
 				int len = snprintf(buf, sizeof(buf),
-						   "[%d]", links+1);
+						   "[%d]", links + 1);
 				if (line-1>=(tab->scroll>=0?tab->scroll:0) &&
 				    line-tab->scroll <= tb_height()-2) {
 					tb_print(x+2, line-1-tab->scroll,
@@ -380,10 +380,10 @@ int gmi_render(struct gmi_tab* tab) {
 				if (tab->page.data[c]=='\n' ||
 				    tab->page.data[c]=='\0')
 					c = initial;
-				x+=3;
-				if ((links+1)/10) x--;
-				if ((links+1)/100) x--;
-				if ((links+1)/1000) x--;
+				x += 3;
+				if ((links + 1) / 10) x--;
+				if ((links + 1) / 100) x--;
+				if ((links + 1) / 1000) x--;
 				links++;
 			}
 		}
