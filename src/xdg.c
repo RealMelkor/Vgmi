@@ -10,6 +10,12 @@ int xdg_open(char*);
 #ifdef __linux__
 #include <sys/prctl.h>
 #endif
+#ifndef NO_SANDBOX
+#ifdef sun
+#include <priv.h>
+int init_privs(const char **privs);
+#endif
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

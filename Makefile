@@ -8,9 +8,9 @@ FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 LIBSPATH = -L./lib -L/usr/local/lib -L/usr/pkg/lib
 INCLUDES = -I./include -I/usr/local/include -I/usr/pkg/include
 LIBS = -s -static -ltls -lcrypto -lssl -lpthread -lm
-SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c src/sandbox.c src/str.c src/url.c src/punycode.c
+SRC = src/main.c src/cert.c src/display.c src/gemini.c src/img.c src/input.c src/wcwidth.c src/sandbox.c src/str.c src/url.c src/punycode.c src/xdg.c
 # Uncomment to build on Illumos
-#LIBS = -ltls -lcrypto -lssl -lpthread -lm -lsocket
+#LIBS = -s -ltls -lcrypto -lssl -lpthread -lm -lsocket
 #CC = gcc
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0
 

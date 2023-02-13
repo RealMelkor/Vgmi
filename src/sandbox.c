@@ -14,13 +14,6 @@ void* libgcc_s = NULL;
 #endif
 
 #ifndef NO_SANDBOX
-#ifdef sun
-#include <priv.h>
-int init_privs(const char **privs);
-#endif
-#endif
-
-#ifndef NO_SANDBOX
 
 #ifdef __FreeBSD__
 
@@ -523,16 +516,6 @@ int init_privs(const char **privs) {
 	return 0;
 }
 
-/*
-
-   Illumos sandbox components
-
-   fork,exec,read,write : xdg
-   write : bookmark, known_host, certs_write, download
-   read : certs_read
-
-*/
-
 // write request
 #define _WR_BOOKMARKS 0xFFFFFFFF
 #define _WR_KNOWNHOSTS 0xEEEEEEEE
@@ -540,6 +523,7 @@ int init_privs(const char **privs) {
 #define _WR_DOWNLOAD 0xDDDDDDDD
 #define _WR_CERTIFICATE 0xCCCCCCCC
 #define _WR_END 0xBBBBBBBB
+// read request
 #define _RD_CERTIFICATE 0xFFFFFFFF
 
 unsigned int WR_BOOKMARKS = _WR_BOOKMARKS;
