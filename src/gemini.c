@@ -822,7 +822,7 @@ int gmi_savebookmarks() {
 	}
 #ifdef SANDBOX_FREEBSD
 	if (makefd_writeonly(fd)) {
-		fclose(f);
+		close(fd);
 		return -1;
 	}
 #endif
