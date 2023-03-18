@@ -1,11 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-#ifndef DISABLE_XDG
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || \
-    defined(__linux__) || defined(sun)
-
-int xdg_pipe[2] = {-1, -1};
-int xdg_open(char*);
-
 #include <sys/wait.h>
 #ifdef __linux__
 #include <sys/prctl.h>
@@ -24,6 +17,15 @@ int init_privs(const char **privs);
 #include "cert.h"
 #include "str.h"
 
+const char startby[] = "XDG_DOWNLOAD_DIR=\"$HOME";
+
+#ifndef DISABLE_XDG
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || \
+    defined(__linux__) || defined(sun)
+
+int xdg_pipe[2] = {-1, -1};
+int xdg_open(char*);
+
 int xdg_request(char* str) {
         int len = strnlen(str, 1024)+1;
         return write(xdg_pipe[1], str, len) != len;
@@ -37,38 +39,6 @@ void xdg_listener() {
                         break;
                 xdg_open(buf);
         }
-}
-
-const char startby[] = "XDG_DOWNLOAD_DIR=\"$HOME";
-int xdg_path(char* path, size_t len) {
-	int home = gethomefd();
-	if (home < 0) return -1;
-	int fd = openat(home, ".config/user-dirs.dirs", O_RDONLY);
-	if (fd < 0) return -1;
-	char line[1024];
-	int found = -1;
-	for (size_t i = 0; found; i++) {
-		if (i >= sizeof(line)) break;
-		if (read(fd, &line[i], 1) != 1) break;
-		if (line[i] != '\n') continue;
-		line[i] = '\0';
-		if (sizeof(startby) >= i ||
-		    strncmp(line, startby, sizeof(startby) - 1)) {
-			i = -1;
-			continue;
-		}
-		int offset = strlcpy(path, home_path, len);
-		for (size_t j = 0; j < len - 1; j++) {
-			path[offset + j] = line[sizeof(startby) - 1 + j];
-			if (path[offset + j] == '"') {
-				found = 0;
-				path[offset + j] = 0;
-				break;
-			}
-		}
-	}
-	close(fd);
-	return found;
 }
 
 int xdg_init() {
@@ -145,4 +115,35 @@ int xdg_open(char* str) {
 		exit(0);
 	}
         return 0;
+}
+
+int xdg_path(char* path, size_t len) {
+	int home = gethomefd();
+	if (home < 0) return -1;
+	int fd = openat(home, ".config/user-dirs.dirs", O_RDONLY);
+	if (fd < 0) return -1;
+	char line[1024];
+	int found = -1;
+	for (size_t i = 0; found; i++) {
+		if (i >= sizeof(line)) break;
+		if (read(fd, &line[i], 1) != 1) break;
+		if (line[i] != '\n') continue;
+		line[i] = '\0';
+		if (sizeof(startby) >= i ||
+		    strncmp(line, startby, sizeof(startby) - 1)) {
+			i = -1;
+			continue;
+		}
+		int offset = strlcpy(path, home_path, len);
+		for (size_t j = 0; j < len - 1; j++) {
+			path[offset + j] = line[sizeof(startby) - 1 + j];
+			if (path[offset + j] == '"') {
+				found = 0;
+				path[offset + j] = 0;
+				break;
+			}
+		}
+	}
+	close(fd);
+	return found;
 }
