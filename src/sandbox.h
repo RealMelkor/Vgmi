@@ -30,6 +30,7 @@ int xdg_open(char*);
 extern int config_folder;
 #include <netdb.h>
 #include <fcntl.h>
+#include <stdio.h>
 int sandbox_getaddrinfo(const char *hostname, const char *servname, 
 			const struct addrinfo *hints, struct addrinfo **res);
 int sandbox_connect(int s, const struct sockaddr *name, socklen_t namelen);
