@@ -340,8 +340,7 @@ int gmi_render(struct gmi_tab* tab) {
 				     tab->page.data[c + 1] == ' ') {
 				color = ITALIC|CYAN;
 			}
-			if (start && tab->page.data[c] == '>' &&
-				     tab->page.data[c + 1] == ' ') {
+			if (start && tab->page.data[c] == '>') {
 				color = ITALIC|MAGENTA;
 			}
 			if (start && tab->page.data[c] == '=' &&
