@@ -324,11 +324,11 @@ int cert_loadcert(const char* host, struct cert_cache* cert) {
         }
         size_t crt_pos = 0;
         size_t key_pos = 0;
-        int crt_fd = openat(config_fd, crt, 0);
+        int crt_fd = openat(config_fd, crt, O_RDONLY);
         if (crt_fd < 0) {
                 return -2;
         }
-        int key_fd = openat(config_fd, key, 0);
+        int key_fd = openat(config_fd, key, O_RDONLY);
         if (key_fd < 0) {
                 close(key_fd);
                 return -2;

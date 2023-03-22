@@ -611,6 +611,7 @@ int sandbox_listen_rd() {
 		if (recv(rd_pair[0], buf, dlen, 0) != dlen)
 			break;
 		struct cert_cache cert;
+		buf[dlen] = 0;
 		if (cert_loadcert(buf, &cert)) {
 			buf[0] = -1;
 			send(rd_pair[0], buf, 1, 0);
