@@ -16,6 +16,7 @@
 #define GMI 9
 #define P_FILE 7
 #define MAX_META 1024
+#define MAX_RESPONSE 8388608
 
 struct gmi_page {
 	char** links;

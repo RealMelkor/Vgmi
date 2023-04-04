@@ -1466,9 +1466,19 @@ int gmi_request_body(struct gmi_tab* tab) {
 		}
 		tab->request.data = realloc(tab->request.data, 
 					    tab->request.recv + bytes + 32);
+		if (!tab->request.data) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "memory allocation failure");
+			return -1;
+		}
 		memcpy(&tab->request.data[tab->request.recv], buf, bytes);
 		memset(&tab->request.data[tab->request.recv + bytes], 0, 32);
 		tab->request.recv += bytes;
+		if (tab->request.recv > MAX_RESPONSE) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "server response too large");
+			return -1;
+		}
 		now = time(0);
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
@@ -1517,7 +1527,13 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		if (!gmi_request_handshake(tab) &&
 		    tab->request.state != STATE_CANCEL) {
 			ret = gmi_request_header(tab);
-			if (!ret || ret == 2) gmi_request_body(tab);
+			if (!ret || ret == 2) {
+				if(gmi_request_body(tab)) {
+					tab->show_error = 1;
+					free(tab->request.data);
+					continue;
+				}
+			}
 		}
 
 		if (ret == -2) {
