@@ -1465,9 +1465,9 @@ int gmi_request_body(struct gmi_tab* tab) {
 			return -1;
 		}
 		tab->request.data = realloc(tab->request.data, 
-					    tab->request.recv + bytes + 1);
+					    tab->request.recv + bytes + 32);
 		memcpy(&tab->request.data[tab->request.recv], buf, bytes);
-		tab->request.data[tab->request.recv + bytes] = '\0';
+		memset(&tab->request.data[tab->request.recv + bytes], 0, 32);
 		tab->request.recv += bytes;
 		now = time(0);
 	}
