@@ -51,8 +51,8 @@ On OpenBSD, Vgmi uses Unveil to limit access to the filesystem and Pledge to res
 ### Linux
 On Linux, Vgmi uses Seccomp to restrict system calls and LandLock to restrict the filesystem
 
-### Illumos
-On Illumos, Vgmi uses Privileges, separating read, write and networking privileges in different processes
+### Illumos and Solaris
+On Illumos and Solaris, Vgmi uses Privileges, separating read, write and networking privileges in different processes
 
 ## Dependencies
 
