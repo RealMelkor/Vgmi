@@ -1556,7 +1556,7 @@ int gmi_getfd(struct gmi_tab* tab, char* path, size_t path_len) {
 	}
 #ifdef SANDBOX_SUN
 	if (sandbox_download(tab, path))
-		goto request_end;
+		return -1;
 	int dfd = wr_pair[1];
 	sandbox_dl_length(-1);
 #else
