@@ -161,7 +161,7 @@ nextlink_overflow:
 }
 
 void gmi_load(struct gmi_page* page) {
-	for (int i=0; i<page->links_count; i++)
+	for (int i=0; i < page->links_count; i++)
 		free(page->links[i]);
 	free(page->links);
 	page->links = NULL;
@@ -178,8 +178,8 @@ void gmi_load(struct gmi_page* page) {
 		if (x == 0 && page->data[c] == '=' &&
 		    page->data[c + 1] == '>') {
 			c += 2;
-			for (; c < page->data_len &&
-			       (page->data[c] == ' ' || page->data[c] == '\t');
+			for (; c < page->data_len && (page->data[c] == ' ' ||
+							page->data[c] == '\t');
 			     c++) ;
 			char* url = (char*)&page->data[c];
 			c += parse_link(&page->data[c], page->data_len - c);
@@ -1484,10 +1484,12 @@ int gmi_request_body(struct gmi_tab* tab) {
 				 tls_error(tab->request.tls));
 			return -1;
 		}
+		/* allocate addional memory in case of reading an incomplete
+		 * unicode character at the end of the page */
 		tab->request.data = realloc(tab->request.data, 
-					    tab->request.recv + bytes + 1);
+					    tab->request.recv + bytes + 32);
 		memcpy(&tab->request.data[tab->request.recv], buf, bytes);
-		tab->request.data[tab->request.recv + bytes] = '\0';
+		memset(&tab->request.data[tab->request.recv + bytes], 0, 32);
 		tab->request.recv += bytes;
 		now = time(0);
 	}
