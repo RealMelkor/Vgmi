@@ -17,6 +17,9 @@
 #define P_FILE 7
 #define MAX_META 1024
 
+#define MAX_TEXT_SIZE 4194304 // 4 MB
+#define MAX_IMAGE_SIZE 33554432 // 32 MB
+
 struct gmi_page {
 	char** links;
 	char title[64];

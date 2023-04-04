@@ -270,8 +270,10 @@ int gmi_render(struct gmi_tab* tab) {
 	}
 #endif
 	int text = 0;
-	if (strncmp(tab->page.meta, "text/gemini", 11)) {
-		if (strncmp(tab->page.meta, "text/", 5)) {
+	const char gmi[] = "text/gemini";
+	const char txt[] = "text/";
+	if (strncmp(tab->page.meta, gmi, sizeof(gmi) - 1)) {
+		if (strncmp(tab->page.meta, txt, sizeof(txt) - 1)) {
 			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 				  "Unable to render format : %s",
 				  tab->page.meta);
@@ -1460,9 +1462,10 @@ int gmi_request_header(struct gmi_tab* tab) {
 	return 0;
 }
 
-int gmi_request_body(struct gmi_tab* tab) {
+int gmi_request_body(struct gmi_tab* tab, int fd) {
 	time_t now = time(0);
 	char buf[1024];
+	int isText = !strncmp(tab->request.meta, "text/", sizeof("text/") - 1);
 	while (tab->request.state != STATE_CANCEL) {
 		if (time(0) - now >= TIMEOUT) {
 			snprintf(tab->error, sizeof(tab->error),
@@ -1484,6 +1487,16 @@ int gmi_request_body(struct gmi_tab* tab) {
 				 tls_error(tab->request.tls));
 			return -1;
 		}
+		if (fd > 0) {
+			if (write(fd, buf, bytes) != bytes) {
+				snprintf(tab->error, sizeof(tab->error),
+					 "Failed to download file: %s",
+					 strerror(errno));
+				return -1;
+			}
+			now = time(0);
+			continue;
+		}
 		/* allocate addional memory in case of reading an incomplete
 		 * unicode character at the end of the page */
 		tab->request.data = realloc(tab->request.data, 
@@ -1491,11 +1504,125 @@ int gmi_request_body(struct gmi_tab* tab) {
 		memcpy(&tab->request.data[tab->request.recv], buf, bytes);
 		memset(&tab->request.data[tab->request.recv + bytes], 0, 32);
 		tab->request.recv += bytes;
+		/* prevent the server from filling up memory */
+		if ((isText && tab->request.recv > MAX_TEXT_SIZE) ||
+		    (!isText && tab->request.recv > MAX_IMAGE_SIZE)) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "The server sent a too large response");
+			return -1;
+		}
 		now = time(0);
 	}
 	if (tab->request.state == STATE_CANCEL) return -1;
 	tab->request.state = STATE_RECV_BODY;
 	return 0;
+}
+
+int gmi_getfd(struct gmi_tab* tab, char* path, size_t path_len) {
+	int len = strnlen(tab->request.url,
+			  sizeof(tab->request.url));
+	if (tab->request.url[len-1] == '/')
+		tab->request.url[len-1] = '\0';
+	char* ptr = strrchr(tab->request.url, '/');
+#ifndef SANDBOX_SUN
+	int fd = getdownloadfd();
+	if (fd < 0) {
+		snprintf(tab->error, sizeof(tab->error),
+			 "Unable to open download folder");
+		tab->show_error = 1;
+		return -1;
+	}
+#endif
+	if (ptr)
+		strlcpy(path, ptr + 1, path_len);
+	else {
+#ifdef __OpenBSD__
+		char format[] = "output_%lld.dat";
+#else
+		char format[] = "output_%ld.dat";
+#endif
+
+		snprintf(path, path_len, format, time(NULL));
+	}
+	for (unsigned int i = 0; i < path_len && path[i] && ptr; i++) {
+		char c = path[i];
+		if ((path[i] == '.' && path[i+1] == '.') ||
+		    !(c == '.' ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9')
+		     ))
+			path[i] = '_';
+	}
+#ifdef SANDBOX_SUN
+	if (sandbox_download(tab, path))
+		goto request_end;
+	int dfd = wr_pair[1];
+	sandbox_dl_length(-1);
+#else
+	int dfd = openat(fd, path,
+			 O_CREAT|O_EXCL|O_WRONLY, 0600);
+	if (dfd < 0 && errno == EEXIST) {
+		char buf[1024];
+#ifdef __OpenBSD__
+		char format[] = "%lld_%s";
+#else
+		char format[] = "%ld_%s";
+#endif
+		snprintf(buf, sizeof(buf), format, time(NULL), path);
+		strlcpy(path, buf, path_len);
+		dfd = openat(fd, path,
+			     O_CREAT|O_EXCL|O_WRONLY, 0600);
+		if (dfd < 0) {
+			snprintf(tab->error, sizeof(tab->error),
+				 "Failed to write to the download folder");
+			tab->show_error = 1;
+			return -1;
+		}
+	}
+#ifdef SANDBOX_FREEBSD
+	if (makefd_writeonly(dfd)) {
+		client.shutdown = 1;
+		break;
+	}
+#endif
+#endif
+	return dfd;
+}
+
+int gmi_postdownload(struct gmi_tab* tab, int fd, const char* path) {
+
+#ifndef SANDBOX_SUN
+	close(fd);
+#endif
+#ifndef DISABLE_XDG
+	int fail = 0;
+	if (client.xdg) {
+		tab->request.ask = 2;
+		snprintf(tab->request.info,
+			 sizeof(tab->request.info),
+			 "# %s download",
+			 tab->request.meta);
+		strlcpy(tab->request.action, "open",
+			sizeof(tab->request.action));
+		tb_interupt();
+		while (tab->request.ask == 2)
+			nanosleep(&timeout, NULL);
+		if (tab->request.ask)
+			fail = xdg_open(path);
+	}
+	if (fail) {
+		tab->show_error = 1;
+		snprintf(tab->error, sizeof(tab->info),
+			"Failed to open %s", path);
+	} else
+#endif
+	{
+		tab->show_info = 1;
+		snprintf(tab->info, sizeof(tab->info),
+			"File downloaded to %s", path);
+	}
+	return fail;
 }
 
 void* gmi_request_thread(struct gmi_tab* tab) {
@@ -1539,7 +1666,20 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		if (!gmi_request_handshake(tab) &&
 		    tab->request.state != STATE_CANCEL) {
 			ret = gmi_request_header(tab);
-			if (!ret || ret == 2) gmi_request_body(tab);
+			if (!ret || ret == 2) {
+				char out[1024];
+				int fd = -1;
+				if (tab->request.download)
+					fd = gmi_getfd(tab, out, sizeof(out));
+				if (gmi_request_body(tab, fd)) {
+					close(fd);
+					tab->show_error = 1;
+					free(tab->request.data);
+					continue;
+				}
+				if (fd > 0)
+					gmi_postdownload(tab, fd, out);
+			}
 		}
 
 		if (ret == -2) {
@@ -1648,129 +1788,6 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			}
 			tab->scroll = -1;
 			pthread_mutex_unlock(&tab->render_mutex);
-		}
-		if (tab->request.download &&
-		    tab->request.recv > 0 &&
-		    tab->page.code == 20) {
-			int len = strnlen(tab->request.url,
-					  sizeof(tab->request.url));
-			if (tab->request.url[len-1] == '/')
-				tab->request.url[len-1] = '\0';
-			char* ptr = strrchr(tab->request.url, '/');
-#ifndef SANDBOX_SUN
-			int fd = getdownloadfd();	
-			if (fd < 0) {
-				snprintf(tab->error, sizeof(tab->error),
-					 "Unable to open download folder");
-				tab->show_error = 1;
-				goto request_end;
-			}
-#endif
-			char path[1024];
-			if (ptr)
-				strlcpy(path, ptr + 1, sizeof(path));
-			else {
-#ifdef __OpenBSD__
-				char format[] = "output_%lld.dat";
-#else
-				char format[] = "output_%ld.dat";
-#endif
-
-				snprintf(path, sizeof(path),
-					 format, time(NULL));
-			}
-			for (unsigned int i = 0;
-			     i < sizeof(path) && path[i] && ptr; i++) {
-				char c = path[i];
-				if ((path[i] == '.' && path[i+1] == '.') ||
-				    !(c == '.' ||
-					(c >= 'A' && c <= 'Z') ||
-					(c >= 'a' && c <= 'z') ||
-					(c >= '0' && c <= '9')
-				     ))
-					path[i] = '_';
-			}
-#ifdef SANDBOX_SUN
-			if (sandbox_download(tab, path))
-				goto request_end;
-			int dfd = wr_pair[1];
-#else
-			int dfd = openat(fd, path,
-					 O_CREAT|O_EXCL|O_WRONLY, 0600);
-			if (dfd < 0 && errno == EEXIST) {
-				char buf[1024];
-#ifdef __OpenBSD__
-				char format[] = "%lld_%s";
-#else
-				char format[] = "%ld_%s";
-#endif
-				snprintf(buf, sizeof(buf), format,
-					 time(NULL), path);
-				strlcpy(path, buf, sizeof(path));
-				dfd = openat(fd, path,
-					     O_CREAT|O_EXCL|O_WRONLY, 0600);
-				if (dfd < 0) {
-					snprintf(tab->error,
-						 sizeof(tab->error),
-						 "Failed to write to " \
-						 "the download folder");
-					tab->show_error = 1;
-					goto request_end;
-				}
-			}
-#ifdef SANDBOX_FREEBSD
-			if (makefd_writeonly(dfd)) {
-				client.shutdown = 1;
-				break;
-			}
-#endif
-#endif
-			ptr = strchr(tab->request.data, '\n') + 1;
-			if (!ptr) {
-				tab->show_error = 1;
-				snprintf(tab->error, sizeof(tab->error),
-					 "Server sent invalid data");
-				goto request_end;
-			}
-#ifdef SANDBOX_SUN
-			sandbox_dl_length(tab->request.recv -
-					  (ptr-tab->request.data));
-#endif
-			write(dfd, ptr,
-			      tab->request.recv - (ptr-tab->request.data));
-#ifndef SANDBOX_SUN
-			close(dfd);
-#endif
-#ifndef DISABLE_XDG
-			int fail = 0;
-			if (client.xdg) {
-				tab->request.ask = 2;
-				snprintf(tab->request.info,
-					 sizeof(tab->request.info), 
-					 "# %s download",
-					 tab->request.meta);
-				strlcpy(tab->request.action, "open", 
-					sizeof(tab->request.action));
-				tb_interupt();
-				while (tab->request.ask == 2) 
-					nanosleep(&timeout, NULL);
-				if (tab->request.ask)
-					fail = xdg_open(path);
-			}
-			if (fail) {
-				tab->show_error = 1;
-				snprintf(tab->error, sizeof(tab->info),
-					"Failed to open %s", path);
-			} else
-#endif
-			{
-				tab->show_info = 1;
-				snprintf(tab->info, sizeof(tab->info),
-					"File downloaded to %s", path);
-			}
-request_end:
-			free(tab->request.data);
-			tab->request.recv = tab->page.data_len;
 		}
 	}
 	return NULL;

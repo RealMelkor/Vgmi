@@ -24,7 +24,7 @@ const char startby[] = "XDG_DOWNLOAD_DIR=\"$HOME";
     defined(__linux__) || defined(sun)
 
 int xdg_pipe[2] = {-1, -1};
-int xdg_open(char*);
+int xdg_open(const char*);
 
 int xdg_request(char* str) {
         int len = strnlen(str, 1024)+1;
@@ -104,7 +104,7 @@ void xdg_close() {
 
 #define SB_IGNORE
 #include "gemini.h"
-int xdg_open(char* str) {
+int xdg_open(const char* str) {
         if (!client.xdg) return 0;
 	char buf[4096];
 	snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);

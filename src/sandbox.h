@@ -12,7 +12,7 @@ int sandbox_close();
 #ifndef DISABLE_XDG
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || \
     defined(__linux__) || defined(sun)
-int xdg_request(char*);
+int xdg_request(const char*);
 #ifndef SB_IGNORE
 #define xdg_open(x) xdg_request(x)
 #endif
@@ -20,7 +20,7 @@ int xdg_request(char*);
 #endif
 
 #ifndef xdg_open
-int xdg_open(char*);
+int xdg_open(const char*);
 #endif
 
 #ifdef __FreeBSD__
