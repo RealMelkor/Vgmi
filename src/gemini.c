@@ -1592,7 +1592,10 @@ int gmi_getfd(struct gmi_tab* tab, char* path, size_t path_len) {
 
 int gmi_postdownload(struct gmi_tab* tab, int fd, const char* path) {
 
-#ifndef SANDBOX_SUN
+#ifdef SANDBOX_SUN
+	if (wr_pair[1] != fd)
+		return -1;
+#else
 	close(fd);
 #endif
 #ifndef DISABLE_XDG
