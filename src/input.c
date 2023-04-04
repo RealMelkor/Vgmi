@@ -139,8 +139,11 @@ int command() {
 		}
 		return 0;
 	}
-	if (strncmp(client.input.field, ":forget",
-		    sizeof(":forget") - 1) == 0) {
+	int ignore = !strncmp(client.input.field, ":ignore",
+				sizeof(":ignore") - 1);
+	int forget = !strncmp(client.input.field, ":forget",
+				sizeof(":forget") - 1);
+	if (forget || ignore) {
 		char* ptr = client.input.field + sizeof(":forget") - 1;
 		int space = 0;
 		for (; *ptr; ptr++) {
@@ -148,15 +151,24 @@ int command() {
 			space++;
 		}
 		if (space == 0 || !*ptr) goto unknown;
-		if (cert_forget(ptr)) {
+		if ((ignore && cert_ignore_expiration(ptr)) ||
+		    (forget && cert_forget(ptr))) {
 			tab->show_error = 1;
-			snprintf(tab->error, sizeof(tab->error),
-				 "Unknown certificate %s", ptr);
+			if (forget) {
+				snprintf(tab->error, sizeof(tab->error),
+					 "Unknown %s certificate", ptr);
+			} else {
+				strerror_r(errno, tab->error,
+					   sizeof(tab->error));
+			}
 			return 0;
 		}
 		tab->show_info = 1;
 		snprintf(tab->info, sizeof(tab->info),
-			 "%s certificate removed from known hosts", ptr);
+			 "%s %s", ptr, (forget ?
+			 "certificate removed from known hosts" :
+			 "certificate expiration will be ignored"));
+		client.input.field[0] = '\0';
 		return 0;
 	}
 	if (strcmp(client.input.field, ":gencert") == 0) {

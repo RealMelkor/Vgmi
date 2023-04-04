@@ -37,6 +37,7 @@ You can prefix a movement key with a number to repeat it.
 * :[number]		- Scroll to the line number
 * :gencert		- Generate a certificate for the current capsule
 * :forget [host]	- Forget the certificate for the host
+* :ignore [host]	- Ignore expiration for the host certificate
 * :download [name]	- Download the current page, the name is optional
 * :exec			- Open the last downloaded file
 

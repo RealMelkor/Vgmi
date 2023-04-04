@@ -574,3 +574,27 @@ void cert_free() {
 	if (home_fd > 0)
 		close(home_fd);
 }
+
+struct ignore_entry {
+	char host[1024];
+	struct ignore_entry *next;
+};
+struct ignore_entry *ignore_list = NULL;
+int cert_ignore_expiration(const char *host) {
+	struct ignore_entry *entry = malloc(sizeof(struct ignore_entry));
+	if (!entry) return -1;
+	strlcpy(entry->host, host, sizeof(entry->host));
+	entry->next = ignore_list;
+	ignore_list = entry;
+	return 0;
+}
+
+int cert_should_ignore(const char *host) {
+	struct ignore_entry *entry = ignore_list;
+	while (entry) {
+		if (!strncmp(entry->host, host, sizeof(entry->host)))
+			return 1;
+		entry = entry->next;
+	}
+	return 0;
+}

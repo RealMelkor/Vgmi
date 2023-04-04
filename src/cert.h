@@ -13,6 +13,8 @@ int cert_verify(char* host, const char* hash,
 int cert_forget(char* host);
 int cert_loadcert(const char* host, struct cert_cache* cert);
 int cert_getcert(char* host, int reload);
+int cert_ignore_expiration(const char *host);
+int cert_should_ignore(const char *host);
 int gethomefd();
 int getconfigfd();
 int getdownloadfd();

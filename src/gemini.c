@@ -627,6 +627,7 @@ char home_page[] =
 "* :[number] - Scroll to the line number\n" \
 "* :gencert - Generate a certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for an host\n" \
+"* :ignore <host> - Ignore expiration for the host certificate\n" \
 "* :download [name] - Download the current page, the name is optional\n"
 "* :exec - Open the last downloaded file";
 
@@ -1223,6 +1224,7 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 			 "for %s", tab->request.host);
 		return -1;
 	case -5: // expired
+		if (cert_should_ignore(tab->request.host)) break;
 		snprintf(tab->error, sizeof(tab->error),
 			 "Expired certificate, " \
 			 "the certificate for %s has expired",
