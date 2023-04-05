@@ -226,7 +226,7 @@ int parse_query(const char* url, int len, char* buf, int llen) {
 
 int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 	const char* ptr = domain;
-	uint32_t part[1024];
+	uint32_t part[1024] = {0};
 	size_t pos = 0;
 	int n = 0;
 	int unicode = 0;

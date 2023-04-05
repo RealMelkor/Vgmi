@@ -1233,7 +1233,8 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 	}
 	ssize_t len = strlcpy(&buf[GMI], toascii, sizeof(buf) - GMI) + GMI;
 	char url[1024];
-	len = parse_query(buf, MAX_URL, url, MAX_URL);
+	if (len < MAX_URL)
+		len = parse_query(buf, MAX_URL, url, MAX_URL);
 	if (len >= MAX_URL ||
 	    (len += strlcpy(&url[len], "\r\n", MAX_URL - len)) >= MAX_URL) {
 		snprintf(tab->error, sizeof(tab->error),
