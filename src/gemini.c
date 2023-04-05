@@ -58,6 +58,13 @@ void* fatalP() {
 	return NULL;
 }
 
+void memory_failure(struct gmi_tab* tab) {
+	if (!tab) return;
+	tab->show_error = 1;
+	snprintf(tab->error, sizeof(tab->error),
+		 "memory allocation failure");
+}
+
 int gmi_goto(struct gmi_tab* tab, int id) {
 	id--;
 	struct gmi_page* page = &tab->page;
@@ -187,27 +194,27 @@ void gmi_load(struct gmi_page* page) {
 				c--;
 			char save = page->data[c];
 			page->data[c] = '\0';
-			if (page->links)
-				page->links = realloc(page->links,
-						      sizeof(char*) *
-						      (page->links_count+1));
-			else
-				page->links = malloc(sizeof(char*));
-			if (!page->links) {
-				fatal();
-				return;
+			void *ptr = NULL;
+			while (!ptr) {
+				ptr = page->links ? realloc(page->links,
+					sizeof(char*) * (page->links_count+1)):
+					malloc(sizeof(char*));
+				if (!ptr) sleep(1);
 			}
+			page->links = ptr;
+
 			if (url[0] == '\0') {
 				page->links[page->links_count] = NULL;
 				page->data[c] = save;
 				continue;
 			}
 			int len = strnlen(url, MAX_URL);
-			page->links[page->links_count] = malloc(len+2);
-			if (!page->links[page->links_count]) {
-				fatal();
-				return;
+			ptr = NULL;
+			while (!ptr) {
+				ptr = malloc(len+2);
+				if (!ptr) sleep(1);
 			}
+			page->links[page->links_count] = ptr;
 			memcpy(page->links[page->links_count], url, len+1);
 			page->links_count++;
 			page->data[c] = save;
@@ -501,7 +508,7 @@ void gmi_addtohistory(struct gmi_tab* tab) {
 	gmi_cleanforward(tab);
 	struct gmi_link* link = malloc(sizeof(struct gmi_link));
 	if (!link) {
-		fatal();
+		memory_failure(tab);
 		return;
 	}
 	link->next = NULL;
@@ -671,6 +678,11 @@ int gmi_loadbookmarks() {
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* data = malloc(len);
+	if (!data) {
+		memory_failure(client.tab);
+		fclose(f);
+		return -1;
+	}
 	if (len != fread(data, 1, len, f)) {
 		fclose(f);
 		return -1;
@@ -680,6 +692,10 @@ int gmi_loadbookmarks() {
 	long n = 0;
 	while (++ptr && ptr < data+len) if (*ptr == '\n') n++;
 	client.bookmarks = malloc(sizeof(char*) * (n + 1));
+	if (!client.bookmarks) {
+		memory_failure(client.tab);
+		return -1;
+	}
 	client.bookmarks[n] = NULL;
 	n = 0;
 	ptr = data;
@@ -688,6 +704,10 @@ int gmi_loadbookmarks() {
 		if (*ptr != '\n') continue;
 		*ptr = '\0';
 		client.bookmarks[n] = malloc(ptr-str+1);
+		if (!client.bookmarks[n]) {
+			memory_failure(client.tab);
+			break;
+		}
 		strlcpy(client.bookmarks[n], str, ptr-str+1);
 		n++;
 		str = ptr+1;
@@ -799,14 +819,23 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	} else title_len = strnlen(title, 128);
 	long n = 0;
 	while (client.bookmarks[n]) n++;
-	client.bookmarks = realloc(client.bookmarks, sizeof(char*) * (n + 2));
+	void* ptr = realloc(client.bookmarks, sizeof(char*) * (n + 2));
+	if (!ptr) {
+		memory_failure(tab);
+		return;
+	}
+	client.bookmarks = ptr;
 	int len = strnlen(url, MAX_URL) + title_len + 2;
 	client.bookmarks[n] = malloc(len);
+	if (!client.bookmarks[n]) {
+		memory_failure(tab);
+		return;
+	}
 	if (title)
 		snprintf(client.bookmarks[n], len, "%s %s", url, title);
 	else
 		snprintf(client.bookmarks[n], len, "%s", url);
-	client.bookmarks[n+1] = NULL;
+	client.bookmarks[n + 1] = NULL;
 	gmi_savebookmarks();
 }
 
@@ -849,8 +878,12 @@ char* gmi_getbookmarks(int* len) {
 		char line[2048];
 		long length = snprintf(line, sizeof(line), "=>%s\n ",
 				       client.bookmarks[i]);
-		data = realloc(data, n+length+1);
-		if (!data) return fatalP();
+		void *ptr = realloc(data, n+length+1);
+		if (!ptr) {
+			*len = n;
+			return data;
+		}
+		data = ptr;
 		strlcpy(&data[n], line, length);
 		n += length-1;
 	}
@@ -864,20 +897,18 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	char* data = gmi_getbookmarks(&bm);
 	pthread_mutex_lock(&tab->render_mutex);
 	tab->request.data = malloc(sizeof(home_page) + bm);
-	bzero(tab->request.data, sizeof(home_page) + bm);
 	if (!tab->request.data) {
-		fatal();
+		memory_failure(tab);
+		pthread_mutex_unlock(&tab->render_mutex);
 		return;
 	}
+	bzero(tab->request.data, sizeof(home_page) + bm);
 
-	tab->request.recv = snprintf(tab->request.data,
-				     sizeof(home_page) + bm,
-				     home_page,
-				     data?data:"");
+	tab->request.recv = snprintf(tab->request.data, sizeof(home_page) + bm,
+				     home_page, data ? data : "");
 	free(data);
 
-	strlcpy(tab->request.meta, "text/gemini",
-		sizeof(tab->request.meta));
+	strlcpy(tab->request.meta, "text/gemini", sizeof(tab->request.meta));
 
 	if (!add)
 		gmi_freepage(&tab->page);
@@ -907,7 +938,10 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	if (client.tab) {
 		struct gmi_tab* next = client.tab->next;
 		client.tab->next = malloc(sizeof(struct gmi_tab));
-		if (!client.tab->next) return fatalP();
+		if (!client.tab->next) {
+			memory_failure(client.tab);
+			return client.tab;
+		}
 		bzero(client.tab->next, sizeof(struct gmi_tab));
 		client.tab->next->next = next;
 		client.tab->next->prev = client.tab;
@@ -922,7 +956,7 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 	pthread_mutex_init(&client.tab->render_mutex, NULL);
 	
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, client.tab->thread.pair))
-		return NULL;
+		return client.tab;
 	pthread_create(&client.tab->thread.thread, NULL,
 		       (void *(*)(void *))gmi_request_thread,
 		       (void*)client.tab);
@@ -1021,8 +1055,11 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	strlcpy(tab->request.host, host, sizeof(tab->request.host));
 #if defined(__linux__) && !defined(__MUSL__)
 	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
+	if (!tab->request.gaicb_ptr) {
+		memory_failure(tab);
+		return -1;
+	}
 	bzero(tab->request.gaicb_ptr, sizeof(struct gaicb));
-	if (!tab->request.gaicb_ptr) return fatalI();
         tab->request.gaicb_ptr->ar_name = tab->request.host;
 	tab->request.resolved = 0;
         struct sigevent sevp;
@@ -1459,7 +1496,10 @@ int gmi_request_header(struct gmi_tab* tab) {
 	tab->request.state = STATE_RECV_HEADER;
 	tab->request.recv = recv;
 	tab->request.data = malloc(tab->request.recv + 1);
-	if (!tab->request.data) return fatalI();
+	if (!tab->request.data) {
+		memory_failure(tab);
+		return -1;
+	}
 	memcpy(tab->request.data, buf, recv);
 	return 0;
 }
@@ -1501,8 +1541,15 @@ int gmi_request_body(struct gmi_tab* tab, int fd) {
 		}
 		/* allocate addional memory in case of reading an incomplete
 		 * unicode character at the end of the page */
-		tab->request.data = realloc(tab->request.data, 
+		void *ptr = realloc(tab->request.data,
 					    tab->request.recv + bytes + 32);
+		if (!ptr) {
+			free(tab->request.data);
+			tab->request.data = NULL;
+			memory_failure(tab);
+			return -1;
+		}
+		tab->request.data = ptr;
 		memcpy(&tab->request.data[tab->request.recv], buf, bytes);
 		memset(&tab->request.data[tab->request.recv + bytes], 0, 32);
 		tab->request.recv += bytes;
@@ -1831,7 +1878,11 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* data = malloc(len);
-	if (!data) return fatalI();
+	if (!data) {
+		fclose(f);
+		memory_failure(tab);
+		return -1;
+	}
 	if (len != fread(data, 1, len, f)) {
 		fclose(f);
 		free(data);
@@ -1847,10 +1898,8 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	int i = strnlen(path, 1024);
 	int gmi = 0;
 	if (i > 4 && path[i - 1] == '/') i--;
-	if (i > 4 && path[i - 4] == '.' &&
-	    path[i - 3] == 'g' &&
-	    path[i - 2] == 'm' &&
-	    path[i - 1] == 'i') 
+	if (i > 4 && path[i - 4] == '.' && path[i - 3] == 'g' &&
+	    path[i - 2] == 'm' && path[i - 1] == 'i')
 		gmi = 1;
 	if (gmi)
 		strlcpy(tab->page.meta, "text/gemini", sizeof(tab->page.meta));
