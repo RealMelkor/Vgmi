@@ -1632,7 +1632,7 @@ int gmi_getfd(struct gmi_tab* tab, char* path, size_t path_len) {
 #ifdef SANDBOX_FREEBSD
 	if (makefd_writeonly(dfd)) {
 		client.shutdown = 1;
-		break;
+		return -1;
 	}
 #endif
 #endif
