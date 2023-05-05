@@ -2,7 +2,14 @@
 #ifndef _GEMINI_H_
 #define _GEMINI_H_
 
-#define VERSION "1.5 LTS"
+#define LTS 0
+#define MAJOR "1"
+#define MINOR "5"
+#if LTS
+#define VERSION MAJOR "." MINOR " LTS"
+#else
+#define VERSION MAJOR "." MINOR " (" __DATE__ " " __TIME__ ")"
+#endif
 
 #include <netdb.h>
 #include <unistd.h>
