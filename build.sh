@@ -4,7 +4,7 @@ download=wget
 if ! hash $download 2>/dev/null; then # FreeBSD
         download=fetch
 fi
-if ! hash $download 2>/dev/null; then # OpenBSD
+if [ "$(uname)" == OpenBSD ] ; then # OpenBSD
         download=ftp
 fi
 if ! hash $download 2>/dev/null; then
