@@ -54,14 +54,15 @@ mkdir -p build
 cd build
 mkdir -p ../lib
 
-# LibreSSL 3.6.1
+# LibreSSL 3.8.0
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
-	h="acfac61316e93b919c28d62d53037ca734de85c46b4d703f19fd8395cf006774"
-	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.6.1.tar.gz"
-	tar -zxf libressl-3.6.1.tar.gz
-	cd libressl-3.6.1
+	ssl_version="3.8.0"
+	h="12531c1ec808c5c6abeb311899664b0cfed04d4648f456dc959bb93c5f21acac"
+	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$ssl_version.tar.gz"
+	tar -zxf libressl-$ssl_version.tar.gz
+	cd libressl-$ssl_version
 	if [ "$(uname)" == SunOS ] ;
 	then
 		CC=gcc MAKE=gmake ./configure
@@ -84,9 +85,9 @@ h="0ebef83bf8acfacea1cfc8ed78886eb46bd28f915e1217c07577bf08801a95b8"
 check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/9627635ca71cd0378b58c2305e3f731faa26132b/termbox.h"
 cp termbox.h ../include/
 
-# stb_image 2.27
-h="91f435e0fc6a620018b878b9859c74dff60d28046f87e649191ad6f35a98c722"
-check_hash $h "https://raw.githubusercontent.com/nothings/stb/8b5f1f37b5b75829fc72d38e7b5d4bcbf8a26d55/stb_image.h"
+# stb_image 2.28
+h="38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc"
+check_hash $h "https://raw.githubusercontent.com/nothings/stb/5736b15f7ea0ffb08dd38af21067c314d6a3aae9/stb_image.h"
 cp stb_image.h ../include/
 
 cd ../
