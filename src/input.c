@@ -16,6 +16,7 @@ void cfmakeraw(struct termios *t);
 #include "str.h"
 #include "url.h"
 #include "sandbox.h"
+#include "util.h"
 #include <stdio.h>
 
 int get_cursor_pos() {
@@ -46,12 +47,12 @@ int command() {
 	struct gmi_page* page = &tab->page;
 
 	// Trim
-	for (int i=strnlen(client.input.field, sizeof(client.input.field)) - 1;
-	     client.input.field[i] == ' ' || client.input.field[i] == '\t';
-	     i--)
+	for (int i = STRNLEN(client.input.field) - 1;
+			client.input.field[i] == ' ' ||
+			client.input.field[i] == '\t'; i--)
 		client.input.field[i] = '\0';
 
-	if (client.input.field[1] == 'q' && client.input.field[2] == '\0') {
+	if (!STRCMP(client.input.field, ":q")) {
 		gmi_freetab(tab);
 		client.input.field[0] = '\0';
 		if (client.tabs_count < 1)
@@ -60,34 +61,34 @@ int command() {
 			fix_scroll(client.tab);
 		return 0;
 	}
-	if (client.input.field[1] == 'q' && client.input.field[2] == 'a'
-	    && client.input.field[3] == '\0') 
+	if (!STRCMP(client.input.field, ":qa"))
 		return 1;
-	if (client.input.field[1] == 'n' && client.input.field[2] == 't'
-	    && client.input.field[3] == '\0') {
+	if ((client.input.field[1] == 'n' && client.input.field[2] == 't'
+	    && client.input.field[3] == '\0')
+	     || !STRCMP(client.input.field, ":tabnew")) {
 		client.tab = gmi_newtab();
 		client.input.field[0] = '\0';
 		return 0;
 	}
-	if (client.input.field[1] == 'n' && client.input.field[2] == 't'
-	   && client.input.field[3] == ' ') {
+	if (STARTWITH(client.input.field, ":nt ") ||
+			STARTWITH(client.input.field, ":tabnew ")) {
+		int i = client.input.field[1] == 'n' ? 4 : 8;
 		client.input.cursor = 0;
-		int id = atoi(&client.input.field[4]);
+		int id = atoi(&client.input.field[i]);
 		if (id != 0 || 
-		    (client.input.field[4] == '0' &&
-		     client.input.field[5] == '\0')) {
+		    (client.input.field[i] == '0' &&
+		     client.input.field[i + 1] == '\0')) {
 			gmi_goto_new(tab, id);
 			client.input.field[0] = '\0';
 		} else {
-			client.tab = gmi_newtab_url(&client.input.field[4]);
+			client.tab = gmi_newtab_url(&client.input.field[i]);
 			client.input.field[0] = '\0';
 		}
 		return 0;
 	}
-	if (client.input.field[1] == 'o' && client.input.field[2] == ' ') {
+	if (STARTWITH(client.input.field, ":o ")) {
 		char urlbuf[MAX_URL];
-		if (strlcpy(urlbuf, &client.input.field[3],
-			    sizeof(urlbuf)) >= sizeof(urlbuf)) {
+		if (STRLCPY(urlbuf, &client.input.field[3]) >= sizeof(urlbuf)) {
 			tab->show_error = 1;
 			snprintf(tab->error, sizeof(tab->error),
 				 "Url too long");
@@ -106,7 +107,7 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
-	if (client.input.field[1] == 's' && client.input.field[2] == ' ') {
+	if (STARTWITH(client.input.field, ":s")) {
 		char urlbuf[MAX_URL];
 		snprintf(urlbuf, sizeof(urlbuf),
 			 "gemini://geminispace.info/search?%s",
@@ -124,10 +125,7 @@ int command() {
 		tab->selected = 0;
 		return 0;
 	}
-	if (client.input.field[1] == 'a' &&
-	    client.input.field[2] == 'd' &&
-	    client.input.field[3] == 'd' &&
-	   (client.input.field[4] == ' ' || client.input.field[4] == '\0')) {
+	if (STARTWITH(client.input.field, ":add")) {
 		char* title = client.input.field[4] == '\0'?
 				NULL:&client.input.field[5];
 		gmi_addbookmark(tab, tab->url, title);
@@ -139,10 +137,8 @@ int command() {
 		}
 		return 0;
 	}
-	int ignore = !strncmp(client.input.field, ":ignore",
-				sizeof(":ignore") - 1);
-	int forget = !strncmp(client.input.field, ":forget",
-				sizeof(":forget") - 1);
+	int ignore = STARTWITH(client.input.field, ":ignore");
+	int forget = STARTWITH(client.input.field, ":forget");
 	if (forget || ignore) {
 		char* ptr = client.input.field + sizeof(":forget") - 1;
 		int space = 0;
@@ -171,10 +167,10 @@ int command() {
 		client.input.field[0] = '\0';
 		return 0;
 	}
-	if (strcmp(client.input.field, ":gencert") == 0) {
+	if (!STRCMP(client.input.field, ":gencert")) {
 		client.input.field[0] = '\0';
 		tab->selected = 0;
-		if (!strncmp(tab->url, "about:home", sizeof(tab->url))) {
+		if (!STRCMP(tab->url, "about:home")) {
 			tab->show_error = 1;
 			snprintf(tab->error, sizeof(tab->error),
 				 "Cannot create a certificate for this page");
@@ -192,7 +188,7 @@ int command() {
 			 "Certificate generated for %s", host);
 		return 0;
 	}
-	if (strcmp(client.input.field, ":exec") == 0) {
+	if (!STRCMP(client.input.field, ":exec")) {
 #ifdef DISABLE_XDG
 		tab->show_error = 1;
 		snprintf(tab->error, sizeof(tab->error),
@@ -212,8 +208,7 @@ int command() {
 		return 0;
 #endif
 	}
-	if (strncmp(client.input.field, ":download",
-		    sizeof(":download") - 1) == 0) {
+	if (STARTWITH(client.input.field, ":download")) {
 		char* ptr = client.input.field + sizeof(":download") - 1;
 		int space = 0;
 		for (; *ptr; ptr++) {
@@ -281,8 +276,7 @@ int command() {
 		tab->show_info = 1;
 		snprintf(tab->info, sizeof(tab->info),
 			 "File downloaded : %s", download);
-		strlcpy(client.input.download, download,
-			sizeof(client.input.download));
+		STRLCPY(client.input.download, download);
 		client.input.field[0] = '\0';
 		tab->selected = 0;
 		return 0;
@@ -299,8 +293,7 @@ int command() {
 		return 0;
 	}
 	if (client.input.field[0] == '/') {
-		strlcpy(tab->search.entry, &client.input.field[1],
-			sizeof(tab->search.entry));
+		STRLCPY(tab->search.entry, &client.input.field[1]);
 		client.input.field[0] = '\0';
 	} else if (client.input.field[1] == '\0') client.input.field[0] = '\0';
 	else {
@@ -371,9 +364,8 @@ int input_page(struct tb_event ev) {
 			tab->show_error = 1;
 			return 0;
 		}
-		size_t len = strlcpy(tab->selected_url,
-				     page->links[tab->selected - 1],
-				     sizeof(tab->selected_url));
+		size_t len = STRLCPY(tab->selected_url,
+				     page->links[tab->selected - 1]);
 		if (len >= sizeof(tab->selected_url)) {
 			snprintf(tab->error, sizeof(tab->error),
 				 "Invalid link, above %lu characters",
@@ -480,7 +472,7 @@ go_back:
 		} 
 		if (tab->history->cached) {
 			tab->page = tab->history->page;
-			strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+			STRLCPY(tab->url, tab->history->url);
 		} else if (gmi_request(tab, tab->history->url, 1) < 0) break;
 		fix_scroll(client.tab);
 		break;
@@ -499,7 +491,7 @@ go_forward:
 		tab->history->scroll = tab->scroll;
 		tab->history = tab->history->next;
 		tab->scroll = tab->history->scroll;
-		strlcpy(tab->url, tab->history->url, sizeof(tab->url));
+		STRLCPY(tab->url, tab->history->url);
 		fix_scroll(client.tab);
 		break;
 	case 'k': // UP
@@ -545,8 +537,7 @@ move_down:
 			break;
 		tab->show_error = 0;
 		tab->show_info = 0;
-		unsigned int len = strnlen(client.vim.counter,
-					   sizeof(client.vim.counter));
+		unsigned int len = STRNLEN(client.vim.counter);
 		if (len == 0 && ev.ch == '0') break;
 		if (len >= sizeof(client.vim.counter)) break;
 		client.vim.counter[len] = ev.ch;

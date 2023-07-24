@@ -24,6 +24,7 @@
 #include "sandbox.h"
 #include "str.h"
 #include "xdg.h"
+#include "util.h"
 
 char home_path[1024];
 char download_path[1024];
@@ -37,7 +38,7 @@ int gethomefd() {
 	struct passwd *pw = getpwuid(geteuid());
 	if (!pw) return -1;
 	home_fd = open(pw->pw_dir, O_DIRECTORY);
-	strlcpy(home_path, pw->pw_dir, sizeof(home_path));
+	STRLCPY(home_path, pw->pw_dir);
 #ifndef DISABLE_XDG
 	if (!xdg_path(download_path, sizeof(download_path))) {
 		return home_fd;
@@ -249,8 +250,8 @@ void cert_add(char* host, const char* hash, unsigned long long start,
 		last_cert->next = cert_ptr;
 		last_cert = cert_ptr;
 	}
-	strlcpy(last_cert->hash, hash, sizeof(first_cert->hash));
-	strlcpy(last_cert->host, host, sizeof(first_cert->host));
+	STRLCPY(last_cert->hash, hash);
+	STRLCPY(last_cert->host, host);
 	last_cert->start = start;
 	last_cert->end = end;
 }
@@ -375,7 +376,7 @@ int cert_loadcert(const char* host, struct cert_cache* cert) {
         cert->key[key_pos - 1] = '\0';
         cert->crt_len = crt_pos;
         cert->key_len = key_pos;
-        strlcpy(cert->host, host, sizeof(cert->host));
+        STRLCPY(cert->host, host);
         return 0;
 }
 
@@ -583,7 +584,7 @@ struct ignore_entry *ignore_list = NULL;
 int cert_ignore_expiration(const char *host) {
 	struct ignore_entry *entry = malloc(sizeof(struct ignore_entry));
 	if (!entry) return -1;
-	strlcpy(entry->host, host, sizeof(entry->host));
+	STRLCPY(entry->host, host);
 	entry->next = ignore_list;
 	ignore_list = entry;
 	return 0;

@@ -30,6 +30,7 @@
 #include "sandbox.h"
 #include "str.h"
 #include "url.h"
+#include "util.h"
 
 #define MAX_CACHE 10
 #define TIMEOUT 8
@@ -105,7 +106,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 	} else if (link[0] == '/' && link[1] == '/') {
 		char buf[1024];
 		strlcpy(buf, &link[2], MAX_URL - 2);
-		int len = strnlen(buf, sizeof(buf));
+		int len = STRNLEN(buf);
 		if (len < MAX_URL - 1 && buf[len - 1] != '/') {
 			buf[len] = '/';
 			buf[len + 1] = '\0';
@@ -119,7 +120,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 			if (ptr) *ptr = '\0';
 		}
 		char urlbuf[MAX_URL];
-		size_t l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		size_t l = STRLCPY(urlbuf, url);
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
 		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >=
@@ -144,7 +145,7 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		char* ptr = strrchr(&url[GMI], '/');
 		if (ptr) *ptr = '\0';
 		char urlbuf[MAX_URL];
-		size_t l = strlcpy(urlbuf, url, sizeof(urlbuf));
+		size_t l = STRLCPY(urlbuf, url);
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
 		if (urlbuf[l-1] != '/') {
@@ -174,7 +175,7 @@ void gmi_load(struct gmi_page* page) {
 	page->links = NULL;
 	page->links_count = 0;
 	page->lines = 0;
-	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
+	if (!STARTWITH(page->meta, "text/gemini")) {
 		page->links = NULL;
 		page->links_count = 0;
 		page->lines = 0;
@@ -232,7 +233,7 @@ int gmi_render(struct gmi_tab* tab) {
 	pthread_mutex_lock(&tab->render_mutex);
 #include "img.h"
 #ifdef TERMINAL_IMG_VIEWER
-	if (strncmp(tab->page.meta, "image/", 6) == 0) {
+	if (STARTWITH(tab->page.meta, "image/")) {
 		if (!tab->page.img.tried) {
 			char* ptr = strchr(tab->page.data, '\n');
 			if (!ptr) {
@@ -277,10 +278,8 @@ int gmi_render(struct gmi_tab* tab) {
 	}
 #endif
 	int text = 0;
-	const char gmi[] = "text/gemini";
-	const char txt[] = "text/";
-	if (strncmp(tab->page.meta, gmi, sizeof(gmi) - 1)) {
-		if (strncmp(tab->page.meta, txt, sizeof(txt) - 1)) {
+	if (!STARTWITH(tab->page.meta, "text/gemini")) {
+		if (!STARTWITH(tab->page.meta, "text/")) {
 			tb_printf(2, -tab->scroll, TB_DEFAULT, TB_DEFAULT,
 				  "Unable to render format : %s",
 				  tab->page.meta);
@@ -295,12 +294,11 @@ int gmi_render(struct gmi_tab* tab) {
 	uintattr_t color = TB_DEFAULT;
 	int start = 1;
 	int ignore = 0;
-	int h = tb_height() - 2 - (client.tabs_count>1);
-	char* search = client.input.field[0] == '/'?
-			&client.input.field[1]:
-			tab->search.entry;
-	int search_len = search?
-			 strnlen(search, sizeof(client.input.field) - 1):0;
+	int h = tb_height() - 2 - (client.tabs_count > 1);
+	char* search = client.input.field[0] == '/' ?
+		&client.input.field[1] : tab->search.entry;
+	int search_len = search ?
+		strnlen(search, sizeof(client.input.field) - 1) : 0;
 	if (!search_len) search = NULL;
 	int highlight = 0;
 	int hlcolor = YELLOW;
@@ -517,7 +515,7 @@ void gmi_addtohistory(struct gmi_tab* tab) {
 		link->prev->scroll = tab->scroll;
 	link->page = tab->page;
 	link->cached = 1;
-	strlcpy(link->url, tab->url, sizeof(link->url));
+	STRLCPY(link->url, tab->url);
 	tab->history = link;
 	if (link->prev)
 		link->prev->next = tab->history;
@@ -708,9 +706,9 @@ int gmi_loadbookmarks() {
 			memory_failure(client.tab);
 			break;
 		}
-		strlcpy(client.bookmarks[n], str, ptr-str+1);
+		strlcpy(client.bookmarks[n], str, ptr - str + 1);
 		n++;
-		str = ptr+1;
+		str = ptr + 1;
 	}
 	free(data);
 	return 0;
@@ -730,7 +728,7 @@ void gmi_gettitle(struct gmi_page* page, const char* url) {
 	if (page->title_cached) return;
 	page->title[0] = '\0';
 	page->title_cached = 1;
-	if (strncmp(page->meta, "text/gemini", sizeof("text/gemini") - 1)) {
+	if (!STARTWITH(page->meta, "text/gemini")) {
 		goto use_url;
 	}
 	int start = -1;
@@ -761,24 +759,23 @@ void gmi_gettitle(struct gmi_page* page, const char* url) {
 	size_t len = end - start + 1;
 	len = strlcpy(page->title, &page->data[start],
 		      len < sizeof(page->title)?
-		      len:sizeof(page->title));
+		      len : sizeof(page->title));
 	sanitize(page->title, len);
 	return;
 use_url:
 	if (!url) {
-		size_t len = strlcpy(page->title, page->meta,
-				     sizeof(page->title));
+		size_t len = STRLCPY(page->title, page->meta);
 		sanitize(page->title, len);
 		return;
 	}
 	char* str = strrchr(url, '/');
 	if (!str) {
-		len = strlcpy(page->title, url, sizeof(page->title));
+		len = STRLCPY(page->title, url);
 		goto sanitize;
 	}
 	if (str[1] != '\0')
 		str++;
-	len = strlcpy(page->title, str, sizeof(page->title));
+	len = STRLCPY(page->title, str);
 sanitize:
 	for (size_t i = 0; i < len; i++)
 		if (page->title[i] == '?')
@@ -811,7 +808,7 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	if (!title) {
 		gmi_gettitle(&tab->page, tab->url);
 		title = tab->page.title;
-		title_len = strnlen(tab->page.title, sizeof(tab->page.title));
+		title_len = STRNLEN(tab->page.title);
 		if (!title_len) {
 			title_len = sizeof("no title");
 			title = "no title";
@@ -892,7 +889,7 @@ char* gmi_getbookmarks(int* len) {
 }
 
 void gmi_gohome(struct gmi_tab* tab, int add) {
-	strlcpy(tab->url, "about:home", sizeof(tab->url)); 
+	STRLCPY(tab->url, "about:home");
 	int bm = 0;
 	char* data = gmi_getbookmarks(&bm);
 	pthread_mutex_lock(&tab->render_mutex);
@@ -908,7 +905,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 				     home_page, data ? data : "");
 	free(data);
 
-	strlcpy(tab->request.meta, "text/gemini", sizeof(tab->request.meta));
+	STRLCPY(tab->request.meta, "text/gemini");
 
 	if (!add)
 		gmi_freepage(&tab->page);
@@ -916,7 +913,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	tab->page.data = tab->request.data;
 	tab->page.data_len = tab->request.recv;
 	tab->page.code = 20;
-	strlcpy(tab->page.meta, tab->request.meta, sizeof(tab->page.meta));
+	STRLCPY(tab->page.meta, tab->request.meta);
 	gmi_load(&tab->page);
 	if (add)
 		gmi_addtohistory(tab);
@@ -1052,7 +1049,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 		tab->show_error = 1;
 		return -1;
 	}
-	strlcpy(tab->request.host, host, sizeof(tab->request.host));
+	STRLCPY(tab->request.host, host);
 #if defined(__linux__) && !defined(__MUSL__)
 	tab->request.gaicb_ptr = malloc(sizeof(struct gaicb));
 	if (!tab->request.gaicb_ptr) {
@@ -1282,7 +1279,7 @@ int gmi_request_handshake(struct gmi_tab* tab) {
 
 	if (tab->request.state == STATE_CANCEL) return -1;
 	char buf[MAX_URL];
-	strlcpy(buf, "gemini://", GMI + 1);
+	STRLCPY(buf, "gemini://");
 	char toascii[1024];
 	if (idn_to_ascii(&tab->request.url[GMI],
 			 sizeof(tab->request.url) - GMI,
@@ -1359,7 +1356,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 			 tab->request.host);
 		return -1;
 	}
-	strlcpy(tab->request.error, ptr +1, sizeof(tab->request.error));
+	STRLCPY(tab->request.error, ptr + 1);
 
 	int previous_code = tab->page.code;
 	char c = buf[2];
@@ -1372,7 +1369,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 	case 10:
 	case 11:
 		ptr++;
-		strlcpy(client.input.label, ptr, sizeof(client.input.label));
+		STRLCPY(client.input.label, ptr);
 		ptr = strchr(client.input.label, '\n');
 		if (ptr) *ptr = '\0';
 		ptr = strchr(client.input.label, '\r');
@@ -1392,27 +1389,24 @@ int gmi_request_header(struct gmi_tab* tab) {
 			return -1;
 		}
 		*meta = '\0';
-		strlcpy(tab->request.meta, ptr, MAX_META);
+		STRLCPY(tab->request.meta, ptr);
 		*meta = '\r';
 		if ((strcasestr(tab->request.meta, "charset=") && 
 		    !strcasestr(tab->request.meta, "charset=utf-8"))
-		   || ((strncmp(tab->request.meta, "text/", 5))
+		   || ((!STARTWITH(tab->request.meta, "text/"))
 #ifdef TERMINAL_IMG_VIEWER
-		   && (strncmp(tab->request.meta, "image/", 6))
+		   && (!STARTWITH(tab->request.meta, "image/"))
 #endif
 		   )) {
 			if (tab->history)
-				strlcpy(tab->url, tab->history->url,
-					sizeof(tab->url));
+				STRLCPY(tab->url, tab->history->url);
 			else
-				strlcpy(tab->url, "about:home",
-					sizeof(tab->url));
+				STRLCPY(tab->url, "about:home");
 			tab->request.ask = 2;
 			snprintf(tab->request.info, sizeof(tab->request.info), 
 				 "# Non-renderable meta-data : %s",
 				 tab->request.meta);
-			strlcpy(tab->request.action, "download", 
-				sizeof(tab->request.action));
+			STRLCPY(tab->request.action, "download");
 			tb_interupt();
 			while (tab->request.ask == 2) 
 				nanosleep(&timeout, NULL);
@@ -1507,7 +1501,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 int gmi_request_body(struct gmi_tab* tab, int fd) {
 	time_t now = time(0);
 	char buf[1024];
-	int isText = !strncmp(tab->request.meta, "text/", sizeof("text/") - 1);
+	int isText = STARTWITH(tab->request.meta, "text/");
 	while (tab->request.state != STATE_CANCEL) {
 		if (time(0) - now >= TIMEOUT) {
 			snprintf(tab->error, sizeof(tab->error),
@@ -1568,8 +1562,7 @@ int gmi_request_body(struct gmi_tab* tab, int fd) {
 }
 
 int gmi_getfd(struct gmi_tab* tab, char* path, size_t path_len) {
-	int len = strnlen(tab->request.url,
-			  sizeof(tab->request.url));
+	int len = STRNLEN(tab->request.url);
 	if (tab->request.url[len-1] == '/')
 		tab->request.url[len-1] = '\0';
 	char* ptr = strrchr(tab->request.url, '/');
@@ -1655,8 +1648,7 @@ int gmi_postdownload(struct gmi_tab* tab, int fd, const char* path) {
 			 sizeof(tab->request.info),
 			 "# %s download",
 			 tab->request.meta);
-		strlcpy(tab->request.action, "open",
-			sizeof(tab->request.action));
+		STRLCPY(tab->request.action, "open");
 		tb_interupt();
 		while (tab->request.ask == 2)
 			nanosleep(&timeout, NULL);
@@ -1742,7 +1734,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				snprintf(buf, sizeof(buf),
 					 "%s (%d : %s)", tab->request.error,
 					 tab->page.code, tab->error);
-				strlcpy(tab->error, buf, sizeof(tab->error));
+				STRLCPY(tab->error, buf);
 				*cr = '\r';
 			}
 		}
@@ -1750,11 +1742,9 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			free(tab->request.data);
 			tab->request.data = NULL;
 			if (tab->history)
-				strlcpy(tab->url, tab->history->url,
-					sizeof(tab->url));
+				STRLCPY(tab->url, tab->history->url);
 			else
-				strlcpy(tab->url, "about:home",
-					sizeof(tab->url));
+				STRLCPY(tab->url, "about:home");
 			tab->show_error = 1;
 			tab->request.recv = -1;
 			tab->page.code = 20;
@@ -1771,7 +1761,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 		    (tab->page.code == 11 || tab->page.code == 10)) {
 			free(tab->request.data);
 			tab->request.data = NULL;
-			strlcpy(tab->url, tab->request.url, sizeof(tab->url));
+			STRLCPY(tab->url, tab->request.url);
 			continue;
 		}
 		if (tab->request.recv > 0 &&
@@ -1788,7 +1778,7 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 			if (ln) *ln = '\0';
 			ln = strchr(ptr, '\r');
 			if (ln) *ln = '\0';
-			strlcpy(tab->url, tab->request.url, sizeof(tab->url));
+			STRLCPY(tab->url, tab->request.url);
 			int r = gmi_nextlink(tab, tab->url, ptr + 1);
 			if (r < 1 || tab->page.code != 20) {
 				free(tab->request.data);
@@ -1825,10 +1815,8 @@ void* gmi_request_thread(struct gmi_tab* tab) {
 				gmi_freepage(&tab->page);
 			bzero(&tab->page, sizeof(struct gmi_page));
 			tab->page.code = 20;
-			strlcpy(tab->page.meta, tab->request.meta,
-				sizeof(tab->page.meta));
-			strlcpy(tab->url, tab->request.url,
-				sizeof(tab->url));
+			STRLCPY(tab->page.meta, tab->request.meta);
+			STRLCPY(tab->url, tab->request.url);
 			tab->page.data_len = tab->request.recv;
 			tab->page.data = tab->request.data;
 			gmi_load(&tab->page);
@@ -1851,7 +1839,7 @@ int gmi_request(struct gmi_tab *tab, const char *url, int add) {
 	for (int i = 0; i < 5 && tab->request.state == STATE_CANCEL; i++)
 		nanosleep(&timeout, NULL);
 	tab->thread.add = add;
-	strlcpy(tab->thread.url, url, sizeof(tab->thread.url));
+	STRLCPY(tab->thread.url, url);
 	int signal = 0;
 	if (send(tab->thread.pair[1], &signal, sizeof(signal), 0) !=
 	    sizeof(signal))
@@ -1895,16 +1883,16 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	if (tab->page.data) free(tab->page.data);
 	tab->page.data = data;
 	snprintf(tab->url, sizeof(tab->url), "file://%s/", path);
-	int i = strnlen(path, 1024);
+	int i = strnlen(path, PATH_MAX);
 	int gmi = 0;
 	if (i > 4 && path[i - 1] == '/') i--;
 	if (i > 4 && path[i - 4] == '.' && path[i - 3] == 'g' &&
 	    path[i - 2] == 'm' && path[i - 1] == 'i')
 		gmi = 1;
 	if (gmi)
-		strlcpy(tab->page.meta, "text/gemini", sizeof(tab->page.meta));
+		STRLCPY(tab->page.meta, "text/gemini");
 	else
-		strlcpy(tab->page.meta, "text/text", sizeof(tab->page.meta));
+		STRLCPY(tab->page.meta, "text/text");
 	tab->page.no_header = 1;
 	gmi_load(&tab->page);
 	gmi_addtohistory(tab);
