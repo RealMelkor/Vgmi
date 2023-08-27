@@ -95,6 +95,8 @@ int gmi_goto_new(struct gmi_tab* tab, int id) {
 	client.tab = gmi_newtab_url(NULL);
 	int ret = gmi_nextlink(client.tab, old_tab->url,
 			       old_tab->page.links[id]);
+	if (ret) gmi_freetab(client.tab);
+
 	return ret;
 }
 
@@ -931,6 +933,26 @@ struct gmi_tab* gmi_newtab() {
 }
 
 struct gmi_tab* gmi_newtab_url(const char* url) {
+
+	if (url && strcmp(url, "about:home")) {
+		struct gmi_tab tmp;
+		int proto = parse_url(url,
+			tmp.request.host, sizeof(tmp.request.host),
+			tmp.request.url, sizeof(tmp.request.url),
+			&tmp.request.port);
+		switch (proto) {
+		case PROTO_GEMINI:
+			break;
+		case PROTO_HTTP:
+		case PROTO_HTTPS:
+		case PROTO_GOPHER:
+			xdg_request(url);
+			/* fallthrough */
+		default:
+			return client.tab;
+		}
+	}
+
 	client.tabs_count++;
 	if (client.tab) {
 		struct gmi_tab* next = client.tab->next;
