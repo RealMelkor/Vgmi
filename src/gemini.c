@@ -102,10 +102,20 @@ int gmi_goto_new(struct gmi_tab* tab, int id) {
 
 int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 	int url_len = strnlen(url, MAX_URL);
-	if (!strcmp(link, "about:home")) {
-		gmi_gohome(tab, 1);
+
+	if (!*link) {
 		return 0;
-	} else if (link[0] == '/' && link[1] == '/') {
+	}
+	if (STARTWITH(link, "about:")) {
+		if (!strcmp(link, "about:home")) {
+			gmi_gohome(tab, 1);
+			return 0;
+		}
+		tab->show_error = 1;
+		snprintf(tab->error, sizeof(tab->error), "Invalid url");
+		return -1;
+	}
+	if (link[0] == '/' && link[1] == '/') {
 		char buf[1024];
 		strlcpy(buf, &link[2], MAX_URL - 2);
 		int len = STRNLEN(buf);
@@ -116,7 +126,8 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		int ret = gmi_request(tab, buf, 1);
 		if (ret < 1) return ret;
 		return ret;
-	} else if (link[0] == '/') {
+	}
+	if (link[0] == '/') {
 		if (url_len > GMI && strstr(url, "gemini://")) {
 			char* ptr = strchr(&url[GMI], '/');
 			if (ptr) *ptr = '\0';
@@ -130,7 +141,8 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 			goto nextlink_overflow;
 		int ret = gmi_request(tab, urlbuf, 1);
 		return ret;
-	} else if (strstr(link, "https://") == link ||
+	}
+	if (strstr(link, "https://") == link ||
 		   strstr(link, "http://") == link ||
 		   strstr(link, "gopher://") == link) {
 #ifndef DISABLE_XDG
@@ -140,33 +152,33 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		snprintf(tab->error, sizeof(tab->error), 
 			 "Unable to open the link");
 		return -1;
-	} else if (strstr(link, "gemini://") == link) {
+	}
+	if (strstr(link, "gemini://") == link) {
 		int ret = gmi_request(tab, link, 1);
 		return ret;
-	} else {
-		char* ptr = strrchr(&url[GMI], '/');
-		if (ptr) *ptr = '\0';
-		char urlbuf[MAX_URL];
-		size_t l = STRLCPY(urlbuf, url);
-		if (l >= sizeof(urlbuf))
-			goto nextlink_overflow;
-		if (urlbuf[l-1] != '/') {
-			size_t l2 = strlcpy(urlbuf + l, "/",
-					    sizeof(urlbuf) - l);
-			if (l2 >= sizeof(urlbuf) - l)
-				goto nextlink_overflow;
-			l += l2;
-		}
-		size_t l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
+	}
+	char* ptr = strrchr(&url[GMI], '/');
+	if (ptr) *ptr = '\0';
+	char urlbuf[MAX_URL];
+	size_t l = STRLCPY(urlbuf, url);
+	if (l >= sizeof(urlbuf))
+		goto nextlink_overflow;
+	if (urlbuf[l-1] != '/') {
+		size_t l2 = strlcpy(urlbuf + l, "/",
+				    sizeof(urlbuf) - l);
 		if (l2 >= sizeof(urlbuf) - l)
 			goto nextlink_overflow;
-		int ret = gmi_request(tab, urlbuf, 1);
-		return ret;
+		l += l2;
 	}
+	size_t l2 = strlcpy(urlbuf + l, link, sizeof(urlbuf) - l);
+	if (l2 >= sizeof(urlbuf) - l)
+		goto nextlink_overflow;
+	int ret = gmi_request(tab, urlbuf, 1);
+	return ret;
 nextlink_overflow:
 	tab->show_error = 1;
 	snprintf(tab->error, sizeof(tab->error),
-	 "Link too long, above 1024 characters");
+		"Link too long, above 1024 characters");
 	return -1;
 }
 
@@ -219,6 +231,16 @@ void gmi_load(struct gmi_page* page) {
 			}
 			page->links[page->links_count] = ptr;
 			memcpy(page->links[page->links_count], url, len+1);
+			for (int i = 0; page->links[page->links_count][i] &&
+					i < len; ) {
+				uint32_t ch;
+				int len;
+				len = tb_utf8_char_to_unicode(&ch,
+					&page->links[page->links_count][i]);
+				if (ch < ' ')
+					page->links[page->links_count][i] = 0;
+				i += len;
+			}
 			page->links_count++;
 			page->data[c] = save;
 		}
