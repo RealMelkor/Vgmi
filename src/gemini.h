@@ -23,6 +23,7 @@
 #define GMI 9
 #define P_FILE 7
 #define MAX_META 1024
+#define MAX_REDIRECT 5
 
 #define MAX_TEXT_SIZE 4194304 // 4 MB
 #define MAX_IMAGE_SIZE 33554432 // 32 MB
@@ -79,6 +80,7 @@ struct gmi_tab {
 	char url[MAX_URL];
 	char error[256];
 	int show_error;
+	int redirects;
 	char info[256];
 	struct search { 
 		char entry[MAX_URL];

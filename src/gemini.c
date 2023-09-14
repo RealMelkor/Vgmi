@@ -1387,6 +1387,9 @@ int gmi_request_header(struct gmi_tab* tab) {
 	buf[2] = c;
 
 	if (tab->request.state == STATE_CANCEL) return -1;
+	if (tab->page.code != 30 && tab->page.code != 31) {
+		tab->redirects = 0;
+	}
 	switch (tab->page.code) {
 	case 10:
 	case 11:
@@ -1443,12 +1446,15 @@ int gmi_request_header(struct gmi_tab* tab) {
 	}
 		break;
 	case 30:
-		snprintf(tab->error, sizeof(tab->error),
-			 "Redirect temporary");
-		break;
 	case 31:
-		snprintf(tab->error, sizeof(tab->error),
-			 "Redirect permanent");
+		tab->redirects++;
+		if (tab->redirects > MAX_REDIRECT) {
+			snprintf(tab->error, sizeof(tab->error),
+				"Too many redirects");
+			return -2;
+		}
+		snprintf(tab->error, sizeof(tab->error), "Redirect %s",
+			tab->page.code == 30 ? "temporary" : "permanent");
 		break;
 	case 40:
 		snprintf(tab->error, sizeof(tab->error),
