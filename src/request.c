@@ -11,6 +11,7 @@ struct request;
 #include "secure.h"
 #include "strlcpy.h"
 #include "dns.h"
+#include "about.h"
 #include "error.h"
 
 int request_process(struct request *request, struct secure *secure,
@@ -19,6 +20,14 @@ int request_process(struct request *request, struct secure *secure,
 	char buf[MAX_URL + 8];
 	int ret;
 	size_t length;
+
+	/* check if it's an about: page */
+	if (!memcmp(url, V("about:") - 1)) {
+		STRLCPY(request->url, url);
+		if ((ret = about_parse(request))) goto failed;
+		request->state = STATE_COMPLETED;
+		return 0;
+	}
 
 	if ((ret = url_parse(request, url))) goto failed;
 	if ((ret = dns_getip(request->name, &request->addr))) goto failed;

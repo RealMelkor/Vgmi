@@ -57,10 +57,8 @@ void client_draw(struct client* client) {
 				TB_DEFAULT, TB_DEFAULT, "%d", client->count);
 	}
 
-	if (req) {
-		tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE,
-				"%s", req->url);
-	}
+	tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE,
+			"%s", req ? req->url : "about:blank");
 
 	if (req && req->selected &&
 			(size_t)req->selected <= req->text.links_count) {

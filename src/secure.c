@@ -111,7 +111,7 @@ int secure_send(struct secure *secure, const char *data, size_t len) {
 int secure_read(struct secure *secure, char **data, size_t *length) {
 
 	const size_t pad = 16; /* pad the end with null-bytes in case the data
-				  ends with a incomplete unicode character */
+				  ends with an incomplete unicode character */
 	char buf[1024], *ptr;
 	size_t len, allocated;
 	int i;

@@ -131,7 +131,10 @@ struct tab *tab_new() {
 }
 
 struct request *tab_request_new(struct tab *tab) {
-	struct request *new = calloc(1, sizeof(struct request)), *req;
+
+	struct request *new, *req;
+
+	new = calloc(1, sizeof(struct request));
 	if (!new) return NULL;
 	pthread_mutex_lock(tab->mutex);
 	new->next = tab->request;

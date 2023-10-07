@@ -36,6 +36,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_TOO_MANY_REDIRECT:
 		strlcpy(out, "Too many redirects", len);
 		break;
+	case ERROR_INVALID_URL:
+		strlcpy(out, "Invalid URL", len);
+		break;
 	default:
 		strlcpy(out, "Unknown error", len);
 		return -1;
