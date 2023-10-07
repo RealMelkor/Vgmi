@@ -478,6 +478,9 @@ int gmi_render(struct gmi_tab* tab) {
 			c += tb_utf8_char_to_unicode(&ch,
 						     &tab->page.data[c]) - 1;
 		else if (ch < 32) ch = '?';
+
+		/* ignore utf-8 BOM */
+		if (ch == 0xfeff) continue;
 		
 		int wc = mk_wcwidth(ch);
 		if (wc < 0) wc = 0;
@@ -623,7 +626,8 @@ void gmi_freetab(struct gmi_tab* tab) {
 }
 
 char home_page[] = 
-"20 text/gemini\r\n# Vgmi - " VERSION "\n\n" \
+"20 text/gemini\r\n" \
+"# Vgmi - " VERSION "\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
 "## Bookmarks\n\n" \
 "%s\n" \
