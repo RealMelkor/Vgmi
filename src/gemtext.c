@@ -167,8 +167,15 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 			case '=':
 				if (data[1] != '>') break;
 				data += 2;
-				while (whitespace(*(data++))) ;
-				while (!whitespace(*(data++))) ;
+				while (whitespace(*(utf8_next(&data)))) ;
+				while (data < end && !separator(*data))
+					utf8_next(&data);
+				/* link without label */
+				if (data >= end || *data == '\n') {
+					data = *ptr + 2;
+					while (whitespace(*(data)))
+						utf8_next(&data);
+				} else data++;
 				len = 0;
 				color = colorFromLine(LINE_LINK);
 				link_tmp = data;

@@ -10,6 +10,7 @@
 #include "client.h"
 #include "tab.h"
 #include "input.h"
+#include "error.h"
 
 void client_reset(struct client *client) {
 	if (!client) return;
@@ -57,7 +58,13 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			i = req->selected;
 			req->selected = 0;
 			if (req->text.links_count < i) break;
-			request_follow(req, req->text.links[i - 1], V(buf));
+			i = request_follow(req,
+					req->text.links[i - 1], V(buf));
+			if (i) {
+				client->error = 1;
+				error_string(i, V(client->cmd));
+				break;
+			}
 			tab_request(client->tab, buf);
 			break;
 		}

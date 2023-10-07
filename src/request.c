@@ -90,8 +90,17 @@ int request_scroll(struct request* req, int scroll, struct rect rect) {
 
 int request_follow(struct request* req, const char *link,
 			char *url, size_t length) {
+
 	const char *end = url + length;
 	char *ptr;
+
+	if (!memcmp(link, V("about:") - 1)) {
+		/* only allow "about:*" links on "about:*" pages */
+		if (memcmp(req->url, V("about:") - 1))
+			return ERROR_INVALID_URL;
+		return strlcpy(url, link, length) > length ?
+			ERROR_INVALID_URL : 0;
+	}
 	if (link[0] == '/' && link[1] == '/') {
 		strlcpy(url, &link[2], length);
 		return 0;
@@ -107,10 +116,11 @@ int request_follow(struct request* req, const char *link,
 		strlcpy(url, req->url, ptr - req->url);
 		i = ptr - req->url - 1;
 		i += strlcpy(&url[i], link, length - i);
-		return i;
+		return (size_t)i > length ? ERROR_INVALID_URL : 0;
 	}
 	if (strstr(link, "://")) {
-		return strlcpy(url, link, length);
+		strlcpy(url, link, length);
+		return 0;
 	}
 	strlcpy(url, req->url, length);
 	ptr = strstr(url, "://");
@@ -123,7 +133,7 @@ int request_follow(struct request* req, const char *link,
 	}
 	ptr++;
 	ptr += strlcpy(ptr, link, end - ptr);
-	return ptr - url;
+	return (size_t)(ptr - url) > length ? ERROR_INVALID_URL : 0;
 }
 
 int request_free_ref(struct request req) {

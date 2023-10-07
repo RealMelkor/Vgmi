@@ -70,3 +70,9 @@ int utf8_unicode_to_char(char *out, uint32_t c) {
 
 	return len;
 }
+
+const char *utf8_next(const char **ptr) {
+	int i = utf8_char_length(**ptr);
+	*ptr += i;
+	return *ptr;
+}

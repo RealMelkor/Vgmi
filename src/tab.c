@@ -147,8 +147,10 @@ struct request *tab_request_new(struct tab *tab) {
 
 void tab_clean_requests(struct tab *tab) {
 
-	struct request *request, *prev;
+	struct request *request, *prev, *next;
 	int found;
+
+	if (!tab) return;
 
 	pthread_mutex_lock(tab->mutex);
 	found = 0;
@@ -161,8 +163,9 @@ void tab_clean_requests(struct tab *tab) {
 			request->state = STATE_ENDED;
 		}
 	}
-	prev = NULL;
-	for (request = tab->request; request; request = request->next) {
+	next = prev = NULL;
+	for (request = tab->request; request; request = next) {
+		next = request->next;
 		if (request != tab->request &&
 				request->state == STATE_FAILED)
 			request->state = STATE_ENDED;
@@ -174,8 +177,7 @@ void tab_clean_requests(struct tab *tab) {
 				else tab->request = request->next;
 			}
 			request_free(request);
-		}
-		prev = request;
+		} else prev = request;
 	}
 	pthread_mutex_unlock(tab->mutex);
 }
