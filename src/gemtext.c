@@ -83,6 +83,12 @@ int gemtext_free(struct gemtext gemtext) {
 	return 0;
 }
 
+int renderable(uint32_t codepoint) {
+	if (codepoint == 0xFEFF) return 0;
+	if (codepoint < ' ' && !whitespace(codepoint)) return 0;
+	return 1;
+}
+
 int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 			struct gemtext_line *line, int *links,
 			int *preformatted) {
@@ -120,7 +126,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 			cell.codepoint = ' ';
 			cell.width = TAB_SIZE - x % TAB_SIZE;
 		}
-		if (cell.codepoint < ' ' && !whitespace(cell.codepoint)) {
+		if (!renderable(cell.codepoint)) {
 			data += len;
 			continue;
 		}
@@ -129,7 +135,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 		}
 		x += cell.width;
 		if (x > width) break;
-		if (next_separator < data) {
+		if (!link_tmp && next_separator < data) {
 			int nextX = x;
 			const char *ptr = data;
 			while (ptr < end && !separator(*ptr)) {
@@ -361,7 +367,6 @@ int gemtext_links(const char *data, size_t length,
 }
 
 int gemtext_display(struct gemtext text, int from, int to, int selected) {
-
 	int y;
 	from--;
 	for (y = from; y < (ssize_t)text.length && y < from + to; y++) {
