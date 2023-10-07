@@ -1,9 +1,3 @@
-/* See LICENSE file for copyright and license details. */
-#ifndef _INPUT_H_
-#define _INPUT_H_
-
-struct tb_event;
-int input(struct tb_event event);
-int tb_interupt();
-
-#endif
+void client_enter_mode_cmdline(struct client *client);
+int client_input_cmdline(struct client *client, struct tb_event ev);
+int client_input_normal(struct client *client, struct tb_event ev);

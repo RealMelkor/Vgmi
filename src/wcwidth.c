@@ -1,4 +1,3 @@
-// Original source-code modified to add a list of modern full-width characters
 /*
  * This is an implementation of wcwidth() and wcswidth() (defined in
  * IEEE Std 1002.1-2001) for Unicode.
@@ -59,6 +58,7 @@
  *
  * Latest version: http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
  */
+/* Original file modified to add a list of modern full-width characters */
 
 #include <wchar.h>
 

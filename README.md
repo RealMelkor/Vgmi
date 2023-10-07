@@ -1,5 +1,7 @@
 # Vgmi
 
+The version 2.0 is still in development and a lot of features are missing.
+
 [Gemini][0] client written in C with vim-like keybindings
 
 ![pic0](./img/img1.png)
