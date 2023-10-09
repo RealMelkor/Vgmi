@@ -104,7 +104,8 @@ void tab_display(struct tab *tab, struct client *client) {
 
 	switch (tab->request->state) {
 	case STATE_COMPLETED:
-		tab_display_request(tab->request, rect);
+		tab_display_request(tab->view ?
+				tab->view : tab->request, rect);
 		break;
 	case STATE_FAILED:
 		tab_display_error(tab, client);
@@ -155,6 +156,7 @@ void tab_clean_requests(struct tab *tab) {
 	int found;
 
 	if (!tab) return;
+	return; /* temporary */
 
 	pthread_mutex_lock(tab->mutex);
 	found = 0;
@@ -219,7 +221,10 @@ restart:
 	failure = request_process(&request, ctx, args->url);
 	pthread_mutex_lock(tab->mutex);
 	confirm = 1;
-	if (req->state == STATE_CANCELED) {
+	if (req->state == STATE_ABANDONED) {
+		request_free(req);
+		confirm = 0;
+	} else if (req->state == STATE_CANCELED) {
 		request_free_ref(request);
 		confirm = 0;
 	} else if (failure) {
@@ -261,6 +266,23 @@ int tab_request(struct tab* tab, const char *url) {
 
 	struct request_thread *args;
 
+	/* clean up forward history */
+	pthread_mutex_lock(tab->mutex);
+	if (tab->view) {
+		struct request *req, *next;
+		for (req = tab->request; req; req = next) {
+			if (req == tab->view) break;
+			next = req->next;
+			if (req->state == STATE_ONGOING ||
+					req->state == STATE_CANCELED) {
+				req->state = STATE_ABANDONED;
+			} else request_free(req);
+		}
+		tab->request = tab->view;
+		tab->view = NULL;
+	}
+	pthread_mutex_unlock(tab->mutex);
+
 	args = malloc(sizeof(*args));
 	if (!args) return ERROR_MEMORY_FAILURE;
 	STRLCPY(args->url, url);
@@ -284,6 +306,7 @@ int tab_scroll(struct tab *tab, int scroll, struct rect rect) {
 struct request *tab_completed(struct tab *tab) {
 	struct request *req;
 	if (!tab) return NULL;
+	if (tab->view) return tab->view;
 	for (req = tab->request; req; req = req->next) {
 		if (req->state == STATE_COMPLETED) {
 			return req;

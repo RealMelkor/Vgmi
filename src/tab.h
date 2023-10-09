@@ -4,6 +4,7 @@
  */
 struct tab {
 	struct request *request;
+	struct request *view;
 	void *mutex;
 	struct secure *secure;
 	char error[1024];

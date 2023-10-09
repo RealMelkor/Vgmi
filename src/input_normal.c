@@ -116,6 +116,18 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 				client_display_rect(client));
 		client_reset(client);
 		break;
+	case 'h':
+		if (!client || !client->tab || !client->tab->request) break;
+		{
+			struct request *req = client->tab->view ?
+				client->tab->view->next :
+				client->tab->request->next;
+			while (req && req->state != STATE_COMPLETED) {
+				req = req->next;
+			}
+			if (req) client->tab->view = req;
+		}
+		break;
 	}
 	return 0;
 }
