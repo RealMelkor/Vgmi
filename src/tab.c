@@ -21,6 +21,9 @@
 #include "strlcpy.h"
 #include "error.h"
 
+#define MAX_CACHED_PAGE 15
+#define MAX_REDIRECT 5
+
 void tab_clean_requests(struct tab *tab);
 
 void tab_display_loading(struct tab *tab, struct rect rect) {
@@ -156,17 +159,13 @@ void tab_clean_requests(struct tab *tab) {
 	int found;
 
 	if (!tab) return;
-	return; /* temporary */
 
 	pthread_mutex_lock(tab->mutex);
 	found = 0;
 	for (request = tab->request; request; request = request->next) {
 		if (request->state == STATE_COMPLETED) {
-			if (!found) {
-				found = 1;
-				continue;
-			}
-			request->state = STATE_ENDED;
+			if (found++ > MAX_CACHED_PAGE)
+				request->state = STATE_ENDED;
 		}
 	}
 	next = prev = NULL;
@@ -187,8 +186,6 @@ void tab_clean_requests(struct tab *tab) {
 	}
 	pthread_mutex_unlock(tab->mutex);
 }
-
-#define MAX_REDIRECT 5
 
 void* tab_request_thread(void *ptr) {
 
@@ -222,6 +219,7 @@ restart:
 	pthread_mutex_lock(tab->mutex);
 	confirm = 1;
 	if (req->state == STATE_ABANDONED) {
+		request_free_ref(request);
 		request_free(req);
 		confirm = 0;
 	} else if (req->state == STATE_CANCELED) {

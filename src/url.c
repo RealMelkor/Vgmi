@@ -12,7 +12,6 @@
 #include "error.h"
 #include "strnstr.h"
 #include "strlcpy.h"
-#include "macro.h"
 
 int servername_from_url(const char *url, char* out, size_t len) {
 

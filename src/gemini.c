@@ -3,6 +3,7 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdlib.h>
+#include "macro.h"
 #include "error.h"
 #include "strlcpy.h"
 #include "strnstr.h"
