@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #define GMI_SUCCESS 20
 
 struct gemtext_line;

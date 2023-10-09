@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 enum {
 	PROTOCOL_NONE,
 	PROTOCOL_GEMINI,

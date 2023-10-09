@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #define MAX_CMDLINE 4096
 #define MAX_COUNT 10000000
 #define MAX_CMD_NAME 64

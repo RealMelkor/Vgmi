@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 enum {
 	ERROR_NONE,
 	ERROR_MEMORY_FAILURE,

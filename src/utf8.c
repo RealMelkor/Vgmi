@@ -1,3 +1,8 @@
+/*
+ * MIT License
+ * Copyright (c) 2010-2020 nsf <no.smile.face@gmail.com>
+ *		 2015-2022 Adam Saponara <as@php.net>
+ */
 #include <stdint.h>
 
 static const unsigned char utf8_length[256] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

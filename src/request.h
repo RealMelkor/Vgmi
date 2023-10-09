@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 enum {
 	STATE_ONGOING,
 	STATE_COMPLETED,

@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #define LTS 0
 #define MAJOR "2"
 #define MINOR "0"

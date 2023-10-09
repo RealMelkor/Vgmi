@@ -1,4 +1,7 @@
-/* See LICENSE file for copyright and license details. */
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #ifdef MEM_CHECK
 #include <stdlib.h>
 #include <stdio.h>

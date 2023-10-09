@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>

@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 /* socket */
 #include <arpa/inet.h>
 #include <netdb.h>

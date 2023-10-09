@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}
 #define STRLCPY(X, Y) strlcpy((X), (Y), sizeof(X))

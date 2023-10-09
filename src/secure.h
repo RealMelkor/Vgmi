@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 struct secure;
 struct secure *secure_new();
 int secure_send(struct secure *secure, const char *data, size_t len);
