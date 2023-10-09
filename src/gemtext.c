@@ -8,6 +8,7 @@
 #include <string.h>
 #include <math.h>
 #include "client.h"
+#define GEMTEXT_INTERNAL
 #include "gemtext.h"
 #include "termbox.h"
 #include "wcwidth.h"
@@ -18,7 +19,6 @@
 #include "macro.h"
 
 #define TAB_SIZE 4
-#define OFFSETX 2
 
 enum {
 	LINE_TEXT,
@@ -29,18 +29,6 @@ enum {
 	LINE_LIST,
 	LINE_LINK,
 	LINE_PREFORMATTED
-};
-
-struct gemtext_cell {
-	uint32_t codepoint;
-	uint16_t color;
-	uint8_t width;
-	int link;
-};
-
-struct gemtext_line {
-	struct gemtext_cell *cells;
-	size_t length;
 };
 
 static int colorFromLine(int line) {
@@ -374,27 +362,5 @@ int gemtext_links(const char *data, size_t length,
 	}
 	if (out_length) *out_length = count;
 	if (out) *out = links;
-	return 0;
-}
-
-int gemtext_display(struct gemtext text, int from, int to, int selected) {
-	int y;
-	from--;
-	for (y = from; y < (ssize_t)text.length && y < from + to; y++) {
-		size_t i;
-		int x;
-		x = OFFSETX;
-		if (y < 0) continue;
-		for (i = 0; i < text.lines[y].length; i++) {
-			struct gemtext_cell cell = text.lines[y].cells[i];
-			int color = cell.color;
-			if (selected && cell.link == selected) {
-				color = TB_RED;
-			}
-			tb_set_cell(x, y - from, cell.codepoint,
-					color, TB_DEFAULT);
-			x += cell.width;
-		}
-	}
 	return 0;
 }
