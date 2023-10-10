@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#pragma GCC diagnostic ignored "-Woverlength-strings"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,10 +14,40 @@
 #include "error.h"
 #include "strlcpy.h"
 
-static const char header[] = "20 text/gemini\r\n";
+#define HEADER "20 text/gemini\r\n"
+
+static const char header[] = HEADER;
+
+char about_page[] =
+HEADER \
+"# List of \"about\" pages\n\n" \
+"=>about:about\n" \
+"=>about:blank\n" \
+"=>about:certificate\n" \
+"=>about:downloads\n" \
+"=>about:history\n" \
+"=>about:known-hosts\n" \
+"=>about:license\n" \
+"=>about:newtab\n" \
+"=>about:sandbox\n";
+
+char license_page[] =
+HEADER \
+"# Vgmi license\n\n" \
+"Copyright (c) 2023 RMF <rawmonk@firemail.cc>\n\n" \
+"Permission to use, copy, modify, and distribute this software for any\n" \
+"purpose with or without fee is hereby granted, provided that the above\n" \
+"copyright notice and this permission notice appear in all copies.\n\n" \
+"THE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\n" \
+"WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF\n" \
+"MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR\n" \
+"ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES\n" \
+"WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN\n" \
+"ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF\n" \
+"OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.\n\n";
 
 char newtab_page[] =
-"20 text/gemini\r\n" \
+HEADER \
 "# Vgmi - " VERSION "\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
 "=>gemini://geminispace.info Geminispace\n" \
@@ -25,6 +56,7 @@ char newtab_page[] =
 "=>about:blank\n" \
 "=>about:newtab\n" \
 "=>about:history\n" \
+"=>about:about\n" \
 "=>gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme Vgmi\n";
 
 char *show_history(struct request *request, size_t *length_out) {
@@ -66,17 +98,26 @@ static int parse_data(struct request *request, char *data, size_t len) {
 			V(request->meta), &request->status);
 }
 
+static int static_page(struct request *request, const char *data, size_t len) {
+	char *ptr = malloc(len);
+	if (!ptr) return ERROR_MEMORY_FAILURE;
+	memcpy(ptr, data, len);
+	return parse_data(request, ptr, len - 1);
+}
+
 int about_parse(struct request *request) {
+	if (!strcmp(request->url, "about:about")) {
+		return static_page(request, V(about_page));
+	}
 	if (!strcmp(request->url, "about:blank")) {
 		request->status = GMI_SUCCESS;
 		return 0;
 	}
+	if (!strcmp(request->url, "about:license")) {
+		return static_page(request, V(license_page));
+	}
 	if (!strcmp(request->url, "about:newtab")) {
-		const size_t length = sizeof(newtab_page);
-		char *data = malloc(length);
-		if (!data) return ERROR_MEMORY_FAILURE;
-		memcpy(data, newtab_page, length);
-		return parse_data(request, data, length - 1);
+		return static_page(request, V(newtab_page));
 	}
 	if (!strcmp(request->url, "about:history")) {
 		size_t length;

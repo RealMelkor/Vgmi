@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
@@ -126,7 +127,11 @@ restart:
 		request_free_ref(request);
 		confirm = 0;
 	} else if (failure) {
-		error_string(request.error, V(tab->error));
+		{
+			char error[1024];
+			error_string(request.error, V(error));
+			snprintf(V(tab->error), "%s: %s", error, request.url);
+		}
 		tab->failure = 1;
 	} else if (gemini_isredirect(request.status)) {
 		redirect = 1;
@@ -138,7 +143,12 @@ restart:
 		tab->failure = 1;
 		request.state = STATE_FAILED;
 	} else if (gemini_iserror(request.status)) {
-		STRLCPY(tab->error, request.meta);
+		{
+			char status[1024];
+			gemini_status_string(request.status, V(status));
+			snprintf(V(tab->error), "%s (%d : %s)", request.meta,
+					request.status, status);
+		}
 		tab->failure = 1;
 		request.state = STATE_FAILED;
 	}

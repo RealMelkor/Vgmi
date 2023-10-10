@@ -13,6 +13,7 @@
 #include "request.h"
 #include "client.h"
 #include "tab.h"
+#include "error.h"
 
 void client_enter_mode_cmdline(struct client *client) {
 	client->count = 0;
@@ -74,11 +75,18 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		return 0;
 	case TB_KEY_ENTER:
 		if (req) {
-			char url[1024];
+			char url[2048];
+			int error;
 			req->state = STATE_ENDED;
-			snprintf(V(url), "%s?%s", req->url,
+			len = snprintf(V(url), "%s?%s", req->url,
 					client->tab->input);
-			tab_request(client->tab, url);
+			error = len >= MAX_URL ?
+				ERROR_URL_TOO_LONG :
+				tab_request(client->tab, url);
+			if (error) {
+				client->tab->failure = 1;
+				error_string(error, V(client->tab->error));
+			}
 		} else if (handle_cmd(client)) return 1;
 		client->mode = MODE_NORMAL;
 		return 0;
@@ -88,16 +96,16 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			if (!req) client->mode = MODE_NORMAL;
 			return 0;
 		}
-		if (req) {
-			client->cursor = utf8_previous(client->tab->input,
-						client->cursor - prefix) +
-						prefix;
-			client->tab->input[client->cursor - prefix] = 0;
-			goto rewrite;
+		if (!req) {
+			client->cursor = utf8_previous(client->cmd,
+						client->cursor);
+			client->cmd[client->cursor] = 0;
+			return 0;
 		}
-		client->cursor = utf8_previous(client->cmd, client->cursor);
-		client->cmd[client->cursor] = 0;
-		return 0;
+		client->cursor = utf8_previous(client->tab->input,
+					client->cursor - prefix) + prefix;
+		client->tab->input[client->cursor - prefix] = 0;
+		goto rewrite;
 	}
 
 	if (!ev.ch) return 0;
@@ -106,7 +114,8 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;
 
 	if (!req) {
-		len = utf8_unicode_to_char(&client->cmd[client->cursor], ev.ch);
+		len = utf8_unicode_to_char(
+				&client->cmd[client->cursor], ev.ch);
 		client->cursor += len;
 		client->cmd[client->cursor] = '\0';
 		return 0;

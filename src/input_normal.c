@@ -143,11 +143,6 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			client->tab->view = prev;
 		}
 		break;
-	case 'x':
-		if (!client || !client->tab || !client->tab->request) break;
-		if (client->tab->request->status == GMI_INPUT)
-			return 1;
-		break;
 	}
 	return 0;
 }

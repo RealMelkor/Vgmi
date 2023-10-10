@@ -59,16 +59,8 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 			rect.h - rect.y, req->selected);
 }
 
-void tab_display_error(struct tab *tab, struct client *client) {
+void tab_display_error(struct tab *tab) {
 	if (!tab) return;
-	if (tab->request->status > 0) {
-		snprintf(V(client->cmd), "%d: %s",
-				tab->request->status, tab->error);
-	} else {
-		snprintf(V(client->cmd), "%s: %s",
-				tab->error, tab->request->url);
-	}
-	client->error = 1;
 	tab->request->state = STATE_ENDED;
 	tb_refresh();
 	tab_clean_requests(tab);
@@ -100,13 +92,19 @@ void tab_display(struct tab *tab, struct client *client) {
 	req = tab_completed(tab);
 	if (req) tab_display_request(req, rect);
 
+	if (client->mode != MODE_CMDLINE && tab->failure) {
+		tab->failure = 0;
+		client->error = 1;
+		snprintf(V(client->cmd), "%s", tab->error);
+	}
+
 	switch (tab->request->state) {
 	case STATE_COMPLETED:
 		tab_display_request(tab->view ?
 				tab->view : tab->request, rect);
 		break;
 	case STATE_FAILED:
-		tab_display_error(tab, client);
+		tab_display_error(tab);
 		break;
 	case STATE_ONGOING:
 		tab_display_loading(tab, rect);

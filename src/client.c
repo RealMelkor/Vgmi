@@ -39,7 +39,7 @@ int client_destroy(struct client* client) {
 int client_input(struct client *client) {
 
 	struct tb_event ev;
-	struct request *req;
+	struct request *req = NULL;
 	int ret = 0;
 
 	if (!client->tab || !client->tab->request ||
