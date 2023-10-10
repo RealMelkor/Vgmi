@@ -3,6 +3,7 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #define GMI_SUCCESS 20
+#define GMI_INPUT 10
 
 struct gemtext_line;
 

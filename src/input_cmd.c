@@ -14,7 +14,7 @@
 void client_enter_mode_cmdline(struct client *client) {
 	client->count = 0;
 	client->error = 0;
-	memset(client->cmd, 0, sizeof(client->cursor));
+	memset(client->cmd, 0, sizeof(client->cmd));
 	client->mode = MODE_CMDLINE;
 	client->cursor = STRLCPY(client->cmd, ":");
 }

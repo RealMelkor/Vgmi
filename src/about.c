@@ -20,6 +20,7 @@ char newtab_page[] =
 "# Vgmi - " VERSION "\n\n" \
 "A Gemini client written in C with vim-like keybindings\n\n" \
 "=>gemini://geminispace.info Geminispace\n" \
+"=>gemini://geminispace.info/search Search\n" \
 "=> gemini://gemini.rmf-dev.com\n" \
 "=>about:blank\n" \
 "=>about:newtab\n" \

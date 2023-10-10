@@ -52,6 +52,16 @@ int client_input(struct client *client) {
 	if (ret == TB_ERR_POLL) ret = TB_OK;
 	if (ret != TB_OK) return ERROR_TERMBOX_FAILURE;
 
+	if (client->tab && client->tab->request &&
+			client->tab->request->status == GMI_INPUT) {
+		if (client->mode == MODE_NORMAL) {
+			client_enter_mode_cmdline(client);
+			client->cursor = snprintf(V(client->cmd), "%s: ",
+					client->tab->request->meta);
+		}
+		return client_input_request(client, ev);
+	}
+
 	switch (client->mode) {
 	case MODE_NORMAL:
 		return client_input_normal(client, ev);

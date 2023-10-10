@@ -206,7 +206,8 @@ struct request *tab_completed(struct tab *tab) {
 	if (!tab) return NULL;
 	if (tab->view) return tab->view;
 	for (req = tab->request; req; req = req->next) {
-		if (req->state == STATE_COMPLETED) {
+		if (req->state == STATE_COMPLETED &&
+				req->status == GMI_SUCCESS) {
 			return req;
 		}
 	}

@@ -80,6 +80,8 @@ void tab_display_request(struct request *req, struct rect rect) {
 	case GMI_SUCCESS:
 		tab_display_gemtext(req, rect);
 		break;
+	case GMI_INPUT:
+		break;
 	default:
 		tab_display_gemtext(req, rect);
 		break;
