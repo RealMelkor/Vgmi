@@ -66,7 +66,12 @@ int client_input(struct client *client) {
 	case MODE_NORMAL:
 		return client_input_normal(client, ev);
 	case MODE_CMDLINE:
-		return client_input_cmdline(client, ev);
+		{
+			int ret = client_input_cmdline(client, ev);
+			if (client->mode == MODE_NORMAL)
+				tb_hide_cursor();
+			return ret;
+		}
 	}
 	
 	return 0;

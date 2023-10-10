@@ -35,7 +35,6 @@ struct client {
 	int (*motion)(struct client*, int, int);
 	struct tab *tab;
 	/* internal */
-	int last_ch;
 	int g;
 	void *last_request;
 };

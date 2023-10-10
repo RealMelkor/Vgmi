@@ -262,12 +262,6 @@ int gemtext_parse(const char *data, size_t length,
 	return 0;
 }
 
-int findPreviousUTF8(const char *ptr, int i) {
-	if (i) i--;
-	while (i > 0 && (ptr[i] & 0xC0) == 0x80) i--;
-	return i;
-}
-
 static int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
 	int i = 0, j = 0;
@@ -286,7 +280,7 @@ static int format_link(const char *link, size_t length,
 				j -= 2;
 				if (j < 0) j = 0;
 				while (out[j] != '/' && j)
-					j = findPreviousUTF8(out, j);
+					j = utf8_previous(out, j);
 				i += len + 1;
 				continue;
 			}

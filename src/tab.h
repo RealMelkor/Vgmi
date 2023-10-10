@@ -8,6 +8,7 @@ struct tab {
 	void *mutex;
 	struct secure *secure;
 	char error[1024];
+	char input[1024];
 	int failure;
 	struct tab *next;
 	struct tab *prev;

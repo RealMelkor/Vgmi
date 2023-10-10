@@ -16,14 +16,14 @@
 
 int client_input_request(struct client *client, struct tb_event ev) {
 
-	int len;
+	int len, meta_len;
 	struct request *req;
 
 	if (!client || !client->tab || !client->tab->request) return 0;
 	req = client->tab->request;
 
-	len = strnlen(V(req->meta)) + 2;
-	if (client->cursor < len) client->cursor = len;
+	meta_len = strnlen(V(req->meta)) + 2;
+	if (client->cursor < meta_len) client->cursor = meta_len;
 
 	switch (ev.key) {
 	case TB_KEY_ESC:
@@ -32,28 +32,32 @@ int client_input_request(struct client *client, struct tb_event ev) {
 	case TB_KEY_ENTER:
 		client->mode = MODE_NORMAL;
 		req->state = STATE_ENDED;
-		/* send request */
 		{
 			char url[1024];
-			snprintf(V(url), "%s?%s", req->url, &client->cmd[len]);
+			snprintf(V(url), "%s?%s", req->url,
+					&client->cmd[meta_len]);
 			tab_request(client->tab, url);
 		}
 		return 0;
 	case TB_KEY_BACKSPACE:
 	case TB_KEY_BACKSPACE2:
-		if (client->cursor <= len) return 0;
-		client->cursor -= utf8_char_length(client->last_ch);
+		if (client->cursor <= 1) {
+			client->mode = MODE_NORMAL;
+			return 0;
+		}
+		client->cursor = utf8_previous(client->cmd, client->cursor);
 		client->cmd[client->cursor] = 0;
 		return 0;
 	}
 
 	if (!ev.ch) return 0;
 
-	len = utf8_char_length(ev.ch);
-	memcpy(&client->cmd[client->cursor], &ev.ch, len);
+	len = utf8_unicode_length(ev.ch);
+	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;
+
+	len = utf8_unicode_to_char(&client->cmd[client->cursor], ev.ch);
 	client->cursor += len;
 	client->cmd[client->cursor] = '\0';
-	client->last_ch = ev.ch;
 
 	return 0;
 }

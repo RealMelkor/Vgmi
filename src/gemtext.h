@@ -2,8 +2,9 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#define GMI_SUCCESS 20
-#define GMI_INPUT 10
+#define GMI_INPUT	10
+#define GMI_SECRET	11
+#define GMI_SUCCESS	20
 
 struct gemtext_line;
 

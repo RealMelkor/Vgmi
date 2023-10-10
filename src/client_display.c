@@ -11,6 +11,7 @@
 #include "request.h"
 #include "client.h"
 #include "tab.h"
+#include "utf8.h"
 
 struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
@@ -54,6 +55,8 @@ void client_draw(struct client* client) {
 	if (client->mode == MODE_CMDLINE) {
 		tb_print(0, client->height - 1, TB_DEFAULT, TB_DEFAULT,
 				client->cmd);
+		tb_set_cursor(utf8_width(client->cmd, client->cursor),
+				client->height - 1);
 	}
 
 	if (client->count) {

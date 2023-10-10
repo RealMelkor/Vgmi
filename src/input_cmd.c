@@ -70,18 +70,19 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			client->mode = MODE_NORMAL;
 			return 0;
 		}
-		client->cursor -= utf8_char_length(client->last_ch);
+		client->cursor = utf8_previous(client->cmd, client->cursor);
 		client->cmd[client->cursor] = 0;
 		return 0;
 	}
 
 	if (!ev.ch) return 0;
 
-	len = utf8_char_length(ev.ch);
-	memcpy(&client->cmd[client->cursor], &ev.ch, len);
+	len = utf8_unicode_length(ev.ch);
+	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;
+
+	len = utf8_unicode_to_char(&client->cmd[client->cursor], ev.ch);
 	client->cursor += len;
 	client->cmd[client->cursor] = '\0';
-	client->last_ch = ev.ch;
 
 	return 0;
 }
