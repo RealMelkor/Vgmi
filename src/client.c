@@ -39,6 +39,7 @@ int client_destroy(struct client* client) {
 int client_input(struct client *client) {
 
 	struct tb_event ev;
+	struct request *req;
 	int ret = 0;
 
 	if (!client->tab || !client->tab->request ||
@@ -52,14 +53,20 @@ int client_input(struct client *client) {
 	if (ret == TB_ERR_POLL) ret = TB_OK;
 	if (ret != TB_OK) return ERROR_TERMBOX_FAILURE;
 
-	if (client->tab && client->tab->request &&
-			client->tab->request->status == GMI_INPUT) {
+	if (client->tab)
+		req = tab_input(client->tab);
+
+	if (req && req->status == GMI_INPUT) {
+		int ret;
 		if (client->mode == MODE_NORMAL) {
 			client_enter_mode_cmdline(client);
 			client->cursor = snprintf(V(client->cmd), "%s: ",
-					client->tab->request->meta);
+					req->meta);
 		}
-		return client_input_request(client, ev);
+		ret = client_input_request(client, ev);
+		if (client->mode == MODE_NORMAL)
+			tb_hide_cursor();
+		return ret;
 	}
 
 	switch (client->mode) {

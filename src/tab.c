@@ -201,6 +201,18 @@ int tab_scroll(struct tab *tab, int scroll, struct rect rect) {
 	return request_scroll(req, scroll, rect);
 }
 
+struct request *tab_input(struct tab *tab) {
+	struct request *req;
+	if (!tab) return NULL;
+	if (tab->view) return tab->view;
+	for (req = tab->request; req; req = req->next) {
+		if (req->state != STATE_COMPLETED) continue;
+		if (req->status == GMI_INPUT || req->status == GMI_SECRET)
+			return req;
+	}
+	return NULL;
+}
+
 struct request *tab_completed(struct tab *tab) {
 	struct request *req;
 	if (!tab) return NULL;

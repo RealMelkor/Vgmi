@@ -21,4 +21,5 @@ void tab_display(struct tab*, struct client*);
 int tab_request(struct tab*, const char *url);
 int tab_scroll(struct tab*, int, struct rect);
 struct request *tab_completed(struct tab *tab);
+struct request *tab_input(struct tab *tab);
 void tab_free(struct tab*);
