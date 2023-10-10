@@ -9,7 +9,10 @@
 #include "strlcpy.h"
 #include "utf8.h"
 #include "termbox.h"
+#include "gemtext.h"
+#include "request.h"
 #include "client.h"
+#include "tab.h"
 
 void client_enter_mode_cmdline(struct client *client) {
 	client->count = 0;
@@ -54,21 +57,43 @@ int handle_cmd(struct client *client) {
 
 int client_input_cmdline(struct client *client, struct tb_event ev) {
 
-	int len;
+	int len, prefix;
+	struct request *req;
+
+	req = tab_input(client->tab);
+
+	if (req) {
+		prefix = strnlen(V(req->meta)) + 2;
+		if (client->cursor < prefix) client->cursor = prefix;
+	} else prefix = 1;
 
 	switch (ev.key) {
 	case TB_KEY_ESC:
 		client->mode = MODE_NORMAL;
+		if (req) req->state = STATE_ENDED;
 		return 0;
 	case TB_KEY_ENTER:
-		if (handle_cmd(client)) return 1;
+		if (req) {
+			char url[1024];
+			req->state = STATE_ENDED;
+			snprintf(V(url), "%s?%s", req->url,
+					client->tab->input);
+			tab_request(client->tab, url);
+		} else if (handle_cmd(client)) return 1;
 		client->mode = MODE_NORMAL;
 		return 0;
 	case TB_KEY_BACKSPACE:
 	case TB_KEY_BACKSPACE2:
-		if (client->cursor <= 1) {
-			client->mode = MODE_NORMAL;
+		if (client->cursor <= prefix) {
+			if (!req) client->mode = MODE_NORMAL;
 			return 0;
+		}
+		if (req) {
+			client->cursor = utf8_previous(client->tab->input,
+						client->cursor - prefix) +
+						prefix;
+			client->tab->input[client->cursor - prefix] = 0;
+			goto rewrite;
 		}
 		client->cursor = utf8_previous(client->cmd, client->cursor);
 		client->cmd[client->cursor] = 0;
@@ -80,9 +105,31 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	len = utf8_unicode_length(ev.ch);
 	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;
 
-	len = utf8_unicode_to_char(&client->cmd[client->cursor], ev.ch);
+	if (!req) {
+		len = utf8_unicode_to_char(&client->cmd[client->cursor], ev.ch);
+		client->cursor += len;
+		client->cmd[client->cursor] = '\0';
+		return 0;
+	}
+
+	len = utf8_unicode_to_char(
+			&client->tab->input[client->cursor - prefix], ev.ch);
 	client->cursor += len;
-	client->cmd[client->cursor] = '\0';
+	client->tab->input[client->cursor - prefix] = '\0';
+rewrite:
+	if (req->status == GMI_INPUT) {
+		strlcpy(&client->cmd[prefix], client->tab->input,
+				sizeof(client->cmd) - prefix);
+	} else if (req->status == GMI_SECRET) {
+		int i = 0;
+		size_t j;
+		for (j = prefix; j < sizeof(client->cmd) &&
+				client->tab->input[i]; j++) {
+			i += utf8_char_length(client->tab->input[i]);
+			client->cmd[j] = '*';
+		}
+		client->cmd[j] = '\0';
+	}
 
 	return 0;
 }
