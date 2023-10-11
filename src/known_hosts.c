@@ -9,6 +9,7 @@
 #include <time.h>
 #include "macro.h"
 #include "strlcpy.h"
+#define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "storage.h"
 #include "error.h"
@@ -20,12 +21,6 @@
 #define TIME_T "%ld"
 #endif
 
-struct known_host {
-	char host[256];
-	char hash[128];
-	time_t start;
-	time_t end;
-};
 struct known_host *known_hosts = NULL;
 size_t known_hosts_length = 0;
 
