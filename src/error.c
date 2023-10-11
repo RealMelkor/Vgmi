@@ -43,6 +43,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_INVALID_URL:
 		strlcpy(out, "Invalid URL", len);
 		break;
+	case ERROR_CERTIFICATE_MISMATCH:
+		strlcpy(out, "The server certificate changed", len);
+		break;
 	default:
 		strlcpy(out, "Unknown error", len);
 		return -1;

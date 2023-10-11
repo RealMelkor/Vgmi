@@ -16,10 +16,10 @@
 
 #include "macro.h"
 #include "error.h"
-#include "dns.h"
 #include "gemtext.h"
 #include "client.h"
 #include "request.h"
+#include "known_hosts.h"
 #include "secure.h"
 
 struct secure {
@@ -98,6 +98,14 @@ int secure_connect(struct secure *secure, struct request request) {
 	if (tls_handshake(secure->ctx)) {
 		ret = ERROR_TLS_FAILURE;
 		goto error;
+	}
+
+	{
+		const char *hash = tls_peer_cert_hash(secure->ctx);
+		time_t start = tls_peer_cert_notbefore(secure->ctx);
+		time_t end = tls_peer_cert_notafter(secure->ctx);
+		ret = known_hosts_verify(request.name, hash, start, end);
+		if (ret) goto error;
 	}
 
 	return 0;

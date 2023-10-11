@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 struct client;
 struct rect;
 #include "macro.h"
@@ -19,6 +20,7 @@ struct rect;
 #include "utf8.h"
 #include "input.h"
 #include "strlcpy.h"
+#include "known_hosts.h"
 
 int client_destroy(struct client* client) {
 	struct command *command;
@@ -32,6 +34,7 @@ int client_destroy(struct client* client) {
 		free(command);
 		command = next;
 	}
+	known_hosts_free();
 	if (tb_shutdown()) return ERROR_TERMBOX_FAILURE;
 	return 0;
 }
@@ -99,6 +102,8 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
+	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
+
 	return 0;
 }
