@@ -14,6 +14,11 @@
 #include "error.h"
 
 #define FILENAME "known_hosts"
+#ifdef __OpenBSD__
+#define TIME_T "%lld"
+#else
+#define TIME_T "%ld"
+#endif
 
 struct known_host {
 	char host[256];
@@ -107,7 +112,7 @@ int known_hosts_write(const char *host, const char *hash,
 	FILE *f;
 	f = storage_open(FILENAME, "a");
 	if (!f) return ERROR_STORAGE_ACCESS;
-	fprintf(f, "%s %s %ld %ld\n", host, hash, start, end);
+	fprintf(f, "%s %s "TIME_T" "TIME_T"\n", host, hash, start, end);
 	fclose(f);
 	return 0;
 }
@@ -120,7 +125,7 @@ int known_hosts_rewrite() {
 	f = storage_open(FILENAME, "w");
 	if (!f) return ERROR_STORAGE_ACCESS;
 	for (i = 0; i < known_hosts_length; i++) {
-		fprintf(f, "%s %s %ld %ld\n",
+		fprintf(f, "%s %s "TIME_T" "TIME_T"\n",
 			known_hosts[i].host, known_hosts[i].hash,
 			known_hosts[i].start, known_hosts[i].end);
 	}

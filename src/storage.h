@@ -4,3 +4,4 @@
  */
 
 FILE* storage_open(const char *name, const char *mode);
+int storage_init();

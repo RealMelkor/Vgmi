@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <errno.h>
 struct client;
 struct rect;
 #include "macro.h"
@@ -21,6 +22,7 @@ struct rect;
 #include "input.h"
 #include "strlcpy.h"
 #include "known_hosts.h"
+#include "storage.h"
 
 int client_destroy(struct client* client) {
 	struct command *command;
@@ -102,6 +104,10 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
+	if ((ret = storage_init())) {
+		printf("storage error: %s\n", strerror(errno));
+		return ret;
+	}
 	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
 

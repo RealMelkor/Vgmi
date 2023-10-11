@@ -36,16 +36,13 @@ static int storage_mkdir(const char *path) {
 	i = STRLCPY(path_copy, path);
 	path_copy[i] = '/';
 	path_copy[i + 1] = 0;
-	for (ptr = path_copy; ptr && *ptr; ptr = strchr(ptr, '/') + 1) {
+	for (ptr = path_copy; ptr && *ptr; ptr = strchr(ptr, '/')) {
 		char buf[PATH_MAX];
-		if (ptr == path_copy) {
-			ptr++;
-			continue;
-		}
+		if (ptr++ == path_copy) continue;
 		if ((size_t)(ptr - path_copy) >= sizeof(buf)) return -1;
 		strlcpy(buf, path_copy, ptr - path_copy + 1);
 		if (stat(buf, &st) == 0) continue;
-		if (mkdir(buf, 0700)) {printf("???\n"); return -1;}
+		if (mkdir(buf, 0700)) return -1;
 	}
 
 	return 0;
@@ -102,4 +99,11 @@ FILE* storage_open(const char *name, const char *mode) {
 	strlcpy(&path[i], name, sizeof(path) - i);
 
 	return fopen(path, mode);
+}
+
+int storage_init() {
+	char path[PATH_MAX];
+	int ret;
+	if ((ret = storage_path(V(path)))) return ret;
+	return storage_mkdir(path);
 }

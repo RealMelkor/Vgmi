@@ -46,6 +46,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_CERTIFICATE_MISMATCH:
 		strlcpy(out, "The server certificate changed", len);
 		break;
+	case ERROR_STORAGE_ACCESS:
+		strlcpy(out, "Failed to access disk storage", len);
+		break;
 	default:
 		strlcpy(out, "Unknown error", len);
 		return -1;

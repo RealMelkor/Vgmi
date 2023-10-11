@@ -27,7 +27,7 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 	struct timespec now;
 	tab->loading = (tab->loading + 1) % (sizeof(off) / sizeof(*off));
 
-	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+	clock_gettime(CLOCK_MONOTONIC, &now);
 	tab->loading = (now.tv_sec * 10 + now.tv_nsec / 100000000) %
 			(sizeof(off) / sizeof(*off));
 
