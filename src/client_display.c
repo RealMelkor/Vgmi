@@ -31,7 +31,7 @@ void client_display(struct client* client) {
 void client_draw(struct client* client) {
 
 	int i;
-	struct request *req;
+	struct request *req, *req_input;
 
 	if (!client) return;
 
@@ -64,8 +64,10 @@ void client_draw(struct client* client) {
 				TB_DEFAULT, TB_DEFAULT, "%d", client->count);
 	}
 
-	tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE,
-			"%s", req ? req->url : "about:blank");
+	req_input = tab_input(client->tab);
+	tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE, "%s",
+			req_input ? req_input->url :
+				(req ? req->url : "about:blank"));
 
 	if (req && req->selected &&
 			(size_t)req->selected <= req->text.links_count) {

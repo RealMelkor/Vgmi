@@ -7,6 +7,7 @@
 #include "error.h"
 #include "strlcpy.h"
 #include "strnstr.h"
+#include "gemtext.h"
 
 int gemini_iserror(int status) {
 	return status < 10 || status >= 40;
@@ -14,6 +15,10 @@ int gemini_iserror(int status) {
 
 int gemini_isredirect(int status) {
 	return status >= 30 && status < 40;
+}
+
+int gemini_isinput(int status) {
+	return status == GMI_INPUT || status == GMI_SECRET;
 }
 
 int gemini_status_string(int status, char *out, size_t length) {

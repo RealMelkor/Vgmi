@@ -12,6 +12,7 @@ struct client;
 struct rect;
 #include "macro.h"
 #include "error.h"
+#include "gemini.h"
 #include "gemtext.h"
 #include "request.h"
 #include "tab.h"
@@ -61,7 +62,7 @@ int client_input(struct client *client) {
 	if (client->tab)
 		req = tab_input(client->tab);
 
-	if (req && req->status == GMI_INPUT && client->mode == MODE_NORMAL) {
+	if (req && gemini_isinput(req->status) && client->mode == MODE_NORMAL) {
 		client_enter_mode_cmdline(client);
 		client->cursor = snprintf(V(client->cmd), "%s: ", req->meta);
 	}

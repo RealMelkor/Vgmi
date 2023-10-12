@@ -161,7 +161,7 @@ restart:
 
 	secure_free(ctx);
 	if (redirect) {
-		STRLCPY(args->url, destination);
+		request_follow(&request, destination, V(args->url));
 		iterations++;
 		goto restart;
 	}
@@ -214,7 +214,6 @@ int tab_scroll(struct tab *tab, int scroll, struct rect rect) {
 struct request *tab_input(struct tab *tab) {
 	struct request *req;
 	if (!tab) return NULL;
-	if (tab->view) return tab->view;
 	for (req = tab->request; req; req = req->next) {
 		if (req->state != STATE_COMPLETED) continue;
 		if (req->status == GMI_INPUT || req->status == GMI_SECRET)
