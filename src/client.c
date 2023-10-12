@@ -25,7 +25,7 @@ struct rect;
 #include "known_hosts.h"
 #include "storage.h"
 
-int client_destroy(struct client* client) {
+int client_destroy(struct client *client) {
 	struct command *command;
 	if (!client) return ERROR_NULL_ARGUMENT;
 	if (client->tab) {
@@ -82,7 +82,7 @@ int client_input(struct client *client) {
 	return 0;
 }
 
-int client_addcommand(struct client * client, const char * name,
+int client_addcommand(struct client *client, const char *name,
 			int (*cmd)(struct client*, const char*, size_t)) {
 
 	struct command *command;

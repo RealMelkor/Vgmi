@@ -173,6 +173,8 @@ restart:
 int tab_request(struct tab* tab, const char *url) {
 
 	struct request_thread *args;
+	pthread_attr_t tattr = {0};
+	int ret;
 
 	/* clean up forward history */
 	pthread_mutex_lock(tab->mutex);
@@ -200,8 +202,9 @@ int tab_request(struct tab* tab, const char *url) {
 		free(args);
 		return ERROR_MEMORY_FAILURE;
 	}
-	pthread_create(&args->thread, NULL, tab_request_thread, args);
-	pthread_detach(args->thread);
+	ret = pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
+	if (ret) return ERROR_PTHREAD;
+	pthread_create(&args->thread, &tattr, tab_request_thread, args);
 	return 0;
 }
 

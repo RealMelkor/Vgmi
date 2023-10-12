@@ -4,6 +4,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <fcntl.h>
@@ -16,8 +17,8 @@
 #define EXPIRATION 3600 * 24 * 365 * 2
 #define CERTIFICATE_BITS 2048
 
-int certificate_getpath(const char* host, char* crt, size_t crt_len,
-				char* key, size_t key_len) {
+int certificate_getpath(const char *host, char *crt, size_t crt_len,
+				char *key, size_t key_len) {
 	int len = strnlen(host, 1024);
 	if (strlcpy(crt, host, crt_len) >= crt_len - 4) return -1;
 	if (strlcpy(key, host, key_len) >= key_len - 4) return -1;
@@ -28,16 +29,28 @@ int certificate_getpath(const char* host, char* crt, size_t crt_len,
 	return len + 4;
 }
 
-int certificate_create(char* host, char* error, int errlen) {
+int certificate_create(char *host, char *error, int errlen) {
 
 	char key[1024];
 	char crt[1024];
 	FILE* f = NULL;
 	int fd, id, ret = 1;
 
-	EVP_PKEY* pkey = EVP_RSA_gen(CERTIFICATE_BITS);
-	X509* x509 = X509_new();
-	X509_NAME* name;
+	X509_NAME *name;
+#ifdef USE_OPENSSL
+	EVP_PKEY *pkey = EVP_RSA_gen(CERTIFICATE_BITS);
+	X509 *x509 = X509_new();
+#else /* LibreSSL */
+	EVP_PKEY *pkey = EVP_PKEY_new();
+	RSA *rsa = RSA_new();
+	BIGNUM *bne = BN_new();
+	X509 *x509 = X509_new();
+	if (BN_set_word(bne, 65537) != 1) goto failed;
+	if (RSA_generate_key_ex(rsa, CERTIFICATE_BITS, bne, NULL) != 1)
+		goto failed;
+
+	EVP_PKEY_assign_RSA(pkey, rsa);
+#endif
 
 #ifdef __linux__
 	getrandom(&id, sizeof(id), GRND_RANDOM);
@@ -107,5 +120,8 @@ skip_error:
 	if (f) fclose(f);
 	EVP_PKEY_free(pkey);
 	X509_free(x509);
+#ifndef USE_OPENSSL
+	BN_free(bne);
+#endif
 	return ret;
 }
