@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#ifdef __FreeBSD__
+#include <netinet/in.h>
+#endif
 /* tls */
 #include <tls.h>
 

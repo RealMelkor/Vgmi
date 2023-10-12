@@ -9,6 +9,9 @@
 #include <errno.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#ifdef __FreeBSD__
+#include <netinet/in.h>
+#endif
 #include "macro.h"
 #include "error.h"
 #include "dns.h"
