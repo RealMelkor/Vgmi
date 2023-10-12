@@ -104,10 +104,9 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
-	if ((ret = storage_init())) {
-		printf("storage error: %s\n", strerror(errno));
+	if ((ret = client_addcommand(client, "gencert", command_gencert)))
 		return ret;
-	}
+	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
 

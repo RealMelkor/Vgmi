@@ -24,6 +24,8 @@
 #include "request.h"
 #include "known_hosts.h"
 #include "secure.h"
+#include "certificate.h"
+#include "storage.h"
 
 struct secure {
 	struct tls *ctx;
@@ -32,7 +34,7 @@ struct secure {
 
 int secure_initialized = 0;
 
-int secure_init(struct secure *secure) {
+int secure_init(struct secure *secure, const char *hostname) {
 
 	if (!secure_initialized) {
 		if (tls_init()) return ERROR_TLS_FAILURE;
@@ -56,6 +58,24 @@ int secure_init(struct secure *secure) {
 		if (tls_configure(secure->ctx, secure->config)) {
 			return ERROR_TLS_FAILURE;
 		}
+
+		if (hostname) {
+			char cert_path[1024], key_path[1024];
+			char cert[4096], key[4096];
+			size_t cert_len, key_len;
+
+			int ret = certificate_getpath(hostname,
+					V(cert_path), V(key_path));
+			/* TODO: handle errors properly */
+			if (ret < 0) return 0;
+			if (storage_read(cert_path, V(cert), &cert_len))
+				return 0;
+			if (storage_read(key_path, V(key), &key_len))
+				return 0;
+			tls_config_set_keypair_mem(secure->config,
+					(unsigned char*)cert, cert_len,
+					(unsigned char*)key, key_len);
+		}
 	}
 
 	return 0;
@@ -71,7 +91,7 @@ int secure_connect(struct secure *secure, struct request request) {
 	int ret, sockfd;
 	struct sockaddr *addr;
 
-	if ((ret = secure_init(secure))) return ret;
+	if ((ret = secure_init(secure, request.name))) return ret;
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) return ERROR_SOCKET_CREATION;

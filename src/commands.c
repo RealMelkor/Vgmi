@@ -11,6 +11,7 @@
 #include "client.h"
 #include "tab.h"
 #include "request.h"
+#include "certificate.h"
 
 int command_quit(struct client *client, const char* ptr, size_t len) {
 	if (strncmp(ptr, "q", len)) {
@@ -63,5 +64,33 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	request_follow(req, req->text.links[link], V(buf));
 	tab_request(client->tab, buf);
 	return 0;
+}
 
+int command_gencert(struct client *client, const char* ptr, size_t len) {
+
+	const char start[] = "gencert";
+	struct request *req;
+
+	if (strncmp(ptr, start, len)) {
+		client->error = 1;
+		snprintf(V(client->cmd), "Trailing characters: %s",
+				&ptr[sizeof(start)]);
+		return 0;
+	}
+
+	req = tab_completed(client->tab);
+	if (!req) {
+		client->error = 1;
+		STRLCPY(client->cmd, "Invalid page");
+		return 0;
+	}
+	if (!strncmp(req->url, V("about:") - 1)) {
+		client->error = 1;
+		STRLCPY(client->cmd,
+			"Cannot create certificate for \"about:\" pages");
+		return 0;
+	}
+	if (certificate_create(req->name, V(client->cmd)))
+		client->error = 1;
+	return 0;
 }

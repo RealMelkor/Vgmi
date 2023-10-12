@@ -4,6 +4,8 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -47,7 +49,8 @@ int error_string(int error, char *out, size_t len) {
 		strlcpy(out, "The server certificate changed", len);
 		break;
 	case ERROR_STORAGE_ACCESS:
-		strlcpy(out, "Failed to access disk storage", len);
+		snprintf(out, len, "Failed to access disk storage (%s)",
+				strerror(errno));
 		break;
 	default:
 		strlcpy(out, "Unknown error", len);

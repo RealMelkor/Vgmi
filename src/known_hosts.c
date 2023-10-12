@@ -45,7 +45,7 @@ int known_hosts_load() {
 	int ch = !EOF;
 	int ret = 0;
 
-	f = storage_open(FILENAME, "r");
+	f = storage_fopen(FILENAME, "r");
 	if (!f) return 0;
 
 	while (ch != EOF) {
@@ -105,7 +105,7 @@ int known_hosts_load() {
 int known_hosts_write(const char *host, const char *hash,
 			time_t start, time_t end) {
 	FILE *f;
-	f = storage_open(FILENAME, "a");
+	f = storage_fopen(FILENAME, "a");
 	if (!f) return ERROR_STORAGE_ACCESS;
 	fprintf(f, "%s %s "TIME_T" "TIME_T"\n", host, hash, start, end);
 	fclose(f);
@@ -117,7 +117,7 @@ int known_hosts_rewrite() {
 	FILE *f;
 	size_t i;
 
-	f = storage_open(FILENAME, "w");
+	f = storage_fopen(FILENAME, "w");
 	if (!f) return ERROR_STORAGE_ACCESS;
 	for (i = 0; i < known_hosts_length; i++) {
 		fprintf(f, "%s %s "TIME_T" "TIME_T"\n",
