@@ -16,6 +16,7 @@
 #include "strlcpy.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
+#include "sandbox.h"
 
 #define HEADER "20 text/gemini\r\n"
 
@@ -61,6 +62,11 @@ HEADER \
 "=>about:history\n" \
 "=>about:about\n" \
 "=>gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme Vgmi\n";
+
+char sandbox_page[] =
+HEADER \
+"# Sandbox information\n\n" \
+""SANDBOX_INFO;
 
 char *show_history(struct request *request, size_t *length_out) {
 
@@ -181,6 +187,9 @@ int about_parse(struct request *request) {
 		char *data = show_history(request, &length);
 		if (!data) return ERROR_MEMORY_FAILURE;
 		return parse_data(request, data, length - 1);
+	}
+	if (!strcmp(request->url, "about:sandbox")) {
+		return static_page(request, V(sandbox_page));
 	}
 	return ERROR_INVALID_URL;
 }

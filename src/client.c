@@ -24,6 +24,7 @@ struct rect;
 #include "strlcpy.h"
 #include "known_hosts.h"
 #include "storage.h"
+#include "sandbox.h"
 
 int client_destroy(struct client *client) {
 	struct command *command;
@@ -110,6 +111,10 @@ int client_init(struct client* client) {
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
+	if ((ret = sandbox_init())) {
+		tb_shutdown();
+		return ret;
+	}
 
 	return 0;
 }

@@ -52,7 +52,7 @@ static int storage_mkdir(const char *path) {
 	return 0;
 }
 
-static int storage_path(char *out, size_t length) {
+int storage_path(char *out, size_t length) {
 
 	const char *path;
 	struct passwd *pw;
