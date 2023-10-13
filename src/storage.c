@@ -84,9 +84,14 @@ static int storage_path(char *out, size_t length) {
 FILE* storage_fopen(const char *name, const char *mode) {
 
 	int fd;
+	int flags;
 
-	fd = openat(storage_fd, name, strchr(mode, 'w') ?
-			O_WRONLY|O_TRUNC : O_RDONLY);
+	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC;
+	else if (strchr(mode, 'r')) flags = O_RDONLY;
+	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND;
+	else return NULL;
+
+	fd = openat(storage_fd, name, flags);
 	if (fd < 0) return NULL;
 
 	return fdopen(fd, mode);
