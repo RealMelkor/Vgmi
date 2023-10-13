@@ -52,6 +52,10 @@ int error_string(int error, char *out, size_t len) {
 		snprintf(out, len, "Failed to access disk storage (%s)",
 				strerror(errno));
 		break;
+	case ERROR_SANDBOX_FAILURE:
+		snprintf(out, len, "Failed to apply sandboxing (%s)",
+				strerror(errno));
+		break;
 	default:
 		strlcpy(out, "Unknown error", len);
 		return -1;
