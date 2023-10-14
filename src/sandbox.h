@@ -8,11 +8,19 @@
 #if __has_include(<linux/landlock.h>)
 #undef NO_SANDBOX
 #undef SANDBOX_INFO
+#ifdef ENABLE_SECCOMP
+#define SANDBOX_INFO "Sandboxed using landlock(7) and seccomp(2)"
+#else
 #define SANDBOX_INFO "Sandboxed using landlock(7)"
+#endif
 #undef SANDBOX_FILESYSTEM
 #define SANDBOX_FILESYSTEM "Restricted"
 #undef SANDBOX_IPC
+#ifdef ENABLE_SECCOMP
+#define SANDBOX_IPC "Restricted"
+#else
 #define SANDBOX_IPC "Weakly restricted"
+#endif
 #undef SANDBOX_DEVICE
 #define SANDBOX_DEVICE "Restricted"
 #endif

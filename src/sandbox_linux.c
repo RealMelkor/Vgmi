@@ -2,6 +2,7 @@
 #if __has_include(<linux/landlock.h>)
 #define _DEFAULT_SOURCE
 #include <sys/syscall.h>
+#include <sys/resource.h>
 #include <sys/prctl.h>
 #include <linux/landlock.h>
 #include <stdio.h>
@@ -13,6 +14,102 @@
 #include "sandbox.h"
 #include "storage.h"
 #include "error.h"
+
+#ifdef ENABLE_SECCOMP
+#include <linux/seccomp.h>
+#include <linux/filter.h>
+#include <stddef.h>
+
+#define SC_ALLOW(nr)						\
+	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_##nr, 0, 1),	\
+	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW)
+
+struct sock_filter filter[] = {
+	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+		 (offsetof(struct seccomp_data, arch))),
+	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
+		 (offsetof(struct seccomp_data, nr))),
+        SC_ALLOW(readv),
+        SC_ALLOW(writev),
+#ifdef __NR_open
+        SC_ALLOW(open),
+#endif
+#ifdef __NR_dup2
+        SC_ALLOW(dup2),
+#endif
+        SC_ALLOW(pipe2),
+	SC_ALLOW(recvmsg),
+	SC_ALLOW(getsockname),
+        SC_ALLOW(fstat),
+#ifdef __NR_stat
+        SC_ALLOW(stat),
+#endif
+#ifdef __NR_pipe
+        SC_ALLOW(pipe),
+#endif
+	SC_ALLOW(setsockopt),
+	SC_ALLOW(read),
+	SC_ALLOW(write),
+	SC_ALLOW(openat),
+	SC_ALLOW(close),
+	SC_ALLOW(exit),
+	SC_ALLOW(ioctl),
+	SC_ALLOW(exit_group),
+	SC_ALLOW(futex),
+	SC_ALLOW(sysinfo),
+	SC_ALLOW(brk),
+	SC_ALLOW(newfstatat),
+	SC_ALLOW(getpid),
+	SC_ALLOW(getrandom),
+	SC_ALLOW(mmap),
+	SC_ALLOW(fcntl),
+	SC_ALLOW(lseek),
+	SC_ALLOW(rt_sigaction),
+	SC_ALLOW(rt_sigprocmask),
+	SC_ALLOW(rt_sigreturn),
+	SC_ALLOW(mprotect),
+	SC_ALLOW(pread64),
+	SC_ALLOW(uname),
+	SC_ALLOW(ppoll),
+	SC_ALLOW(bind),
+	SC_ALLOW(sendto),
+	SC_ALLOW(recvfrom),
+	SC_ALLOW(socket),
+	SC_ALLOW(socketpair),
+	SC_ALLOW(connect),
+        SC_ALLOW(getsockopt),
+#ifdef __NR_poll
+	SC_ALLOW(poll),
+#endif
+	SC_ALLOW(clone),
+#ifdef __NR_clone3
+	SC_ALLOW(clone3),
+#endif
+	SC_ALLOW(clock_nanosleep),
+	SC_ALLOW(nanosleep),
+	SC_ALLOW(rseq),
+	SC_ALLOW(set_robust_list),
+	SC_ALLOW(munmap),
+	SC_ALLOW(madvise),
+	SC_ALLOW(mremap),
+#ifdef __NR_select
+	SC_ALLOW(select),
+#endif
+	SC_ALLOW(membarrier),
+	SC_ALLOW(sendmmsg),
+#ifdef __NR_pselect6
+	SC_ALLOW(pselect6),
+#endif
+	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
+};
+
+int enable_seccomp() {
+	struct sock_fprog prog;
+	prog.len = (unsigned short)(sizeof(filter) / sizeof (filter[0]));
+	prog.filter = filter;
+	return prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog, 0);
+}
+#endif
 
 static int landlock_create_ruleset(
 		const struct landlock_ruleset_attr *attr,
@@ -82,12 +179,24 @@ int sandbox_init() {
 
 	char path[2048];
 	int ret, fd;
+	struct rlimit limit;
+
+	/* prevents from creating large file */
+	limit.rlim_max = limit.rlim_cur = 1024 * 1024;
+	if (setrlimit(RLIMIT_FSIZE, &limit))
+		return ERROR_SANDBOX_FAILURE;
+
+	/* limits number of open files */
+	limit.rlim_max = limit.rlim_cur = 16;
+	if (setrlimit(RLIMIT_NOFILE, &limit))
+		return ERROR_SANDBOX_FAILURE;
 
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
 		return ERROR_SANDBOX_FAILURE;
 
 	if ((ret = storage_path(V(path)))) return ret;
 
+	/* restrict filesystem access */
 	fd = landlock_init();
 	if (fd < 0) return ERROR_SANDBOX_FAILURE;
 	ret = landlock_unveil_path(fd, path,
@@ -102,6 +211,10 @@ int sandbox_init() {
 	if (ret) return ERROR_SANDBOX_FAILURE;
 
 	if (landlock_apply(fd)) return ERROR_SANDBOX_FAILURE;
+
+#ifdef ENABLE_SECCOMP
+	if (enable_seccomp()) return ERROR_SANDBOX_FAILURE;
+#endif
 
 	return 0;
 }
