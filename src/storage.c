@@ -86,12 +86,12 @@ FILE* storage_fopen(const char *name, const char *mode) {
 	int fd;
 	int flags;
 
-	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC;
+	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC | O_CREAT;
 	else if (strchr(mode, 'r')) flags = O_RDONLY;
-	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND;
+	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND | O_CREAT;
 	else return NULL;
 
-	fd = openat(storage_fd, name, flags);
+	fd = openat(storage_fd, name, flags, 0600);
 	if (fd < 0) return NULL;
 
 	return fdopen(fd, mode);
