@@ -17,6 +17,7 @@ struct request;
 #include "dns.h"
 #include "about.h"
 #include "error.h"
+#include "parser.h"
 
 int request_process(struct request *request, struct secure *secure,
 			const char *url) {
@@ -43,12 +44,7 @@ int request_process(struct request *request, struct secure *secure,
 	if ((ret = secure_send(secure, buf, length))) goto failed;
 	if ((ret = secure_read(secure, &request->data, &request->length)))
 		goto failed;
-	if ((ret = gemtext_links(request->data, request->length,
-			&request->text.links, &request->text.links_count)))
-		goto failed;
-	ret = gemini_status(request->data, request->length,
-			V(request->meta), &request->status);
-	if (ret) goto failed;
+	if (parse_request(NULL, request)) goto failed;
 
 	request->state = STATE_COMPLETED;
 	return 0;

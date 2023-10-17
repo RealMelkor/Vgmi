@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 #include "client.h"
 #define GEMTEXT_INTERNAL
@@ -297,14 +298,17 @@ static int format_link(const char *link, size_t length,
 		prev = ch;
 	}
 	out[j] = '\0';
+	if (strstr(out, "gemini://") == out) {
+		if (!strchr(&out[sizeof("gemini://")], '/')) {
+			out[j++] = '/';
+			out[j] = '\0';
+		}
+	}
 	return j;
 }
 
-int gemtext_links(const char *data, size_t length,
-			char ***out, size_t *out_length) {
+int gemtext_links(const char *data, size_t length, int fd) {
 
-	char **links = NULL;
-	int count = 0;
 	int newline = 1;
 	size_t i;
 
@@ -320,7 +324,7 @@ int gemtext_links(const char *data, size_t length,
 		i += j;
 
 		if (newline && ch == '=' && data[i] == '>') {
-			char url[MAX_URL], buf[MAX_URL], **tmp;
+			char url[MAX_URL], buf[MAX_URL];
 			i++;
 			j = 0;
 			while (whitespace(data[i]) && i < length)
@@ -336,25 +340,14 @@ int gemtext_links(const char *data, size_t length,
 				i += len;
 			}
 			url[j] = '\0';
-			tmp = realloc(links, sizeof(char*) * (count + 1));
-			if (!tmp) {
-				free(links);
-				return ERROR_MEMORY_FAILURE;
-			}
 			j = format_link(V(url), V(buf));
-			links = tmp;
-			links[count] = malloc(j + 1);
-			if (!links[count]) {
-				free(links);
-				return ERROR_MEMORY_FAILURE;
-			}
-			strlcpy(links[count], buf, j + 1);
-			count++;
+			write(fd, P(j));
+			write(fd, buf, j);
 		}
 
 		newline = ch == '\n';
 	}
-	if (out_length) *out_length = count;
-	if (out) *out = links;
+	i = -1;
+	write(fd, P(i));
 	return 0;
 }

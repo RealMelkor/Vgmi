@@ -4,4 +4,8 @@
 int sandbox_init() {
 	return 0;
 }
+
+int sandbox_isolate() {
+	return 0;
+}
 #endif

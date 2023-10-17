@@ -25,6 +25,7 @@ struct rect;
 #include "known_hosts.h"
 #include "storage.h"
 #include "sandbox.h"
+#include "parser.h"
 
 int client_destroy(struct client *client) {
 	struct command *command;
@@ -104,6 +105,7 @@ int client_init(struct client* client) {
 	int ret;
 
 	memset(client, 0, sizeof(*client));
+	if ((ret = parser_request_create())) return ret;
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))

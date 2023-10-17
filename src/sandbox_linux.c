@@ -1,4 +1,5 @@
 #ifdef __linux__
+#include <linux/seccomp.h>
 #if __has_include(<linux/landlock.h>)
 #define _DEFAULT_SOURCE
 #include <sys/syscall.h>
@@ -15,8 +16,7 @@
 #include "storage.h"
 #include "error.h"
 
-#ifdef ENABLE_SECCOMP
-#include <linux/seccomp.h>
+#ifdef ENABLE_SECCOMP_FILTER
 #include <linux/filter.h>
 #include <stddef.h>
 
@@ -181,14 +181,10 @@ int sandbox_init() {
 	int ret, fd;
 	struct rlimit limit;
 
+
 	/* prevents from creating large file */
 	limit.rlim_max = limit.rlim_cur = 1024 * 1024;
 	if (setrlimit(RLIMIT_FSIZE, &limit))
-		return ERROR_SANDBOX_FAILURE;
-
-	/* limits number of open files */
-	limit.rlim_max = limit.rlim_cur = 16;
-	if (setrlimit(RLIMIT_NOFILE, &limit))
 		return ERROR_SANDBOX_FAILURE;
 
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
@@ -212,7 +208,7 @@ int sandbox_init() {
 
 	if (landlock_apply(fd)) return ERROR_SANDBOX_FAILURE;
 
-#ifdef ENABLE_SECCOMP
+#ifdef ENABLE_SECCOMP_FILTER
 	if (enable_seccomp()) return ERROR_SANDBOX_FAILURE;
 #endif
 
@@ -220,5 +216,11 @@ int sandbox_init() {
 }
 #else
 #endif
+int sandbox_isolate() {
+	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT))
+		return ERROR_SANDBOX_FAILURE;
+	return 0;
+}
+#else
 typedef int hide_warning;
 #endif

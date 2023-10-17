@@ -17,6 +17,7 @@
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "sandbox.h"
+#include "parser.h"
 
 #define HEADER "20 text/gemini\r\n"
 
@@ -61,7 +62,8 @@ HEADER \
 "=>about:newtab\n" \
 "=>about:history\n" \
 "=>about:about\n" \
-"=>gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme Vgmi\n";
+"=>gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme Vgmi\n" \
+"=>gemini://gemini.rmf-dev.com/static/ static files\n";
 
 char sandbox_page[] =
 HEADER \
@@ -99,15 +101,10 @@ char *show_history(struct request *request, size_t *length_out) {
 }
 
 static int parse_data(struct request *request, char *data, size_t len) {
-	int ret;
 	request->status = GMI_SUCCESS;
 	request->length = len;
 	request->data = data;
-	if ((ret = gemtext_links(request->data, request->length,
-		&request->text.links, &request->text.links_count)))
-		return ret;
-	return gemini_status(request->data, request->length,
-			V(request->meta), &request->status);
+	return parse_request(NULL, request);
 }
 
 static int static_page(struct request *request, const char *data, size_t len) {

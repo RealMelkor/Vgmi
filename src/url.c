@@ -74,7 +74,11 @@ int url_parse(struct request* request, const char *url) {
 	if (protocol == PROTOCOL_UNKNOWN) return ERROR_UNKNOWN_PROTOCOL;
 	if (protocol == PROTOCOL_NONE) {
 		size_t length = STRLCPY(buf, "gemini://");
-		strlcpy(&buf[length], url, sizeof(buf) - length);
+		int i;
+		i = strlcpy(&buf[length], url, sizeof(buf) - length);
+		i += length;
+		buf[i] = '/';
+		buf[i + 1] = '\0';
 		protocol = PROTOCOL_GEMINI;
 	} else STRLCPY(buf, url);
 

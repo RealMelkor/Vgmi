@@ -39,3 +39,4 @@
 #endif
 
 int sandbox_init();
+int sandbox_isolate();

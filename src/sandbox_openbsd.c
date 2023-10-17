@@ -22,6 +22,12 @@ int sandbox_init() {
 
 	return 0;
 }
+
+int sandbox_isolate() {
+	if (unveil(NULL, NULL)) return ERROR_SANDBOX_FAILURE;
+	if (pledge("stdio", "")) return ERROR_SANDBOX_FAILURE;
+	return 0;
+}
 #else
 typedef int hide_warning;
 #endif

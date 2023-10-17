@@ -7,5 +7,6 @@
 #define STRLCPY(X, Y) strlcpy((X), (Y), sizeof(X))
 #define STRCMP(X, Y) strncmp((X), (Y), sizeof(X))
 #define V(X) (X), sizeof(X)
+#define P(X) (&X), sizeof(X)
 #define AZ(X) ((X) ? (X) : 1)
 #define MAX_URL 1024
