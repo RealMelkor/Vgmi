@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #ifdef __linux__
 #include <linux/seccomp.h>
 #if __has_include(<linux/landlock.h>)

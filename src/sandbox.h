@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #define SANDBOX_INFO "The program is not sandboxed"
 #define SANDBOX_FILESYSTEM "Unrestricted"
 #define SANDBOX_IPC "Unrestricted"
@@ -17,7 +21,7 @@
 #undef SANDBOX_FILESYSTEM
 #define SANDBOX_FILESYSTEM "Restricted"
 #undef SANDBOX_IPC
-#ifdef ENABLE_SECCOMP
+#ifdef ENABLE_SECCOMP_FILTER
 #define SANDBOX_IPC "Restricted"
 #else
 #define SANDBOX_IPC "Weakly restricted"

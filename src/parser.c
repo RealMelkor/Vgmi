@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #ifdef __linux__
 #define _DEFAULT_SOURCE
 #include <syscall.h>
