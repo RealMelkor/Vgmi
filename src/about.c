@@ -71,7 +71,8 @@ HEADER \
 ""SANDBOX_INFO"\n" \
 "Filesystem access\t: "SANDBOX_FILESYSTEM"\n" \
 "IPC access\t\t\t: "SANDBOX_IPC"\n" \
-"Devices access\t\t: "SANDBOX_DEVICE"\n";
+"Devices access\t\t: "SANDBOX_DEVICE"\n" \
+"Parser isolation\t: "SANDBOX_PARSER"\n";
 
 char *show_history(struct request *request, size_t *length_out) {
 

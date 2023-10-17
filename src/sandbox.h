@@ -2,6 +2,7 @@
 #define SANDBOX_FILESYSTEM "Unrestricted"
 #define SANDBOX_IPC "Unrestricted"
 #define SANDBOX_DEVICE "Unrestricted"
+#define SANDBOX_PARSER "Disabled"
 #define NO_SANDBOX
 
 #ifdef __linux__
@@ -23,6 +24,8 @@
 #endif
 #undef SANDBOX_DEVICE
 #define SANDBOX_DEVICE "Restricted"
+#undef SANDBOX_PARSER
+#define SANDBOX_PARSER "Enabled"
 #endif
 #endif
 
@@ -36,6 +39,16 @@
 #define SANDBOX_IPC "Restricted"
 #undef SANDBOX_DEVICE
 #define SANDBOX_DEVICE "Restricted"
+#undef SANDBOX_PARSER
+#define SANDBOX_PARSER "Enabled"
+#endif
+
+#ifdef __FreeBSD__
+#undef NO_SANDBOX
+#undef SANDBOX_INFO
+#define SANDBOX_INFO "Sandboxed using capsicum(4)"
+#undef SANDBOX_PARSER
+#define SANDBOX_PARSER "Enabled"
 #endif
 
 int sandbox_init();
