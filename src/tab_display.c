@@ -16,6 +16,7 @@
 #include "tab.h"
 #include "strnstr.h"
 #include "error.h"
+#include "parser.h"
 
 void tab_clean_requests(struct tab *tab);
 
@@ -47,8 +48,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	if (!start) return;
 
 	if (req->text.width != rect.w - rect.x) {
-		int error = gemtext_parse(req->data, req->length,
-				rect.w - rect.x, &req->text);
+		int error = parse_gemtext(NULL, req, rect.w - rect.x);
 		if (error) {
 			req->error = error;
 			return;

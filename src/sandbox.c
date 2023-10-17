@@ -8,4 +8,9 @@ int sandbox_init() {
 int sandbox_isolate() {
 	return 0;
 }
+
+int sandbox_set_name(const char *ptr) {
+	if (ptr) return !ptr;
+	return 0;
+}
 #endif

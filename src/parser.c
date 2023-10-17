@@ -1,8 +1,8 @@
 #ifdef __linux__
 #define _DEFAULT_SOURCE
 #include <syscall.h>
-#include <unistd.h>
 #endif
+#include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +22,7 @@ struct parser {
 	pthread_mutex_t mutex;
 };
 struct parser request_parser;
+struct parser gemtext_parser;
 
 static int vread(int fd, void *buf, size_t nbytes) {
 	ssize_t len = read(fd, buf, nbytes);
@@ -120,24 +121,56 @@ int parse_request(struct parser *parser, struct request *request) {
 }
 
 void parser_gemtext(int in, int out) {
-	if (!out) return;
+	char *data = NULL;
 	while (1) { /* TODO: send error code */
-		size_t length = 0;
-		int width = 0;
-		char *data;
-		struct gemtext gemtext;
+
+		int ret;
+		size_t length;
+		size_t received;
+		int width;
 
 		if (vread(in, &length, sizeof(length))) break;
+		if (!(data = malloc(length + 1))) break;
+		data[length] = 0;
+		for (received = 0; received < length; ) {
+			ssize_t bytes = 2048;
+			if ((size_t)bytes > length - received)
+				bytes = length - received;
+			bytes = read(in, &data[received], bytes);
+			if (bytes < 0) break;
+			received += bytes;
+		}
+		if (received != length) break;
 		if (vread(in, &width, sizeof(width))) break;
-		data = malloc(length);
-		if (!data) break;
-		if (vread(in, data, length)) break;
-		gemtext_parse(data, length, width, &gemtext);
-		/* send data cells by cells, with a newline signal */
+
+		ret = gemtext_parse(data, length, width, out);
+		if (ret) break;
+
+		free(data);
+		data = NULL;
 	}
+	free(data);
 }
 
-int parser_create(struct parser *parser, int type) {
+int parse_gemtext(struct parser *parser, struct request *request, int width) {
+
+	int ret;
+	if (!parser) parser = &gemtext_parser;
+
+	pthread_mutex_lock(&parser->mutex);
+
+	write(parser->out, P(request->length));
+	write(parser->out, request->data, request->length);
+	write(parser->out, P(width));
+
+	request->text.width = width;
+	if ((ret = gemtext_update(parser->in, &request->text))) return ret;
+
+	pthread_mutex_unlock(&parser->mutex);
+	return ret;
+}
+
+int parser_create(struct parser *parser, int type, char *name) {
 	int in_pipe[2], out_pipe[2];
 	unsigned char byte;
 	if (pipe(in_pipe)) return -1;
@@ -157,7 +190,8 @@ int parser_create(struct parser *parser, int type) {
 	close(in_pipe[0]);
 	close(out_pipe[1]);
 	byte = 0;
-	printf("\n"); /* open stdout */
+	printf(" "); /* open stdout */
+	sandbox_set_name(name);
 	if (sandbox_isolate()) byte = ERROR_SANDBOX_FAILURE;
 	write(in_pipe[1], &byte, 1);
 	switch (type) {
@@ -177,5 +211,11 @@ int parser_create(struct parser *parser, int type) {
 }
 
 int parser_request_create() {
-	return parser_create(&request_parser, PARSER_REQUEST);
+	return parser_create(&request_parser, PARSER_REQUEST,
+			"vgmi [request]");
+}
+
+int parser_gemtext_create() {
+	return parser_create(&gemtext_parser, PARSER_GEMTEXT,
+			"vgmi [gemtext]");
 }

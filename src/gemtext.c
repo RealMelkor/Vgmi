@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include "macro.h"
 #include "client.h"
 #define GEMTEXT_INTERNAL
 #include "gemtext.h"
@@ -17,7 +18,6 @@
 #include "strlcpy.h"
 #include "strnstr.h"
 #include "utf8.h"
-#include "macro.h"
 
 #define TAB_SIZE 4
 
@@ -82,26 +82,27 @@ int renderable(uint32_t codepoint) {
 	return 1;
 }
 
-int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
-			struct gemtext_line *line, int *links,
-			int *preformatted) {
+#define PARSE_LINE_COMPLETED 0
+#define PARSE_LINE_SKIP 1
+#define PARSE_LINE_BROKEN 2
+int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
+			int *links, int *preformatted, int fd) {
 
-	int x;
+	int x, ret;
+	int color = *_color;
 	const char *data = *ptr;
 	const char *end = *ptr + length;
 	const char *link_tmp = NULL;
 	char link[64];
 	const char *next_separator = NULL;
+
 	if (*preformatted) color = colorFromLine(LINE_PREFORMATTED);
 
-	line->length = 0;
-	line->cells = NULL;
-
 	x = 0;
+	ret = PARSE_LINE_COMPLETED;
 	while (link_tmp || data < end) {
 
 		struct gemtext_cell cell = {0};
-		void *tmp;
 		int len;
 
 		if (!*data && link_tmp) {
@@ -127,7 +128,10 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 			cell.link = (*links);
 		}
 		x += cell.width;
-		if (x > width) break;
+		if (x > width) {
+			ret = PARSE_LINE_BROKEN;
+			break;
+		}
 		if (!link_tmp && next_separator < data) {
 			int nextX = x;
 			const char *ptr = data;
@@ -136,7 +140,10 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 				ptr += utf8_char_to_unicode(&ch, ptr);
 				nextX += mk_wcwidth(ch);
 			}
-			if (nextX - x < width && nextX > width) break;
+			if (nextX - x < width && nextX > width) {
+				ret = PARSE_LINE_BROKEN;
+				break;
+			}
 			next_separator = ptr;
 		}
 		if (*ptr == data && cell.codepoint == '`' &&
@@ -149,7 +156,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 			}
 			data = data + 3;
 			if (*data == '\n') {
-				line->length = -1;
+				ret = PARSE_LINE_SKIP;
 				data++;
 				break;
 			}
@@ -201,26 +208,22 @@ int gemtext_parse_line(const char **ptr, size_t length, int color, int width,
 		}
 		data += len;
 		cell.color = color;
-		tmp = realloc(line->cells, sizeof(struct gemtext_cell) *
-				(line->length + 1));
-		if (!tmp) {
-			free(line->cells);
-			return ERROR_MEMORY_FAILURE;
-		}
-		line->cells = tmp;
-		line->cells[line->length++] = cell;
+		write(fd, P(cell));
 	}
 	(*ptr) = data;
+	*_color = color;
 
-	return 0;
+	return ret;
 }
 
-int gemtext_parse(const char *data, size_t length,
-		int width, struct gemtext *gemtext) {
+#define GEMTEXT_NEWLINE (uint32_t)-1
+#define GEMTEXT_EOF (uint32_t)-2
 
-	const char *end = data + length;
-	int color, links, preformatted;
+int gemtext_update(int fd, struct gemtext *gemtext) {
+
+	int ret;
 	size_t i;
+	struct gemtext_line line = {0};
 
 	/* clean up previous */
 	for (i = 0; i < gemtext->length; i++) {
@@ -230,7 +233,51 @@ int gemtext_parse(const char *data, size_t length,
 
 	gemtext->length = 0;
 	gemtext->lines = NULL;
-	gemtext->width = width;
+
+	ret = 0;
+	while (1) {
+
+		struct gemtext_cell cell;
+		void *tmp;
+		int len;
+
+		len = read(fd, P(cell));
+		if (len != sizeof(cell)) {
+			ret = -1;
+			break;
+		}
+		if (cell.codepoint == GEMTEXT_EOF) break;
+		if (cell.codepoint == GEMTEXT_NEWLINE) {
+			tmp = realloc(gemtext->lines,
+					(gemtext->length + 1) * sizeof(line));
+			if (!tmp) {
+				free(gemtext->lines);
+				ret = ERROR_MEMORY_FAILURE;
+				break;
+			}
+			gemtext->lines = tmp;
+			gemtext->lines[gemtext->length] = line;
+			gemtext->length++;
+			memset(&line, 0, sizeof(line));
+			continue;
+		}
+		tmp = realloc(line.cells, (line.length + 1) * sizeof(cell));
+		if (!tmp) {
+			ret = ERROR_MEMORY_FAILURE;
+			free(line.cells);
+			break;
+		}
+		line.cells = tmp;
+		line.cells[line.length] = cell;
+		line.length++;
+	}
+	return ret;
+}
+
+int gemtext_parse(const char *data, size_t length, int width, int fd) {
+
+	const char *end = data + length;
+	int color, links, preformatted;
 
 	data = strnstr(data, "\r\n", length);
 	if (!data) return ERROR_INVALID_DATA;
@@ -239,27 +286,27 @@ int gemtext_parse(const char *data, size_t length,
 	color = LINE_TEXT;
 	preformatted = links = 0;
 	while (data < end) {
-		void *tmp;
-		struct gemtext_line line;
-		if (gemtext_parse_line(&data, end - data, color,
-					width - OFFSETX, &line,
-					&links, &preformatted)) {
-			return ERROR_MEMORY_FAILURE;
-		}
-		if (line.length == (size_t)-1) continue;
-		if (*data == '\n' || line.length == 0) {
+		int ret = gemtext_parse_line(&data, end - data, &color,
+				width - OFFSETX, &links, &preformatted, fd);
+		if (ret == PARSE_LINE_SKIP) continue;
+		if (ret == PARSE_LINE_COMPLETED) {
 			color = LINE_TEXT;
 			data++;
-		} else color = line.cells[line.length - 1].color;
-		tmp = realloc(gemtext->lines, sizeof(struct gemtext_line) *
-				(gemtext->length + 1));
-		if (!tmp) {
-			free(gemtext->lines);
-			return ERROR_MEMORY_FAILURE;
 		}
-		gemtext->lines = tmp;
-		gemtext->lines[gemtext->length++] = line;
+
+		{
+			struct gemtext_cell newline = {0};
+			newline.codepoint = GEMTEXT_NEWLINE;
+			write(fd, P(newline));
+		}
 	}
+
+	{
+		struct gemtext_cell eof = {0};
+		eof.codepoint = GEMTEXT_EOF;
+		write(fd, P(eof));
+	}
+
 	return 0;
 }
 

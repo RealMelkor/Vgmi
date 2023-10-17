@@ -28,6 +28,11 @@ int sandbox_isolate() {
 	if (pledge("stdio", "")) return ERROR_SANDBOX_FAILURE;
 	return 0;
 }
+
+int sandbox_set_name(const char *ptr) {
+	if (ptr) return !ptr;
+	return 0;
+}
 #else
 typedef int hide_warning;
 #endif

@@ -221,6 +221,12 @@ int sandbox_isolate() {
 		return ERROR_SANDBOX_FAILURE;
 	return 0;
 }
+
+int sandbox_set_name(const char *name) {
+	if (prctl(PR_SET_NAME, name))
+		return ERROR_SANDBOX_FAILURE;
+	return 0;
+}
 #else
 typedef int hide_warning;
 #endif

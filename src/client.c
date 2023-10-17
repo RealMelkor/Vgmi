@@ -106,6 +106,7 @@ int client_init(struct client* client) {
 
 	memset(client, 0, sizeof(*client));
 	if ((ret = parser_request_create())) return ret;
+	if ((ret = parser_gemtext_create())) return ret;
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))

@@ -35,5 +35,6 @@ struct gemtext_line {
 
 int gemtext_display(struct gemtext, int, int, int);
 int gemtext_links(const char *data, size_t length, int fd);
-int gemtext_parse(const char*, size_t, int, struct gemtext*);
+int gemtext_parse(const char *data, size_t length, int width, int fd);
 int gemtext_free(struct gemtext gemtext);
+int gemtext_update(int fd, struct gemtext *gemtext);

@@ -40,3 +40,4 @@
 
 int sandbox_init();
 int sandbox_isolate();
+int sandbox_set_name(const char*);
