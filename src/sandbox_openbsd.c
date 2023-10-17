@@ -1,5 +1,6 @@
 #ifdef __OpenBSD__
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "macro.h"
 #include "sandbox.h"
@@ -29,8 +30,8 @@ int sandbox_isolate() {
 	return 0;
 }
 
-int sandbox_set_name(const char *ptr) {
-	if (ptr) return !ptr;
+int sandbox_set_name(const char *name) {
+	setproctitle("%s", name);
 	return 0;
 }
 #else
