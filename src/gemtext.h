@@ -31,6 +31,9 @@ struct gemtext_line {
 	struct gemtext_cell *cells;
 	size_t length;
 };
+
+#define WHITESPACE(X) ((X <= ' ' || X == '\t') && X != '\n')
+#define SEPARATOR(X) (X <= ' ')
 #endif
 
 int gemtext_display(struct gemtext, int, int, int);

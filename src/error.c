@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <tls.h>
 
 #include "strlcpy.h"
 #include "macro.h"
@@ -17,11 +18,16 @@
 
 #define ERROR_MASK 0xFFFF
 
+char error_tls[1024];
+
 int error_string(int error, char *out, size_t len) {
 	const char *ptr;
 	switch (error & ERROR_MASK) {
 	case ERROR_MEMORY_FAILURE:
 		strlcpy(out, "Memory failure", len);
+		break;
+	case ERROR_TLS_FAILURE:
+		strlcpy(out, error_tls, len);
 		break;
 	case ERROR_GETADDRINFO:
 		ptr = gai_strerror(-((error & 0xFFFF0000) >> 16));

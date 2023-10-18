@@ -17,9 +17,11 @@
 /* tls */
 #include <tls.h>
 
+#include <errno.h>
 #include <unistd.h>
 
 #include "macro.h"
+#include "strlcpy.h"
 #include "error.h"
 #include "gemtext.h"
 #include "client.h"
@@ -36,28 +38,44 @@ struct secure {
 
 int secure_initialized = 0;
 
+static const char *_tls_error(struct tls *ctx) {
+	const char *str = tls_error(ctx);
+	if (str) return "Success";
+	return str;
+}
+
+static const char *_tls_config_error(struct tls_config *config) {
+	const char *str = tls_config_error(config);
+	if (str) return "Success";
+	return str;
+}
+
 int secure_init(struct secure *secure, const char *hostname) {
 
 	if (!secure_initialized) {
-		if (tls_init()) return ERROR_TLS_FAILURE;
+		if (tls_init()) {
+			STRLCPY(error_tls, strerror(errno));
+			return ERROR_TLS_FAILURE;
+		}
 		secure_initialized = 1;
 	}
 
 	if (!secure->ctx) {
 		secure->ctx = tls_client();
 		if (!secure->ctx) {
-			return ERROR_TLS_FAILURE;
+			return ERROR_MEMORY_FAILURE;
 		}
 	}
 
 	if (!secure->config) {
 		secure->config = tls_config_new();
 		if (!secure->config) {
-			return ERROR_TLS_FAILURE;
+			return ERROR_MEMORY_FAILURE;
 		}
 
 		tls_config_insecure_noverifycert(secure->config);
 		if (tls_configure(secure->ctx, secure->config)) {
+			STRLCPY(error_tls, _tls_config_error(secure->config));
 			return ERROR_TLS_FAILURE;
 		}
 
@@ -117,11 +135,13 @@ int secure_connect(struct secure *secure, struct request request) {
 
 	if (tls_connect_socket(secure->ctx, sockfd, request.name)) {
 		ret = ERROR_TLS_FAILURE;
+		STRLCPY(error_tls, _tls_error(secure->ctx));
 		goto error;
 	}
 
 	if (tls_handshake(secure->ctx)) {
 		ret = ERROR_TLS_FAILURE;
+		STRLCPY(error_tls, _tls_error(secure->ctx));
 		goto error;
 	}
 
@@ -140,8 +160,9 @@ error:
 }
 
 int secure_send(struct secure *secure, const char *data, size_t len) {
-	return tls_write(secure->ctx, data, len) == (ssize_t)len ?
-		0 : ERROR_TLS_FAILURE;
+	if (tls_write(secure->ctx, data, len) == (ssize_t)len) return 0;
+	STRLCPY(error_tls, _tls_error(secure->ctx));
+	return ERROR_TLS_FAILURE;
 }
 
 #define MAXIUM_LENGTH 8388608
@@ -174,6 +195,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 	}
 	if (i < 0) {
 		free(ptr);
+		STRLCPY(error_tls, _tls_error(secure->ctx));
 		return ERROR_TLS_FAILURE;
 	}
 	memset(&ptr[len], 0, pad);

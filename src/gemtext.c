@@ -11,6 +11,7 @@
 #include "macro.h"
 #include "client.h"
 #define GEMTEXT_INTERNAL
+#define GEMTEXT_INTERNAL_FUNCTIONS
 #include "gemtext.h"
 #include "termbox.h"
 #include "wcwidth.h"
@@ -55,12 +56,9 @@ static int nextHeader(int header) {
 	}
 }
 
-static int whitespace(char c) {
-	return c == ' ' || c == '\t';
-}
-
-static int separator(char c) {
-	return whitespace(c) || c == '\n';
+static int renderable(uint32_t codepoint) {
+	return !(codepoint == 0xFEFF ||
+		(codepoint < ' ' && codepoint != ' ' && codepoint != '\n'));
 }
 
 int gemtext_free(struct gemtext gemtext) {
@@ -74,12 +72,6 @@ int gemtext_free(struct gemtext gemtext) {
 	}
 	free(gemtext.links);
 	return 0;
-}
-
-int renderable(uint32_t codepoint) {
-	if (codepoint == 0xFEFF) return 0;
-	if (codepoint < ' ' && !whitespace(codepoint)) return 0;
-	return 1;
 }
 
 #define PARSE_LINE_COMPLETED 0
@@ -109,7 +101,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 			data = link_tmp;
 			link_tmp = NULL;
 			color = colorFromLine(LINE_TEXT);
-			while (whitespace(*data)) data++;
+			while (WHITESPACE(*data)) data++;
 			continue;
 		}
 
@@ -135,7 +127,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 		if (!link_tmp && next_separator < data) {
 			int nextX = x;
 			const char *ptr = data;
-			while (ptr < end && !separator(*ptr)) {
+			while (ptr < end && !SEPARATOR(*ptr)) {
 				uint32_t ch;
 				ptr += utf8_char_to_unicode(&ch, ptr);
 				nextX += mk_wcwidth(ch);
@@ -167,15 +159,21 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 			case '=':
 				if (data[1] != '>') break;
 				data += 2;
-				while (whitespace(*(utf8_next(&data)))) ;
-				while (data < end && !separator(*data))
+				while (data < end && WHITESPACE(*data))
 					utf8_next(&data);
+				while (data < end && !SEPARATOR(*data))
+					utf8_next(&data);
+				while (data < end && WHITESPACE(*data)) {
+					if (*data == '\n') break;
+					utf8_next(&data);
+				}
 				/* link without label */
 				if (data >= end || *data == '\n') {
 					data = *ptr + 2;
-					while (whitespace(*(data)))
+					while (data < end && WHITESPACE(*data))
 						utf8_next(&data);
-				} else data++;
+					tb_shutdown();
+				}
 				len = 0;
 				color = colorFromLine(LINE_LINK);
 				link_tmp = data;
@@ -307,94 +305,5 @@ int gemtext_parse(const char *data, size_t length, int width, int fd) {
 		write(fd, P(eof));
 	}
 
-	return 0;
-}
-
-static int format_link(const char *link, size_t length,
-			char *out, size_t out_length) {
-	int i = 0, j = 0;
-	uint32_t prev = 0;
-	while (link[i]) {
-		uint32_t ch;
-		int len;
-		len = utf8_char_to_unicode(&ch, &link[i]);
-		if ((prev == '/' || prev == 0) && ch == '.') {
-			if (link[i + len] == '/') {
-				j -= 1;
-				i += len;
-				continue;
-			} else if (link[i + len] == '.' &&
-					link[i + len + 1] == '/'){
-				j -= 2;
-				if (j < 0) j = 0;
-				while (out[j] != '/' && j)
-					j = utf8_previous(out, j);
-				i += len + 1;
-				continue;
-			}
-		}
-		if (i + len >= (ssize_t)length ||
-				j + len >= (ssize_t)out_length) {
-			out[j] = '\0';
-			break;
-		}
-		if (ch < ' ') ch = '\0';
-		memcpy(&out[j], &link[i], len);
-		i += len;
-		j += len;
-		prev = ch;
-	}
-	out[j] = '\0';
-	if (strstr(out, "gemini://") == out) {
-		if (!strchr(&out[sizeof("gemini://")], '/')) {
-			out[j++] = '/';
-			out[j] = '\0';
-		}
-	}
-	return j;
-}
-
-int gemtext_links(const char *data, size_t length, int fd) {
-
-	int newline = 1;
-	size_t i;
-
-	i = strnstr(data, "\r\n", length) - data;
-
-	for (i = 0; i < length; ) {
-
-		uint32_t ch;
-		size_t j;
-
-		j = utf8_char_to_unicode(&ch, &data[i]);
-		if (j < 1) j = 1;
-		i += j;
-
-		if (newline && ch == '=' && data[i] == '>') {
-			char url[MAX_URL], buf[MAX_URL];
-			i++;
-			j = 0;
-			while (whitespace(data[i]) && i < length)
-				i += utf8_char_length(data[i]);
-			while (!separator(data[i]) && i < length &&
-					j < sizeof(url)) {
-				uint32_t ch;
-				int len;
-				len = utf8_char_to_unicode(&ch, &data[i]);
-				if (ch < ' ') ch = '\0';
-				memcpy(&url[j], &ch, len);
-				j += len;
-				i += len;
-			}
-			url[j] = '\0';
-			j = format_link(V(url), V(buf));
-			write(fd, P(j));
-			write(fd, buf, j);
-		}
-
-		newline = ch == '\n';
-	}
-	i = -1;
-	write(fd, P(i));
 	return 0;
 }

@@ -33,3 +33,4 @@ enum {
 };
 
 int error_string(int error, char *out, size_t len);
+extern char error_tls[1024];
