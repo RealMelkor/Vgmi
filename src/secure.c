@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #ifdef __FreeBSD__
 #include <netinet/in.h>
+#include "sandbox.h"
+#define connect sandbox_connect
 #endif
 /* tls */
 #include <tls.h>

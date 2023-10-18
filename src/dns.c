@@ -11,6 +11,8 @@
 #include <arpa/inet.h>
 #ifdef __FreeBSD__
 #include <netinet/in.h>
+#include "sandbox.h"
+#define getaddrinfo sandbox_getaddrinfo
 #endif
 #include "macro.h"
 #include "error.h"
@@ -24,11 +26,11 @@ int dns_getip(const char *hostname, ip *out) {
 	int error;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 
 	/* can block */
-	if ((error = getaddrinfo(hostname , NULL, &hints , &servinfo)))
+	if ((error = getaddrinfo(hostname , NULL, &hints, &servinfo)))
 		return ERROR_GETADDRINFO | ((-error) << 16);
 
 	for (p = servinfo; p != NULL; p = p->ai_next) {

@@ -30,6 +30,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_INVALID_METADATA:
 		strlcpy(out, "No metadata", len);
 		break;
+	case ERROR_INVALID_ADDRESS:
+		strlcpy(out, "Invalid address", len);
+		break;
 	case ERROR_INVALID_STATUS:
 		strlcpy(out, "Invalid status", len);
 		break;

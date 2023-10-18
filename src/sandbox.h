@@ -50,9 +50,18 @@
 #ifdef __FreeBSD__
 #undef NO_SANDBOX
 #undef SANDBOX_INFO
-#define SANDBOX_INFO "Sandboxed using capsicum(4)"
+#define SANDBOX_INFO "Sandboxed using capsicum(4) and cap_net(3)"
+#undef SANDBOX_FILESYSTEM
+#define SANDBOX_FILESYSTEM "Restricted"
+#undef SANDBOX_IPC
+#define SANDBOX_IPC "Restricted"
+#undef SANDBOX_DEVICE
+#define SANDBOX_DEVICE "Restricted"
 #undef SANDBOX_PARSER
 #define SANDBOX_PARSER "Enabled"
+int sandbox_getaddrinfo(const char *hostname, const char *servname,
+			void *hints, void *res);
+int sandbox_connect(int s, void *name, int namelen);
 #endif
 
 int sandbox_init();
