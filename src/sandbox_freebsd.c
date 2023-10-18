@@ -67,8 +67,6 @@ int sandbox_init() {
 	cap_net_limit_name2addr_family(limit, families, 2);
 	if (cap_net_limit(limit) < 0) return ERROR_SANDBOX_FAILURE;
 
-	kill(69537, SIGTERM);
-
 	return 0;
 }
 
