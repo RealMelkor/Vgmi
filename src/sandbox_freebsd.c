@@ -71,7 +71,7 @@ int sandbox_init() {
 }
 
 int sandbox_isolate() {
-	if (cap_enter()) return ERROR_MEMORY_FAILURE;
+	if (cap_enter()) return ERROR_SANDBOX_FAILURE;
 	return 0;
 }
 

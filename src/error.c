@@ -65,8 +65,11 @@ int error_string(int error, char *out, size_t len) {
 		snprintf(out, len, "Failed to apply sandboxing (%s)",
 				strerror(errno));
 		break;
+	case ERROR_RESPONSE_TOO_LARGE:
+		strlcpy(out, "The server response is too large", len);
+		break;
 	default:
-		strlcpy(out, "Unknown error", len);
+		snprintf(out, len, "Unknown error (%d)", error);
 		return -1;
 	}
 	return 0;

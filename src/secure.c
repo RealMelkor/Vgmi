@@ -30,6 +30,7 @@
 #include "secure.h"
 #include "certificate.h"
 #include "storage.h"
+#include "config.h"
 
 struct secure {
 	struct tls *ctx;
@@ -40,14 +41,12 @@ int secure_initialized = 0;
 
 static const char *_tls_error(struct tls *ctx) {
 	const char *str = tls_error(ctx);
-	if (str) return "Success";
-	return str;
+	return str ? str : "Success";
 }
 
 static const char *_tls_config_error(struct tls_config *config) {
 	const char *str = tls_config_error(config);
-	if (str) return "Success";
-	return str;
+	return str ? str : "Success";
 }
 
 int secure_init(struct secure *secure, const char *hostname) {
@@ -165,7 +164,6 @@ int secure_send(struct secure *secure, const char *data, size_t len) {
 	return ERROR_TLS_FAILURE;
 }
 
-#define MAXIUM_LENGTH 8388608
 int secure_read(struct secure *secure, char **data, size_t *length) {
 
 	const size_t pad = 16; /* pad the end with null-bytes in case the data
@@ -176,7 +174,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 
 	ptr = NULL;
 	i = len = allocated = 0;
-	while (len < MAXIUM_LENGTH) {
+	while (len < MAXIMUM_LENGTH) {
 		if (len + sizeof(buf) > allocated) {
 			char *tmp;
 			allocated += sizeof(buf);
@@ -193,13 +191,17 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		memcpy(&ptr[len], buf, i);
 		len += i;
 	}
+	if (len >= MAXIMUM_LENGTH) {
+		free(ptr);
+		return ERROR_RESPONSE_TOO_LARGE;
+	}
 	if (i < 0) {
 		free(ptr);
 		STRLCPY(error_tls, _tls_error(secure->ctx));
 		return ERROR_TLS_FAILURE;
 	}
 	memset(&ptr[len], 0, pad);
-	*length = len;
+	*length = len + pad;
 	*data = ptr;
 	return 0;
 }

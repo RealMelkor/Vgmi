@@ -19,6 +19,7 @@
 #include "sandbox.h"
 #include "storage.h"
 #include "error.h"
+#include "config.h"
 
 #ifdef ENABLE_SECCOMP_FILTER
 #include <linux/filter.h>
@@ -187,7 +188,7 @@ int sandbox_init() {
 
 
 	/* prevents from creating large file */
-	limit.rlim_max = limit.rlim_cur = 1024 * 1024;
+	limit.rlim_max = limit.rlim_cur = MAXIMUM_LENGTH;
 	if (setrlimit(RLIMIT_FSIZE, &limit))
 		return ERROR_SANDBOX_FAILURE;
 

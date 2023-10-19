@@ -22,6 +22,9 @@
 
 #define TAB_SIZE 4
 
+#define GEMTEXT_NEWLINE (uint32_t)-1
+#define GEMTEXT_EOF (uint32_t)-2
+
 enum {
 	LINE_TEXT,
 	LINE_HEADER,
@@ -58,7 +61,7 @@ static int nextHeader(int header) {
 
 static int renderable(uint32_t codepoint) {
 	return !(codepoint == 0xFEFF ||
-		(codepoint < ' ' && codepoint != ' ' && codepoint != '\n'));
+		(codepoint < ' ' && codepoint != '\n'));
 }
 
 int gemtext_free(struct gemtext gemtext) {
@@ -89,6 +92,7 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 	const char *next_separator = NULL;
 
 	if (*preformatted) color = colorFromLine(LINE_PREFORMATTED);
+	if (width < 7) width = 7;
 
 	x = 0;
 	ret = PARSE_LINE_COMPLETED;
@@ -101,16 +105,17 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 			data = link_tmp;
 			link_tmp = NULL;
 			color = colorFromLine(LINE_TEXT);
-			while (WHITESPACE(*data)) data++;
+			while (data < end && WHITESPACE(*data)) data++;
 			continue;
 		}
 
 		len = utf8_char_to_unicode(&cell.codepoint, data);
 		if (cell.codepoint == '\n') break;
 		cell.width = mk_wcwidth(cell.codepoint);
+		if (cell.width >= width) cell.width = 1;
 		if (cell.codepoint == '\t') {
 			cell.codepoint = ' ';
-			cell.width = TAB_SIZE - x % TAB_SIZE;
+			cell.width = TAB_SIZE - (x % TAB_SIZE);
 		}
 		if (!renderable(cell.codepoint)) {
 			data += len;
@@ -129,8 +134,11 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 			const char *ptr = data;
 			while (ptr < end && !SEPARATOR(*ptr)) {
 				uint32_t ch;
+				int w;
 				ptr += utf8_char_to_unicode(&ch, ptr);
-				nextX += mk_wcwidth(ch);
+				w = mk_wcwidth(ch);
+				if (w >= width) w = 1;
+				nextX += w;
 			}
 			if (nextX - x < width && nextX > width) {
 				ret = PARSE_LINE_BROKEN;
@@ -214,8 +222,42 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 	return ret;
 }
 
-#define GEMTEXT_NEWLINE (uint32_t)-1
-#define GEMTEXT_EOF (uint32_t)-2
+int gemtext_parse(const char *data, size_t length, int width, int fd) {
+
+	const char *end = data + length;
+	int color, links, preformatted;
+
+	data = strnstr(data, "\r\n", length);
+	if (!data) return ERROR_INVALID_DATA;
+	data += 2;
+
+	color = LINE_TEXT;
+	preformatted = links = 0;
+	while (data < end) {
+		int ret = gemtext_parse_line(&data, end - data, &color,
+				width - OFFSETX, &links, &preformatted, fd);
+
+		if (ret == PARSE_LINE_SKIP) continue;
+		if (ret == PARSE_LINE_COMPLETED) {
+			color = LINE_TEXT;
+			data++;
+		}
+
+		{
+			struct gemtext_cell newline = {0};
+			newline.codepoint = GEMTEXT_NEWLINE;
+			write(fd, P(newline));
+		}
+	}
+
+	{
+		struct gemtext_cell eof = {0};
+		eof.codepoint = GEMTEXT_EOF;
+		write(fd, P(eof));
+	}
+
+	return 0;
+}
 
 int gemtext_update(int fd, struct gemtext *gemtext) {
 
@@ -270,40 +312,4 @@ int gemtext_update(int fd, struct gemtext *gemtext) {
 		line.length++;
 	}
 	return ret;
-}
-
-int gemtext_parse(const char *data, size_t length, int width, int fd) {
-
-	const char *end = data + length;
-	int color, links, preformatted;
-
-	data = strnstr(data, "\r\n", length);
-	if (!data) return ERROR_INVALID_DATA;
-	data += 2;
-
-	color = LINE_TEXT;
-	preformatted = links = 0;
-	while (data < end) {
-		int ret = gemtext_parse_line(&data, end - data, &color,
-				width - OFFSETX, &links, &preformatted, fd);
-		if (ret == PARSE_LINE_SKIP) continue;
-		if (ret == PARSE_LINE_COMPLETED) {
-			color = LINE_TEXT;
-			data++;
-		}
-
-		{
-			struct gemtext_cell newline = {0};
-			newline.codepoint = GEMTEXT_NEWLINE;
-			write(fd, P(newline));
-		}
-	}
-
-	{
-		struct gemtext_cell eof = {0};
-		eof.codepoint = GEMTEXT_EOF;
-		write(fd, P(eof));
-	}
-
-	return 0;
 }

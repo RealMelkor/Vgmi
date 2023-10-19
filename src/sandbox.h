@@ -13,7 +13,7 @@
 #if __has_include(<linux/landlock.h>)
 #undef NO_SANDBOX
 #undef SANDBOX_INFO
-#ifdef ENABLE_SECCOMP
+#ifdef ENABLE_SECCOMP_FILTER
 #define SANDBOX_INFO "Sandboxed using landlock(7) and seccomp(2)"
 #else
 #define SANDBOX_INFO "Sandboxed using landlock(7)"
