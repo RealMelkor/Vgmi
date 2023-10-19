@@ -169,6 +169,10 @@ int gemtext_parse_line(const char **ptr, size_t length, int *_color, int width,
 				data += 2;
 				while (data < end && WHITESPACE(*data))
 					utf8_next(&data);
+				if (*data == '\n') {
+					data = *ptr;
+					break;
+				}
 				while (data < end && !SEPARATOR(*data))
 					utf8_next(&data);
 				while (data < end && WHITESPACE(*data)) {

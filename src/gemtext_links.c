@@ -78,6 +78,7 @@ int gemtext_links(const char *data, size_t length, int fd) {
 			j = 0;
 			while (WHITESPACE(data[i]) && i < length)
 				i += utf8_char_length(data[i]);
+			if (i >= length || data[i] == '\n') continue;
 			while (!SEPARATOR(data[i]) && i < length &&
 					j < sizeof(url)) {
 				uint32_t ch;

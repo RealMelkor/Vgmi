@@ -4,10 +4,39 @@
  */
 #ifdef DEBUG
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 #include "macro.h"
 #include "gemtext.h"
+
+int parse_file(const char *path) {
+
+	FILE *f;
+	char *data;
+	size_t length;
+	const int pad = 16;
+	int fd, i;
+
+	f = fopen(path, "r");
+	if (!f) return -1;
+	fseek(f, 0, SEEK_END);
+	length = ftell(f);
+	data = malloc(length + pad);
+	fseek(f, 0, SEEK_SET);
+	fread(data, 1, length, f);
+	fclose(f);
+	memset(&data[length], 0, pad);
+
+	fd = open("/dev/null", O_WRONLY);
+	if (fd < 0) return -1;
+
+	for (i = 0; i < 4096; i++)
+		gemtext_parse(data, length, i, fd);
+	free(data);
+	return 0;
+}
 
 int fuzzing(int iterations) {
 
