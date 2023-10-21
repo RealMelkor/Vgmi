@@ -186,7 +186,6 @@ int sandbox_init() {
 	int ret, fd;
 	struct rlimit limit;
 
-
 	/* prevents from creating large file */
 	limit.rlim_max = limit.rlim_cur = MAXIMUM_LENGTH;
 	if (setrlimit(RLIMIT_FSIZE, &limit))

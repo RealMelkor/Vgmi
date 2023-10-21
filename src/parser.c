@@ -34,39 +34,17 @@ static int vread(int fd, void *buf, size_t nbytes) {
 }
 
 void parser_request(int in, int out) {
-	char *data = NULL;
 	while (1) { /* TODO: send error code */
 
 		int ret;
 		size_t length;
-		size_t received;
 		struct request request = {0};
 
 		if (vread(in, &length, sizeof(length))) break;
-		if (!(data = malloc(length + 1))) break;
-		data[length] = 0;
-		for (received = 0; received < length; ) {
-			ssize_t bytes = 2048;
-			if ((size_t)bytes > length - received)
-				bytes = length - received;
-			bytes = read(in, &data[received], bytes);
-			if (bytes < 0) break;
-			received += bytes;
-		}
-		if (received != length) break;
-
-		ret = gemini_status(data, length, V(request.meta),
-					&request.status);
+		ret = gemtext_links(in, length, out,
+				&request.status, V(request.meta));
 		if (ret) break;
-		write(out, P(request.status));
-		write(out, V(request.meta));
-
-		ret = gemtext_links(data, length, out);
-		if (ret) break;
-		free(data);
-		data = NULL;
 	}
-	free(data);
 }
 
 int parse_request(struct parser *parser, struct request *request) {
@@ -130,24 +108,12 @@ void parser_gemtext(int in, int out) {
 
 		int ret;
 		size_t length;
-		size_t received;
 		int width;
 
 		if (vread(in, &length, sizeof(length))) break;
-		if (!(data = malloc(length + 1))) break;
-		data[length] = 0;
-		for (received = 0; received < length; ) {
-			ssize_t bytes = 2048;
-			if ((size_t)bytes > length - received)
-				bytes = length - received;
-			bytes = read(in, &data[received], bytes);
-			if (bytes < 0) break;
-			received += bytes;
-		}
-		if (received != length) break;
 		if (vread(in, &width, sizeof(width))) break;
 
-		ret = gemtext_parse(data, length, width, out);
+		ret = gemtext_parse(in, length, width, out);
 		if (ret) break;
 
 		free(data);
@@ -164,8 +130,8 @@ int parse_gemtext(struct parser *parser, struct request *request, int width) {
 	pthread_mutex_lock(&parser->mutex);
 
 	write(parser->out, P(request->length));
-	write(parser->out, request->data, request->length);
 	write(parser->out, P(width));
+	write(parser->out, request->data, request->length);
 
 	request->text.width = width;
 	if ((ret = gemtext_update(parser->in, &request->text))) return ret;
@@ -194,7 +160,6 @@ int parser_create(struct parser *parser, int type, char *name) {
 	close(in_pipe[0]);
 	close(out_pipe[1]);
 	byte = 0;
-	printf(" "); /* open stdout */
 	sandbox_set_name(name);
 	if (sandbox_isolate()) byte = ERROR_SANDBOX_FAILURE;
 	write(in_pipe[1], &byte, 1);

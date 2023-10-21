@@ -5,12 +5,16 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "macro.h"
+#include "strlcpy.h"
+#include "strnstr.h"
 #define GEMTEXT_INTERNAL
 #define GEMTEXT_INTERNAL_FUNCTIONS
 #include "gemtext.h"
-#include "strnstr.h"
 #include "utf8.h"
+#include "error.h"
 
 static int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
@@ -56,48 +60,110 @@ static int format_link(const char *link, size_t length,
 	return j;
 }
 
-int gemtext_links(const char *data, size_t length, int fd) {
+int gemtext_status(int fd, size_t length, char *meta, size_t len, int *code,
+			int *bytes_read) {
 
-	int newline = 1;
+	char *ptr;
+	char buf[MAX_URL];
+	size_t i;
+	int found;
+
+	found = 0;
+	for (i = 0; i < sizeof(buf) && i < len && i < length; i++) {
+		int ret = read(fd, &buf[i], 1);
+		if (ret != 1) return -1;
+		if (i && buf[i] == '\n' && buf[i - 1] == '\r') {
+			found = 1;
+			break;
+		}
+	}
+	if (!found || i < 1) return -1;
+	*bytes_read = i + 1;
+	buf[i - 1] = '\0';
+
+	ptr = strchr(buf, ' ');
+	if (!ptr) return ERROR_INVALID_METADATA;
+	*ptr = 0;
+	i = atoi(buf);
+	if (!i) return ERROR_INVALID_STATUS;
+
+	memset(meta, 0, len);
+	strlcpy(meta, ptr + 1, len);
+
+	*code = i;
+	return 0;
+}
+
+int gemtext_links(int in, size_t length, int out, int *status, char *meta,
+			size_t meta_length) {
+
+	int newline, link, ret, bytes;
 	size_t i;
 
-	i = strnstr(data, "\r\n", length) - data;
+	ret = gemtext_status(in, length, meta, meta_length, status, &bytes);
+	if (ret) return ret;
+	length -= bytes;
 
+	write(out, status, sizeof(*status));
+	write(out, meta, meta_length);
+
+	newline = 1;
+	link = 0;
+	/* bytes missing? */
 	for (i = 0; i < length; ) {
 
 		uint32_t ch;
-		size_t j;
 
-		j = utf8_char_to_unicode(&ch, &data[i]);
-		if (j < 1) j = 1;
-		i += j;
-
-		if (newline && ch == '=' && data[i] == '>') {
-			char url[MAX_URL], buf[MAX_URL];
-			i++;
-			j = 0;
-			while (WHITESPACE(data[i]) && i < length)
-				i += utf8_char_length(data[i]);
-			if (i >= length || data[i] == '\n') continue;
-			while (!SEPARATOR(data[i]) && i < length &&
-					j < sizeof(url)) {
-				uint32_t ch;
-				int len;
-				len = utf8_char_to_unicode(&ch, &data[i]);
-				if (ch < ' ') ch = '\0';
-				memcpy(&url[j], &ch, len);
-				j += len;
-				i += len;
+		if (readnext(in, &ch, &i)) return -1;
+		if (!(link && ch == '>')) {
+			if (ch == '\n') {
+				newline = 1;
+				link = 0;
+				continue;
 			}
-			url[j] = '\0';
-			j = format_link(V(url), V(buf));
-			write(fd, P(j));
-			write(fd, buf, j);
+			if (!newline) {
+				link = 0;
+				continue;
+			}
+			if (ch == '=') {
+				link = 1;
+			}
+			newline = 0;
+			continue;
 		}
 
-		newline = ch == '\n';
+		while (i < length) {
+			if (readnext(in, &ch, &i)) return -1;
+			if (!WHITESPACE(ch)) break;
+		}
+
+		link = 0;
+
+		if (i >= length || ch == '\n') continue;
+
+		{
+			char link[MAX_URL] = {0};
+			char buf[MAX_URL];
+			size_t link_length;
+			link_length = utf8_unicode_to_char(link, ch);
+
+			while (i < length && link_length < sizeof(link)) {
+				if (readnext(in, &ch, &i)) return -1;
+				if (SEPARATOR(ch)) break;
+				link_length += utf8_unicode_to_char(
+						&link[link_length], ch);
+			}
+			link_length++;
+
+			link_length = format_link(link, link_length, V(buf));
+			write(out, P(link_length));
+			write(out, buf, link_length);
+		}
+
+		newline = 1;
+
 	}
 	i = -1;
-	write(fd, P(i));
+	write(out, P(i));
 	return 0;
 }
