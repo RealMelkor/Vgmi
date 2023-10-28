@@ -95,7 +95,7 @@ int gemtext_free(struct gemtext gemtext) {
 int writeto(int out, const char *str, int color, int link) {
 	const char *ptr = str;
 	while (*ptr) {
-		struct gemtext_cell cell;
+		struct gemtext_cell cell = {0};
 		cell.codepoint = *ptr;
 		cell.link = link;
 		cell.width = mk_wcwidth(cell.codepoint);
@@ -128,7 +128,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length,
 			int *links, int out, int *x, uint32_t *ch) {
 
 	char buf[32];
-	struct gemtext_cell cell = {0}, cells[MAX_URL];
+	struct gemtext_cell cell = {0}, cells[MAX_URL] = {0};
 	size_t initial_pos = *pos;
 	int i, j, rewrite;
 
@@ -205,6 +205,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length,
 		cells[j].color = colorFromLine(LINE_TEXT);
 		cells[j].width = mk_wcwidth(cells[j].codepoint);
 		cells[j].link = 0;
+		cells[j].special = 0;
 		write(out, P(cells[j]));
 		(*x)++;
 	}
@@ -435,8 +436,6 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 		void *tmp;
 		int len;
 
-		/* could still cause deadlock */
-		/* to fix it, puts limit in the parser for links */
 		if (pos < length && cells >= pos / 2) {
 			int bytes = BLOCK_SIZE;
 			if (pos + bytes > length) bytes = length - pos;
