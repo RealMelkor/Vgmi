@@ -28,10 +28,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	client.tab = tab_new();
-	/*tab_request(client.tab, "about:newtab");
-	tab_request(client.tab, "gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme");
-	*/
-	tab_request(client.tab, "gemini://gemini.rmf-dev.com/static/");
+	tab_request(client.tab, "about:newtab");
 
 	do {
 		client_display(&client);

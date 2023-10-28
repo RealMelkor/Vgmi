@@ -22,8 +22,10 @@
 
 #define TAB_SIZE 4
 
-#define GEMTEXT_NEWLINE (uint32_t)-1
-#define GEMTEXT_EOF (uint32_t)-2
+#define GEMTEXT_NEWLINE	(uint8_t)1
+#define GEMTEXT_EOF	(uint8_t)2
+#define GEMTEXT_BLANK	(uint8_t)3
+#define BLOCK_SIZE 4096
 
 enum {
 	LINE_TEXT,
@@ -98,8 +100,26 @@ int writeto(int out, const char *str, int color, int link) {
 		cell.link = link;
 		cell.width = mk_wcwidth(cell.codepoint);
 		cell.color = color;
-		write(out, P(cell));
+		if (write(out, P(cell)) != sizeof(cell)) return -1;
 		ptr++;
+	}
+	return 0;
+}
+
+static int send_blank(int out, int count) {
+	int i;
+	struct gemtext_cell cell = {0};
+	cell.special = GEMTEXT_BLANK;
+	for (i = 0; i < count; i ++) {
+		if (write(out, P(cell)) != sizeof(cell)) return -1;
+	}
+	return 0;
+}
+
+static int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
+	if (pos - *initial_pos > BLOCK_SIZE / 2) {
+		if (send_blank(fd, BLOCK_SIZE / 2)) return -1;
+		*initial_pos = pos;
 	}
 	return 0;
 }
@@ -109,10 +129,12 @@ int gemtext_parse_link(int in, size_t *pos, size_t length,
 
 	char buf[32];
 	struct gemtext_cell cell = {0}, cells[MAX_URL];
+	size_t initial_pos = *pos;
 	int i, j, rewrite;
 
 	/* readnext till finding not a space */ 
 	while (*pos < length) {
+		prevent_deadlock(*pos, &initial_pos, out);
 		if (readnext(in, &cell.codepoint, pos)) return -1;
 		if (!WHITESPACE(cell.codepoint)) break;
 	}
@@ -126,6 +148,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length,
 	/* readnext till find a space or newline */ 
 	cells[0] = cell;
 	for (i = 1; i < MAX_URL && *pos < length; i++) {
+		prevent_deadlock(*pos, &initial_pos, out);
 		if (readnext(in, &cells[i].codepoint, pos)) return -1;
 		if (!renderable(cells[i].codepoint)) {
 			i--;
@@ -143,10 +166,11 @@ int gemtext_parse_link(int in, size_t *pos, size_t length,
 	}
 
 	/* if finding space ignore what was read */
-	rewrite = cells[i].codepoint == '\n' ? i : 0;
+	rewrite = (cells[i].codepoint == '\n' || *pos >= length) ? i : 0;
 
 	*ch = rewrite ? '\n' : 0;
-	for (j = 0; !rewrite && j < MAX_URL; j++) {
+	for (j = 0; !rewrite && j < MAX_URL && *pos < length; j++) {
+		prevent_deadlock(*pos, &initial_pos, out);
 		if (readnext(in, ch, pos)) return -1;
 		if (!WHITESPACE(*ch)) {
 			if (*ch == '\n') rewrite = i;
@@ -210,9 +234,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (*last) {
 			cell.codepoint = *last;
 			*last = 0;
-		} else {
-			if (readnext(in, &cell.codepoint, pos)) return -1;
-		}
+		} else if (readnext(in, &cell.codepoint, pos)) return -1;
 		if (cell.codepoint == '\n') break;
 		cell.width = mk_wcwidth(cell.codepoint);
 		if (cell.width >= width) cell.width = 1;
@@ -229,6 +251,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 			break;
 		}
 
+		/* TODO: reimplement proper line breaking */
 		/*if (!link_tmp && next_separator < data) {
 			int nextX = x;
 			const char *ptr = data;
@@ -266,9 +289,11 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (link) {
 			if (cell.codepoint == '>') {
 				uint32_t ch;
+				int n;
 				link = 0;
-				gemtext_parse_link(in, pos, length,
-						links, out, &x, &ch);
+				n = gemtext_parse_link(in, pos, length, links,
+							out, &x, &ch);
+				if (n) return n;
 				if (ch == '\n') break;
 				continue;
 			} else {
@@ -287,12 +312,8 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 					continue;
 				}
 				*preformatted = !*preformatted;
-				if (*preformatted) {
-					color = colorFromLine(
-							LINE_PREFORMATTED);
-				} else {
-					color = colorFromLine(LINE_TEXT);
-				}
+				color = colorFromLine(*preformatted ?
+						LINE_PREFORMATTED : LINE_TEXT);
 				/* TODO: if next character is \n skip line */
 				continue;
 			} else {
@@ -368,6 +389,7 @@ int gemtext_parse(int in, size_t length, int width, int out) {
 		int ret = gemtext_parse_line(in, &pos, length, &color,
 				width - OFFSETX, &links, &preformatted, out,
 				&last);
+		if (ret == -1) return -1;
 		if (ret == PARSE_LINE_SKIP) continue;
 		if (ret == PARSE_LINE_COMPLETED) {
 			color = LINE_TEXT;
@@ -376,24 +398,25 @@ int gemtext_parse(int in, size_t length, int width, int out) {
 
 		{
 			struct gemtext_cell newline = {0};
-			newline.codepoint = GEMTEXT_NEWLINE;
+			newline.special = GEMTEXT_NEWLINE;
 			write(out, P(newline));
 		}
 	}
 
 	{
 		struct gemtext_cell eof = {0};
-		eof.codepoint = GEMTEXT_EOF;
+		eof.special = GEMTEXT_EOF;
 		write(out, P(eof));
 	}
 
 	return 0;
 }
 
-int gemtext_update(int fd, struct gemtext *gemtext) {
+int gemtext_update(int in, int out, const char *data, size_t length,
+			struct gemtext *gemtext) {
 
 	int ret;
-	size_t i;
+	size_t i, pos, cells;
 	struct gemtext_line line = {0};
 
 	/* clean up previous */
@@ -405,20 +428,31 @@ int gemtext_update(int fd, struct gemtext *gemtext) {
 	gemtext->length = 0;
 	gemtext->lines = NULL;
 
-	ret = 0;
+	cells = pos = ret = 0;
 	while (1) {
 
 		struct gemtext_cell cell;
 		void *tmp;
 		int len;
 
-		len = read(fd, P(cell));
+		/* could still cause deadlock */
+		/* to fix it, puts limit in the parser for links */
+		if (pos < length && cells >= pos / 2) {
+			int bytes = BLOCK_SIZE;
+			if (pos + bytes > length) bytes = length - pos;
+			write(out, &data[pos], bytes);
+			pos += bytes;
+		}
+
+		len = read(in, P(cell));
+		cells++;
 		if (len != sizeof(cell)) {
 			ret = -1;
 			break;
 		}
-		if (cell.codepoint == GEMTEXT_EOF) break;
-		if (cell.codepoint == GEMTEXT_NEWLINE) {
+		if (cell.special == GEMTEXT_EOF) break;
+		if (cell.special == GEMTEXT_BLANK) continue;
+		if (cell.special == GEMTEXT_NEWLINE) {
 			tmp = realloc(gemtext->lines,
 					(gemtext->length + 1) * sizeof(line));
 			if (!tmp) {

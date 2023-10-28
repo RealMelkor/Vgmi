@@ -131,10 +131,11 @@ int parse_gemtext(struct parser *parser, struct request *request, int width) {
 
 	write(parser->out, P(request->length));
 	write(parser->out, P(width));
-	write(parser->out, request->data, request->length);
 
 	request->text.width = width;
-	if ((ret = gemtext_update(parser->in, &request->text))) return ret;
+	ret = gemtext_update(parser->in, parser->out, request->data,
+			request->length, &request->text);
+	if (ret) return ret;
 
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;
