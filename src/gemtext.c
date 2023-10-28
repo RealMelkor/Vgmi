@@ -25,6 +25,7 @@
 #define GEMTEXT_NEWLINE	(uint8_t)1
 #define GEMTEXT_EOF	(uint8_t)2
 #define GEMTEXT_BLANK	(uint8_t)3
+#define GEMTEXT_RESET	(uint8_t)4
 #define BLOCK_SIZE 4096
 
 enum {
@@ -106,19 +107,11 @@ int writeto(int out, const char *str, int color, int link) {
 	return 0;
 }
 
-static int send_blank(int out, int count) {
-	int i;
-	struct gemtext_cell cell = {0};
-	cell.special = GEMTEXT_BLANK;
-	for (i = 0; i < count; i ++) {
-		if (write(out, P(cell)) != sizeof(cell)) return -1;
-	}
-	return 0;
-}
-
 static int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
 	if (pos - *initial_pos > BLOCK_SIZE / 2) {
-		if (send_blank(fd, BLOCK_SIZE / 2)) return -1;
+		struct gemtext_cell cell = {0};
+		cell.special = GEMTEXT_RESET;
+		if (write(fd, P(cell)) != sizeof(cell)) return -1;
 		*initial_pos = pos;
 	}
 	return 0;
@@ -451,6 +444,10 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 		}
 		if (cell.special == GEMTEXT_EOF) break;
 		if (cell.special == GEMTEXT_BLANK) continue;
+		if (cell.special == GEMTEXT_RESET) {
+			cells = pos / 2;
+			continue;
+		}
 		if (cell.special == GEMTEXT_NEWLINE) {
 			tmp = realloc(gemtext->lines,
 					(gemtext->length + 1) * sizeof(line));
