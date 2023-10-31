@@ -64,6 +64,18 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 int sandbox_connect(int s, void *name, int namelen);
 #endif
 
+#ifdef sun
+#undef NO_SANDBOX
+#undef SANDBOX_INFO
+#define SANDBOX_INFO "Sandboxed using privileges(7)"
+#undef SANDBOX_IPC
+#define SANDBOX_IPC "Restricted"
+#undef SANDBOX_DEVICE
+#define SANDBOX_DEVICE "Restricted"
+#undef SANDBOX_PARSER
+#define SANDBOX_PARSER "Enabled"
+#endif
+
 int sandbox_init();
 int sandbox_isolate();
 int sandbox_set_name(const char*);
