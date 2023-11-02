@@ -402,8 +402,7 @@ int gmi_render(struct gmi_tab* tab) {
 				tab->page.data[c]!='\0') c++;
 
 				while (
-				(tab->page.data[c]==' ' ||
-				 tab->page.data[c]=='\t') && 
+				tab->page.data[c]<=' ' &&
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
@@ -474,9 +473,7 @@ int gmi_render(struct gmi_tab* tab) {
 		uint32_t ch = 0;
 		int size = tb_utf8_char_to_unicode(&ch,
 						   &tab->page.data[c]) - 1;
-		if (size > 0)
-			c += tb_utf8_char_to_unicode(&ch,
-						     &tab->page.data[c]) - 1;
+		if (size > 0) c += size;
 		else if (ch < 32) ch = '?';
 
 		/* ignore utf-8 BOM */
