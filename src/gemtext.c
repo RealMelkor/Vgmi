@@ -100,9 +100,8 @@ struct termwriter {
 	int fd;
 };
 
-/* manage lines breaking */
 static int writecell(struct termwriter *termwriter, struct gemtext_cell cell) {
-	size_t i, x, nextspace, nextspace_x;
+	size_t i, x, nextspace;
 	if (cell.special == GEMTEXT_BLANK) {
 		return write(termwriter->fd, P(cell)) != sizeof(cell);
 	}
@@ -112,18 +111,18 @@ static int writecell(struct termwriter *termwriter, struct gemtext_cell cell) {
 		return 0;
 	}
 	nextspace = 0;
-	nextspace_x = 0;
 	x = 0;
 	for (i = 0; i < termwriter->pos; i++) {
 		if (i >= nextspace) {
-			size_t j;
+			size_t j, nextspace_x;
 			nextspace_x = x;
 			for (j = i + 1; j < termwriter->pos; j++) {
 				nextspace_x += termwriter->cells[j].width;
 				if (WHITESPACE(termwriter->cells[j].codepoint))
 					break;
 			}
-			if (nextspace_x >= termwriter->width) {
+			if (nextspace_x - x <= termwriter->width &&
+					nextspace_x >= termwriter->width) {
 				struct gemtext_cell cell = {0};
 				cell.special = GEMTEXT_NEWLINE;
 				write(termwriter->fd, P(cell));
@@ -149,7 +148,13 @@ static int writecell(struct termwriter *termwriter, struct gemtext_cell cell) {
 			return -1;
 	}
 	termwriter->pos = 0;
-	return write(termwriter->fd, P(cell)) != sizeof(cell);
+	return -(write(termwriter->fd, P(cell)) != sizeof(cell));
+}
+
+static int writenewline(struct termwriter *termwriter) {
+	struct gemtext_cell newline = {0};
+	newline.special = GEMTEXT_NEWLINE;
+	return writecell(termwriter, newline);
 }
 
 static int writeto(struct termwriter *termwriter, const char *str,
@@ -386,6 +391,21 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 	return ret;
 }
 
+static int skip_meta(int fd, size_t *pos, size_t length) {
+	uint32_t prev = 0;
+	int found = 0;
+	for (*pos = 0; *pos < length; ) {
+		uint32_t ch;
+		if (readnext(fd, &ch, pos)) return -1;
+		if (ch == '\n' && prev == '\r') {
+			found = 1;
+			break;
+		}
+		prev = ch;
+	}
+	return -(!found);
+}
+
 int gemtext_parse(int in, size_t length, int width, int out) {
 
 	int color, links, preformatted;
@@ -394,21 +414,7 @@ int gemtext_parse(int in, size_t length, int width, int out) {
 	struct termwriter termwriter = {0};
 	if (width < 10) width = 10;
 
-	/* read till \r\n if not found return return ERROR_INVALID_DATA; */
-	{
-		uint32_t prev = 0;
-		int found = 0;
-		for (pos = 0; pos < length; ) {
-			uint32_t ch;
-			if (readnext(in, &ch, &pos)) return -1;
-			if (ch == '\n' && prev == '\r') {
-				found = 1;
-				break;
-			}
-			prev = ch;
-		}
-		if (!found) return ERROR_INVALID_DATA;
-	}
+	if (skip_meta(in, &pos, length)) return ERROR_INVALID_DATA;
 
 	termwriter.width = width - OFFSETX;
 	termwriter.fd = out;
@@ -427,11 +433,7 @@ int gemtext_parse(int in, size_t length, int width, int out) {
 			last = 0;
 		}
 
-		{
-			struct gemtext_cell newline = {0};
-			newline.special = GEMTEXT_NEWLINE;
-			writecell(&termwriter, newline);
-		}
+		writenewline(&termwriter);
 	}
 
 	{

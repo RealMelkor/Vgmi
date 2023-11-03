@@ -37,6 +37,18 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 			i != tab->loading ? TB_WHITE : TB_BLUE);
 }
 
+void tab_display_update(struct request *req, struct rect rect) {
+	if (!strcmp(req->meta, "text/gemini")) {
+		int error = parse_gemtext(NULL, req, rect.w - rect.x);
+		if (error) {
+			req->error = error;
+			return;
+		}
+		request_scroll(req, 0, rect); /* fix scroll */
+		return;
+	}
+}
+
 void tab_display_gemtext(struct request *req, struct rect rect) {
 
 	char *data, *start;
@@ -48,12 +60,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	if (!start) return;
 
 	if (req->text.width != rect.w - rect.x) {
-		int error = parse_gemtext(NULL, req, rect.w - rect.x);
-		if (error) {
-			req->error = error;
-			return;
-		}
-		request_scroll(req, 0, rect); /* fix scroll */
+		tab_display_update(req, rect);
 	}
 	gemtext_display(req->text, req->scroll,
 			rect.h - rect.y, req->selected);
