@@ -10,3 +10,4 @@
 #define P(X) (&X), sizeof(X)
 #define AZ(X) ((X) ? (X) : 1)
 #define MAX_URL 1024
+#define LENGTH(X) (sizeof(X) / sizeof(*X))
