@@ -464,8 +464,12 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 	gemtext->length = 0;
 	gemtext->lines = NULL;
 
+	line.cells =
+		malloc((gemtext->width + 1) * sizeof(struct gemtext_cell));
+	if (!line.cells) return ERROR_MEMORY_FAILURE;
+
 	cells = pos = ret = 0;
-	while (1) {
+	while (!ret) {
 
 		struct gemtext_cell cell;
 		void *tmp;
@@ -484,13 +488,18 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 			ret = -1;
 			break;
 		}
-		if (cell.special == GEMTEXT_EOF) break;
-		if (cell.special == GEMTEXT_BLANK) continue;
-		if (cell.special == GEMTEXT_RESET) {
+
+		switch (cell.special) {
+		case GEMTEXT_EOF: break;
+		case GEMTEXT_BLANK: break;
+		case GEMTEXT_RESET:
 			cells = pos / 2;
-			continue;
-		}
-		if (cell.special == GEMTEXT_NEWLINE) {
+			break;
+		case GEMTEXT_NEWLINE:
+		{
+			struct gemtext_line *ptr;
+			size_t length;
+
 			tmp = realloc(gemtext->lines,
 					(gemtext->length + 1) * sizeof(line));
 			if (!tmp) {
@@ -499,20 +508,30 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 				break;
 			}
 			gemtext->lines = tmp;
-			gemtext->lines[gemtext->length] = line;
+
+			length = sizeof(struct gemtext_cell) * line.length;
+			ptr = &gemtext->lines[gemtext->length];
+			ptr->cells = malloc(length);
+			if (!ptr->cells) {
+				free(gemtext->lines);
+				ret = ERROR_MEMORY_FAILURE;
+				break;
+			}
+			memcpy(ptr->cells, line.cells, length);
+			ptr->length = line.length;
+
+			line.length = 0;
 			gemtext->length++;
-			memset(&line, 0, sizeof(line));
-			continue;
 		}
-		tmp = realloc(line.cells, (line.length + 1) * sizeof(cell));
-		if (!tmp) {
-			ret = ERROR_MEMORY_FAILURE;
-			free(line.cells);
+			break;
+		default:
+			if (line.length >= gemtext->width) break;
+			line.cells[line.length] = cell;
+			line.length++;
 			break;
 		}
-		line.cells = tmp;
-		line.cells[line.length] = cell;
-		line.length++;
+		if (cell.special == GEMTEXT_EOF) break;
 	}
+	free(line.cells);
 	return ret;
 }
