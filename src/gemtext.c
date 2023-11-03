@@ -133,6 +133,10 @@ static int writecell(struct termwriter *termwriter, struct gemtext_cell cell) {
 			}
 			nextspace = j;
 		}
+		if (termwriter->cells[i].codepoint == '\t') {
+			termwriter->cells[i].width = TAB_SIZE - (x % TAB_SIZE);
+			termwriter->cells[i].codepoint = ' ';
+		}
 		x += termwriter->cells[i].width;
 		if (x > termwriter->width) {
 			struct gemtext_cell cell = {0};
@@ -175,7 +179,7 @@ static int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
 
 /* TODO: verify that writecell and writeto return 0 */
 int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
-		struct termwriter *termwriter, int *x, uint32_t *ch) {
+			struct termwriter *termwriter, uint32_t *ch) {
 
 	char buf[32];
 	struct gemtext_cell cell = {0}, cells[MAX_URL] = {0};
@@ -232,7 +236,6 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 
 	j = snprintf(V(buf), "[%d]", *links);
 	writeto(termwriter, buf, colorFromLine(LINE_LINK), *links);
-	(*x) += j;
 
 	cell.color = colorFromLine(LINE_TEXT);
 	cell.width = 1;
@@ -240,14 +243,12 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 	cell.codepoint = ' ';
 	for (; j < 6; j++) {
 		writecell(termwriter, cell);
-		(*x)++;
 	}
 
 	if (ch && !rewrite) {
 		cell.codepoint = *ch;
 		cell.width = mk_wcwidth(*ch);
 		writecell(termwriter, cell);
-		(*x) += cell.width;
 	}
 
 	/* if finding newline reprint what was read */
@@ -257,7 +258,6 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 		cells[j].link = 0;
 		cells[j].special = 0;
 		writecell(termwriter, cells[j]);
-		(*x)++;
 	}
 
 	return 0;
@@ -270,12 +270,11 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 			int *links, int *preformatted,
 			struct termwriter *termwriter, uint32_t *last) {
 
-	int x, ret;
+	int ret;
 	int color = *_color, header = 0, link = 0, preformat = 0, start = 1;
 
 	if (*preformatted) color = colorFromLine(LINE_PREFORMATTED);
 
-	x = 0;
 	ret = PARSE_LINE_COMPLETED;
 	while (*pos < length) {
 
@@ -296,10 +295,6 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (cell.codepoint == '\n') break;
 		cell.width = mk_wcwidth(cell.codepoint);
 		if (cell.width >= termwriter->width) cell.width = 1;
-		if (cell.codepoint == '\t') {
-			cell.codepoint = ' ';
-			cell.width = TAB_SIZE - (x % TAB_SIZE);
-		}
 		if (!renderable(cell.codepoint)) continue;
 		
 		if (header) {
@@ -323,7 +318,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				int n;
 				link = 0;
 				n = gemtext_parse_link(in, pos, length, links,
-							termwriter, &x, &ch);
+							termwriter, &ch);
 				if (n) return n;
 				if (ch == '\n') break;
 				continue;
