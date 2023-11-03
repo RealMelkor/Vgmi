@@ -96,7 +96,7 @@ int gemtext_free(struct gemtext gemtext) {
 struct termwriter {
 	struct gemtext_cell cells[1024]; /* maximum cells for a line */
 	size_t pos;
-	int width;
+	size_t width;
 	int fd;
 };
 
@@ -525,7 +525,7 @@ int gemtext_update(int in, int out, const char *data, size_t length,
 		}
 			break;
 		default:
-			if (line.length >= gemtext->width) break;
+			if (line.length >= (size_t)gemtext->width) break;
 			line.cells[line.length] = cell;
 			line.length++;
 			break;

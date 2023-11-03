@@ -73,7 +73,7 @@ void client_draw(struct client* client) {
 			(size_t)req->selected <= req->text.links_count) {
 		const char *link = req->text.links[req->selected - 1];
 		const char format[] = " => %s ";
-		int len = strnlen(link, MAX_URL) + sizeof(format) - 3;
+		int len = utf8_width(link, MAX_URL) + sizeof(format) - 3;
 		int x = client->width - len;
 		if (x < 10) x = 10;
 		tb_printf(x, client->height - 2, TB_WHITE, TB_BLUE,
