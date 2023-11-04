@@ -12,7 +12,6 @@
 #include "error.h"
 #include "page.h"
 #include "request.h"
-#include "gemtext.h"
 #define PARSER_INTERNAL
 #include "parser.h"
 
@@ -51,17 +50,6 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 	return 0;
 }
 
-int is_gemtext(char *meta, size_t len) {
-
-	const char *gmi = "text/gemini";
-	char *ptr;
-
-	if (!strcmp(meta, gmi)) return 1;
-	ptr = strnstr(meta, ";", len);
-	if (!ptr) return 0;
-	return memcmp(meta, gmi, ptr - meta) == 0;
-}
-
 void parser_request(int in, int out) {
 	while (1) { /* TODO: send error code */
 
@@ -78,7 +66,7 @@ void parser_request(int in, int out) {
 		write(out, V(request.meta));
 
 		if (is_gemtext(V(request.meta))) {
-			if (gemtext_links(in, length - bytes, out)) {
+			if (parse_links(in, length - bytes, out)) {
 				break;
 			}
 		} else {

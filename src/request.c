@@ -7,7 +7,6 @@
 #include <string.h>
 struct request;
 #include "macro.h"
-#include "gemtext.h"
 #include "gemini.h"
 #include "client.h"
 #include "url.h"

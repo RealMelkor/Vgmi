@@ -39,15 +39,13 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 }
 
 void tab_display_update(struct request *req, struct rect rect) {
-	if (is_gemtext(V(req->meta))) {
-		int error = parse_page(NULL, req, rect.w - rect.x);
-		if (error) {
-			req->error = error;
-			return;
-		}
-		request_scroll(req, 0, rect); /* fix scroll */
+	int error = parse_page(NULL, req, rect.w - rect.x);
+	if (error) {
+		req->error = error;
 		return;
 	}
+	request_scroll(req, 0, rect); /* fix scroll */
+	return;
 }
 
 void tab_display_gemtext(struct request *req, struct rect rect) {

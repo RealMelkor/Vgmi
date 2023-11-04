@@ -10,9 +10,6 @@
 #include <math.h>
 #include "macro.h"
 #include "client.h"
-#define GEMTEXT_INTERNAL
-#define GEMTEXT_INTERNAL_FUNCTIONS
-#include "gemtext.h"
 #define PAGE_INTERNAL
 #include "page.h"
 #include "request.h"
@@ -276,15 +273,13 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 	return ret;
 }
 
-int gemtext_prerender(int in, size_t length, int width, int out) {
+int parse_gemtext(int in, size_t length, int width, int out) {
 
 	int color, links, preformatted;
 	size_t pos;
 	uint32_t last;
 	struct termwriter termwriter = {0};
 	if (width < 10) width = 10;
-
-	if (skip_meta(in, &pos, length)) return ERROR_INVALID_DATA;
 
 	termwriter.width = width - OFFSETX;
 	termwriter.fd = out;
@@ -293,6 +288,7 @@ int gemtext_prerender(int in, size_t length, int width, int out) {
 	color = LINE_TEXT;
 	preformatted = links = 0;
 	last = 0;
+	pos = 0;
 	while (pos < length) {
 		int ret = gemtext_parse_line(in, &pos, length, &color,
 				&links, &preformatted, &termwriter, &last);

@@ -16,7 +16,6 @@
 #include "sandbox.h"
 #include "url.h"
 #include "page.h"
-#include "gemtext.h"
 #include "gemini.h"
 #include "request.h"
 #include "strlcpy.h"
@@ -95,12 +94,28 @@ void parser_page(int in, int out) {
 		int ret;
 		size_t length;
 		int width;
+		char meta[1024];
+		int code, bytes;
 
 		if (vread(in, &length, sizeof(length))) break;
 		if (vread(in, &width, sizeof(width))) break;
 
-		/* TODO: support other format than gemtext */
-		ret = gemtext_prerender(in, length, width, out);
+		/* TODO: cache the mime type */
+		ret = 0;
+		if (parse_response(in, length, V(meta), &code, &bytes)) break;
+
+		switch (parser_mime(V(meta))) {
+		case MIME_GEMTEXT:
+			ret = parse_gemtext(in, length - bytes, width, out);
+			break;
+		case MIME_PLAIN:
+			ret = parse_plain(in, length - bytes, width, out);
+			break;
+		case MIME_UNKNOWN:
+			ret = parse_binary(in, length - bytes, width, out);
+			break;
+		}
+
 		if (ret) break;
 
 		free(data);

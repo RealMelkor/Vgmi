@@ -9,7 +9,6 @@
 #include <time.h>
 #include "macro.h"
 #include "gemini.h"
-#include "gemtext.h"
 #include "page.h"
 #include "request.h"
 #include "about.h"

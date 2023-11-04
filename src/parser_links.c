@@ -10,9 +10,6 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "strnstr.h"
-#define GEMTEXT_INTERNAL
-#define GEMTEXT_INTERNAL_FUNCTIONS
-#include "gemtext.h"
 #include "utf8.h"
 #include "error.h"
 #include "page.h"
@@ -64,7 +61,7 @@ static int format_link(const char *link, size_t length,
 	return j;
 }
 
-int gemtext_links(int in, size_t length, int out) {
+int parse_links(int in, size_t length, int out) {
 
 	int newline, link;
 	size_t i;

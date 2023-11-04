@@ -9,7 +9,6 @@
 #include "termbox.h"
 #include "macro.h"
 #include "client.h"
-#include "gemtext.h"
 #include "gemini.h"
 #include "page.h"
 #include "request.h"
