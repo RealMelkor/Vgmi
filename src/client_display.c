@@ -7,7 +7,7 @@
 #include <string.h>
 #include "termbox.h"
 #include "macro.h"
-#include "gemtext.h"
+#include "page.h"
 #include "request.h"
 #include "client.h"
 #include "tab.h"

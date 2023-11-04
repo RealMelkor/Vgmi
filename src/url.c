@@ -6,8 +6,8 @@
 #include <string.h>
 #include <stddef.h>
 #include "macro.h"
-#include "gemtext.h"
 #include "url.h"
+#include "page.h"
 #include "request.h"
 #include "error.h"
 #include "strnstr.h"

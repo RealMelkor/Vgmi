@@ -15,6 +15,10 @@
 #include "gemtext.h"
 #include "utf8.h"
 #include "error.h"
+#include "page.h"
+#include "request.h"
+#define PARSER_INTERNAL
+#include "parser.h"
 
 static int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
@@ -60,52 +64,10 @@ static int format_link(const char *link, size_t length,
 	return j;
 }
 
-int gemtext_status(int fd, size_t length, char *meta, size_t len, int *code,
-			int *bytes_read) {
+int gemtext_links(int in, size_t length, int out) {
 
-	char *ptr;
-	char buf[MAX_URL];
+	int newline, link;
 	size_t i;
-	int found;
-
-	found = 0;
-	for (i = 0; i < sizeof(buf) && i < len && i < length; i++) {
-		int ret = read(fd, &buf[i], 1);
-		if (ret != 1) return -1;
-		if (i && buf[i] == '\n' && buf[i - 1] == '\r') {
-			found = 1;
-			break;
-		}
-	}
-	if (!found || i < 1) return -1;
-	*bytes_read = i + 1;
-	buf[i - 1] = '\0';
-
-	ptr = strchr(buf, ' ');
-	if (!ptr) return ERROR_INVALID_METADATA;
-	*ptr = 0;
-	i = atoi(buf);
-	if (!i) return ERROR_INVALID_STATUS;
-
-	memset(meta, 0, len);
-	strlcpy(meta, ptr + 1, len);
-
-	*code = i;
-	return 0;
-}
-
-int gemtext_links(int in, size_t length, int out, int *status, char *meta,
-			size_t meta_length) {
-
-	int newline, link, ret, bytes;
-	size_t i;
-
-	ret = gemtext_status(in, length, meta, meta_length, status, &bytes);
-	if (ret) return ret;
-	length -= bytes;
-
-	write(out, status, sizeof(*status));
-	write(out, meta, meta_length);
 
 	newline = 1;
 	link = 0;

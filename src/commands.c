@@ -7,7 +7,7 @@
 #include <string.h>
 #include "strlcpy.h"
 #include "macro.h"
-#include "gemtext.h"
+#include "page.h"
 #include "client.h"
 #include "tab.h"
 #include "request.h"

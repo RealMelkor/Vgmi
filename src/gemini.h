@@ -2,6 +2,10 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#define GMI_INPUT	10
+#define GMI_SECRET	11
+#define GMI_SUCCESS	20
+
 int gemini_status(const char*, size_t, char*, size_t, int*);
 int gemini_status_string(int status, char *out, size_t length);
 int gemini_iserror(int status);

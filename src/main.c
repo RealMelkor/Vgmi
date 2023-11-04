@@ -8,7 +8,7 @@
 #include "error.h"
 #include "client.h"
 #include "dns.h"
-#include "gemtext.h"
+#include "page.h"
 #include "request.h"
 #include "secure.h"
 #include "tab.h"

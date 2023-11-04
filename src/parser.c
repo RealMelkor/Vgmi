@@ -10,14 +10,17 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "macro.h"
 #include "error.h"
 #include "sandbox.h"
 #include "url.h"
+#include "page.h"
 #include "gemtext.h"
 #include "gemini.h"
 #include "request.h"
 #include "strlcpy.h"
+#define PARSER_INTERNAL
 #include "parser.h"
 
 struct parser {
@@ -26,26 +29,9 @@ struct parser {
 	pthread_mutex_t mutex;
 };
 struct parser request_parser;
-struct parser gemtext_parser;
+struct parser page_parser;
 
-static int vread(int fd, void *buf, size_t nbytes) {
-	ssize_t len = read(fd, buf, nbytes);
-	return len != (ssize_t)nbytes;
-}
-
-void parser_request(int in, int out) {
-	while (1) { /* TODO: send error code */
-
-		int ret;
-		size_t length;
-		struct request request = {0};
-
-		if (vread(in, &length, sizeof(length))) break;
-		ret = gemtext_links(in, length, out,
-				&request.status, V(request.meta));
-		if (ret) break;
-	}
-}
+void parser_request(int in, int out);
 
 int parse_request(struct parser *parser, struct request *request) {
 
@@ -102,7 +88,7 @@ int parse_request(struct parser *parser, struct request *request) {
 	return ret;
 }
 
-void parser_gemtext(int in, int out) {
+void parser_page(int in, int out) {
 	char *data = NULL;
 	while (1) { /* TODO: send error code */
 
@@ -113,7 +99,8 @@ void parser_gemtext(int in, int out) {
 		if (vread(in, &length, sizeof(length))) break;
 		if (vread(in, &width, sizeof(width))) break;
 
-		ret = gemtext_parse(in, length, width, out);
+		/* TODO: support other format than gemtext */
+		ret = gemtext_prerender(in, length, width, out);
 		if (ret) break;
 
 		free(data);
@@ -122,10 +109,10 @@ void parser_gemtext(int in, int out) {
 	free(data);
 }
 
-int parse_gemtext(struct parser *parser, struct request *request, int width) {
+int parse_page(struct parser *parser, struct request *request, int width) {
 
 	int ret;
-	if (!parser) parser = &gemtext_parser;
+	if (!parser) parser = &page_parser;
 
 	pthread_mutex_lock(&parser->mutex);
 
@@ -133,7 +120,7 @@ int parse_gemtext(struct parser *parser, struct request *request, int width) {
 	write(parser->out, P(width));
 
 	request->text.width = width;
-	ret = gemtext_update(parser->in, parser->out, request->data,
+	ret = page_update(parser->in, parser->out, request->data,
 			request->length, &request->text);
 	if (ret) return ret;
 
@@ -166,7 +153,7 @@ int parser_create(struct parser *parser, int type, char *name) {
 	write(in_pipe[1], &byte, 1);
 	switch (type) {
 	case PARSER_GEMTEXT:
-		parser_gemtext(out_pipe[0], in_pipe[1]);
+		parser_page(out_pipe[0], in_pipe[1]);
 		break;
 	case PARSER_REQUEST:
 		parser_request(out_pipe[0], in_pipe[1]);
@@ -185,7 +172,7 @@ int parser_request_create() {
 			"vgmi [request]");
 }
 
-int parser_gemtext_create() {
-	return parser_create(&gemtext_parser, PARSER_GEMTEXT,
-			"vgmi [gemtext]");
+int parser_page_create() {
+	return parser_create(&page_parser, PARSER_GEMTEXT,
+			"vgmi [page]");
 }

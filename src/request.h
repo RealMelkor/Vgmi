@@ -12,7 +12,6 @@ enum {
 };
 
 struct secure;
-struct gemtext;
 struct rect;
 
 struct request {
@@ -30,7 +29,7 @@ struct request {
 	int selected;
 	int status;
 	struct request *next;
-	struct gemtext text;
+	struct page text;
 };
 
 int request_process(struct request*, struct secure*, const char*);

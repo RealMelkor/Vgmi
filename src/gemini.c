@@ -7,7 +7,7 @@
 #include "error.h"
 #include "strlcpy.h"
 #include "strnstr.h"
-#include "gemtext.h"
+#include "gemini.h"
 
 int gemini_iserror(int status) {
 	return status < 10 || status >= 40;

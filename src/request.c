@@ -11,6 +11,7 @@ struct request;
 #include "gemini.h"
 #include "client.h"
 #include "url.h"
+#include "page.h"
 #include "request.h"
 #include "secure.h"
 #include "strlcpy.h"
@@ -139,7 +140,7 @@ int request_follow(struct request* req, const char *link,
 int request_free_ref(struct request req) {
 	free(req.data);
 	free(req.addr);
-	gemtext_free(req.text);
+	page_free(req.text);
 	return 0;
 }
 

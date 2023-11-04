@@ -11,7 +11,8 @@
 #include "termbox.h"
 #include "macro.h"
 #include "client.h"
-#include "gemtext.h"
+#include "gemini.h"
+#include "page.h"
 #include "request.h"
 #include "tab.h"
 #include "strnstr.h"
@@ -38,8 +39,8 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 }
 
 void tab_display_update(struct request *req, struct rect rect) {
-	if (!strcmp(req->meta, "text/gemini")) {
-		int error = parse_gemtext(NULL, req, rect.w - rect.x);
+	if (is_gemtext(V(req->meta))) {
+		int error = parse_page(NULL, req, rect.w - rect.x);
 		if (error) {
 			req->error = error;
 			return;
@@ -62,7 +63,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	if (req->text.width != rect.w - rect.x) {
 		tab_display_update(req, rect);
 	}
-	gemtext_display(req->text, req->scroll,
+	page_display(req->text, req->scroll,
 			rect.h - rect.y, req->selected);
 }
 

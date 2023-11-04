@@ -13,6 +13,11 @@
 #define GEMTEXT_INTERNAL
 #define GEMTEXT_INTERNAL_FUNCTIONS
 #include "gemtext.h"
+#define PAGE_INTERNAL
+#include "page.h"
+#include "request.h"
+#define PARSER_INTERNAL
+#include "parser.h"
 #include "termbox.h"
 #include "wcwidth.h"
 #include "error.h"
@@ -62,132 +67,12 @@ static int nextHeader(int header) {
 	}
 }
 
-static int renderable(uint32_t codepoint) {
-	return !(codepoint == 0xFEFF ||
-		(codepoint < ' ' && codepoint != '\n' && codepoint != '\t'));
-}
-
-int readnext(int fd, uint32_t *ch, size_t *pos) {
-
-	char buf[64];
-	int len;
-
-	if (read(fd, buf, 1) != 1) return -1;
-	len = utf8_char_length(*buf);
-	if (len > 1 && read(fd, &buf[1], len - 1) != len - 1) return -1;
-	if (len > 0 && pos) *pos += len;
-	utf8_char_to_unicode(ch, buf);
-	return 0;
-}
-
-int gemtext_free(struct gemtext gemtext) {
-	size_t i;
-	for (i = 0; i < gemtext.length; i++) {
-		free(gemtext.lines[i].cells);
-	}
-	free(gemtext.lines);
-	for (i = 0; i < gemtext.links_count; i++) {
-		free(gemtext.links[i]);
-	}
-	free(gemtext.links);
-	return 0;
-}
-
-struct termwriter {
-	struct gemtext_cell cells[1024]; /* maximum cells for a line */
-	size_t pos;
-	size_t width;
-	int fd;
-};
-
-static int writecell(struct termwriter *termwriter, struct gemtext_cell cell) {
-	size_t i, x, nextspace;
-	if (cell.special == GEMTEXT_BLANK) {
-		return write(termwriter->fd, P(cell)) != sizeof(cell);
-	}
-	if (!cell.special && termwriter->pos < LENGTH(termwriter->cells)) {
-		termwriter->cells[termwriter->pos] = cell;
-		termwriter->pos++;
-		return 0;
-	}
-	nextspace = 0;
-	x = 0;
-	for (i = 0; i < termwriter->pos; i++) {
-		if (i >= nextspace) {
-			size_t j, nextspace_x;
-			nextspace_x = x;
-			for (j = i + 1; j < termwriter->pos; j++) {
-				nextspace_x += termwriter->cells[j].width;
-				if (WHITESPACE(termwriter->cells[j].codepoint))
-					break;
-			}
-			if (nextspace_x - x <= termwriter->width &&
-					nextspace_x >= termwriter->width) {
-				struct gemtext_cell cell = {0};
-				cell.special = GEMTEXT_NEWLINE;
-				write(termwriter->fd, P(cell));
-				x = 0;
-				nextspace = i;
-				continue;
-			}
-			nextspace = j;
-		}
-		if (termwriter->cells[i].codepoint == '\t') {
-			termwriter->cells[i].width = TAB_SIZE - (x % TAB_SIZE);
-			termwriter->cells[i].codepoint = ' ';
-		}
-		x += termwriter->cells[i].width;
-		if (x > termwriter->width) {
-			struct gemtext_cell cell = {0};
-			cell.special = GEMTEXT_NEWLINE;
-			write(termwriter->fd, P(cell));
-			x = 0;
-		}
-		if (write(termwriter->fd, P(termwriter->cells[i])) !=
-				sizeof(cell))
-			return -1;
-	}
-	termwriter->pos = 0;
-	return -(write(termwriter->fd, P(cell)) != sizeof(cell));
-}
-
-static int writenewline(struct termwriter *termwriter) {
-	struct gemtext_cell newline = {0};
-	newline.special = GEMTEXT_NEWLINE;
-	return writecell(termwriter, newline);
-}
-
-static int writeto(struct termwriter *termwriter, const char *str,
-			int color, int link) {
-	const char *ptr = str;
-	while (*ptr) {
-		struct gemtext_cell cell = {0};
-		cell.codepoint = *ptr;
-		cell.link = link;
-		cell.width = mk_wcwidth(cell.codepoint);
-		cell.color = color;
-		if (writecell(termwriter, cell)) return -1;
-		ptr++;
-	}
-	return 0;
-}
-
-static int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
-	if (pos - *initial_pos > BLOCK_SIZE / 2) {
-		struct gemtext_cell cell = {0};
-		cell.special = GEMTEXT_RESET;
-		if (write(fd, P(cell)) != sizeof(cell)) return -1;
-		*initial_pos = pos;
-	}
-	return 0;
-}
-
 /* TODO: verify that writecell and writeto return 0 */
 int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 			struct termwriter *termwriter, uint32_t *ch) {
 
 	char buf[32];
-	struct gemtext_cell cell = {0}, cells[MAX_URL] = {0};
+	struct page_cell cell = {0}, cells[MAX_URL] = {0};
 	size_t initial_pos = *pos;
 	int i, j, rewrite;
 
@@ -283,7 +168,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 	ret = PARSE_LINE_COMPLETED;
 	while (*pos < length) {
 
-		struct gemtext_cell cell = {0};
+		struct page_cell cell = {0};
 
 		if (*last) {
 			cell.codepoint = *last;
@@ -307,7 +192,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				color = nextHeader(color);
 				header++;
 			} else {
-				struct gemtext_cell header_cell = {0};
+				struct page_cell header_cell = {0};
 				header_cell.codepoint = '#';
 				header_cell.width = 1;
 				header_cell.color = colorFromLine(color);
@@ -328,7 +213,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				if (ch == '\n') break;
 				continue;
 			} else {
-				struct gemtext_cell prev_cell = {0};
+				struct page_cell prev_cell = {0};
 				prev_cell.codepoint = '=';
 				prev_cell.width = 1;
 				prev_cell.color = color;
@@ -348,7 +233,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				preformat = -1;
 				continue;
 			} else {
-				struct gemtext_cell prev_cell = {0};
+				struct page_cell prev_cell = {0};
 				prev_cell.codepoint = '`';
 				prev_cell.width = 1;
 				prev_cell.color = colorFromLine(color);
@@ -391,22 +276,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 	return ret;
 }
 
-static int skip_meta(int fd, size_t *pos, size_t length) {
-	uint32_t prev = 0;
-	int found = 0;
-	for (*pos = 0; *pos < length; ) {
-		uint32_t ch;
-		if (readnext(fd, &ch, pos)) return -1;
-		if (ch == '\n' && prev == '\r') {
-			found = 1;
-			break;
-		}
-		prev = ch;
-	}
-	return -(!found);
-}
-
-int gemtext_parse(int in, size_t length, int width, int out) {
+int gemtext_prerender(int in, size_t length, int width, int out) {
 
 	int color, links, preformatted;
 	size_t pos;
@@ -437,98 +307,10 @@ int gemtext_parse(int in, size_t length, int width, int out) {
 	}
 
 	{
-		struct gemtext_cell eof = {0};
+		struct page_cell eof = {0};
 		eof.special = GEMTEXT_EOF;
 		writecell(&termwriter, eof);
 	}
 
 	return 0;
-}
-
-int gemtext_update(int in, int out, const char *data, size_t length,
-			struct gemtext *gemtext) {
-
-	int ret;
-	size_t i, pos, cells;
-	struct gemtext_line line = {0};
-
-	/* clean up previous */
-	for (i = 0; i < gemtext->length; i++) {
-		free(gemtext->lines[i].cells);
-	}
-	free(gemtext->lines);
-
-	gemtext->length = 0;
-	gemtext->lines = NULL;
-
-	line.cells =
-		malloc((gemtext->width + 1) * sizeof(struct gemtext_cell));
-	if (!line.cells) return ERROR_MEMORY_FAILURE;
-
-	cells = pos = ret = 0;
-	while (!ret) {
-
-		struct gemtext_cell cell;
-		void *tmp;
-		int len;
-
-		if (pos < length && cells >= pos / 2) {
-			int bytes = BLOCK_SIZE;
-			if (pos + bytes > length) bytes = length - pos;
-			write(out, &data[pos], bytes);
-			pos += bytes;
-		}
-
-		len = read(in, P(cell));
-		cells++;
-		if (len != sizeof(cell)) {
-			ret = -1;
-			break;
-		}
-
-		switch (cell.special) {
-		case GEMTEXT_EOF: break;
-		case GEMTEXT_BLANK: break;
-		case GEMTEXT_RESET:
-			cells = pos / 2;
-			break;
-		case GEMTEXT_NEWLINE:
-		{
-			struct gemtext_line *ptr;
-			size_t length;
-
-			tmp = realloc(gemtext->lines,
-					(gemtext->length + 1) * sizeof(line));
-			if (!tmp) {
-				free(gemtext->lines);
-				ret = ERROR_MEMORY_FAILURE;
-				break;
-			}
-			gemtext->lines = tmp;
-
-			length = sizeof(struct gemtext_cell) * line.length;
-			ptr = &gemtext->lines[gemtext->length];
-			ptr->cells = malloc(length);
-			if (!ptr->cells) {
-				free(gemtext->lines);
-				ret = ERROR_MEMORY_FAILURE;
-				break;
-			}
-			memcpy(ptr->cells, line.cells, length);
-			ptr->length = line.length;
-
-			line.length = 0;
-			gemtext->length++;
-		}
-			break;
-		default:
-			if (line.length >= (size_t)gemtext->width) break;
-			line.cells[line.length] = cell;
-			line.length++;
-			break;
-		}
-		if (cell.special == GEMTEXT_EOF) break;
-	}
-	free(line.cells);
-	return ret;
 }

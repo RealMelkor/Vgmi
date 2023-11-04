@@ -9,7 +9,7 @@
 #include "strlcpy.h"
 #include "utf8.h"
 #include "termbox.h"
-#include "gemtext.h"
+#include "page.h"
 #include "request.h"
 #include "client.h"
 #include "tab.h"

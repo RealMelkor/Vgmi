@@ -13,7 +13,7 @@ struct rect;
 #include "macro.h"
 #include "error.h"
 #include "gemini.h"
-#include "gemtext.h"
+#include "page.h"
 #include "request.h"
 #include "tab.h"
 #include "client.h"
@@ -106,7 +106,7 @@ int client_init(struct client* client) {
 
 	memset(client, 0, sizeof(*client));
 	if ((ret = parser_request_create())) return ret;
-	if ((ret = parser_gemtext_create())) return ret;
+	if ((ret = parser_page_create())) return ret;
 	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))

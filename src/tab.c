@@ -11,6 +11,7 @@
 #include "client.h"
 #include "gemtext.h"
 #include "gemini.h"
+#include "page.h"
 #include "request.h"
 #include "secure.h"
 #include "tab.h"
