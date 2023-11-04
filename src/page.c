@@ -39,7 +39,7 @@ int page_update(int in, int out, const char *data, size_t length,
 			struct page *page) {
 
 	int ret;
-	size_t i, pos, cells;
+	size_t i, pos, bytes_read;
 	struct page_line line = {0};
 
 	/* clean up previous */
@@ -55,14 +55,14 @@ int page_update(int in, int out, const char *data, size_t length,
 		malloc((page->width + 1) * sizeof(struct page_cell));
 	if (!line.cells) return ERROR_MEMORY_FAILURE;
 
-	cells = pos = ret = 0;
+	bytes_read = pos = ret = 0;
 	while (!ret) {
 
 		struct page_cell cell;
 		void *tmp;
 		int len;
 
-		if (pos < length && cells >= pos / 2) {
+		if (pos < length && pos - bytes_read < 4096) {
 			int bytes = BLOCK_SIZE;
 			if (pos + bytes > length) bytes = length - pos;
 			write(out, &data[pos], bytes);
@@ -70,7 +70,6 @@ int page_update(int in, int out, const char *data, size_t length,
 		}
 
 		len = read(in, P(cell));
-		cells++;
 		if (len != sizeof(cell)) {
 			ret = -1;
 			break;
@@ -80,7 +79,7 @@ int page_update(int in, int out, const char *data, size_t length,
 		case PAGE_EOF: break;
 		case PAGE_BLANK: break;
 		case PAGE_RESET:
-			cells = pos / 2;
+			bytes_read = cell.codepoint;
 			break;
 		case PAGE_NEWLINE:
 		{

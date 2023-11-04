@@ -9,7 +9,9 @@
 #include "parser.h"
 
 int writecell(struct termwriter *termwriter, struct page_cell cell) {
+
 	size_t i, x, nextspace;
+
 	if (cell.special == PAGE_BLANK) {
 		return write(termwriter->fd, P(cell)) != sizeof(cell);
 	}
@@ -84,6 +86,7 @@ int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
 	if (pos - *initial_pos > BLOCK_SIZE / 2) {
 		struct page_cell cell = {0};
 		cell.special = PAGE_RESET;
+		cell.codepoint = pos;
 		if (write(fd, P(cell)) != sizeof(cell)) return -1;
 		*initial_pos = pos;
 	}

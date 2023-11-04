@@ -24,10 +24,6 @@
 
 #define TAB_SIZE 4
 
-#define GEMTEXT_NEWLINE	(uint8_t)1
-#define GEMTEXT_EOF	(uint8_t)2
-#define GEMTEXT_BLANK	(uint8_t)3
-#define GEMTEXT_RESET	(uint8_t)4
 #define BLOCK_SIZE 4096
 
 enum {
@@ -304,7 +300,7 @@ int parse_gemtext(int in, size_t length, int width, int out) {
 
 	{
 		struct page_cell eof = {0};
-		eof.special = GEMTEXT_EOF;
+		eof.special = PAGE_EOF;
 		writecell(&termwriter, eof);
 	}
 

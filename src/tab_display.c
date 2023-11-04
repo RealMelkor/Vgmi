@@ -59,6 +59,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	if (!start) return;
 
 	if (req->text.width != rect.w - rect.x) {
+		/* TODO: should be done in the background */
 		tab_display_update(req, rect);
 	}
 	page_display(req->text, req->scroll,
