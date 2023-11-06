@@ -49,7 +49,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			if (!req) break;
 			if (!i && !req->selected) break;
 			if (i) {
-				if (req->text.links_count < i) {
+				if (req->page.links_count < i) {
 					/* error */
 					client->error = 1;
 					STRLCPY(client->cmd,
@@ -61,9 +61,9 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			}
 			i = req->selected;
 			req->selected = 0;
-			if (req->text.links_count < i) break;
+			if (req->page.links_count < i) break;
 			i = request_follow(req,
-					req->text.links[i - 1], V(buf));
+					req->page.links[i - 1], V(buf));
 			if (i) {
 				client->error = 1;
 				error_string(i, V(client->cmd));

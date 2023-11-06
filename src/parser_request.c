@@ -10,6 +10,7 @@
 #include "strnstr.h"
 #include "macro.h"
 #include "error.h"
+#include "gemini.h"
 #include "page.h"
 #include "request.h"
 #define PARSER_INTERNAL
@@ -64,6 +65,15 @@ void parser_request(int in, int out) {
 
 		write(out, P(request.status));
 		write(out, V(request.meta));
+		if (request.status == GMI_SUCCESS) {
+			request.page.mime = parser_mime(V(request.meta));
+			request.page.offset = bytes;
+		} else {
+			request.page.mime = 0;
+			request.page.offset = 0;
+		}
+		write(out, P(request.page.mime));
+		write(out, P(request.page.offset));
 
 		if (is_gemtext(V(request.meta))) {
 			if (parse_links(in, length - bytes, out)) {

@@ -29,7 +29,7 @@ struct request {
 	int selected;
 	int status;
 	struct request *next;
-	struct page text;
+	struct page page;
 };
 
 int request_process(struct request*, struct secure*, const char*);

@@ -75,8 +75,8 @@ void client_draw(struct client* client) {
 	}
 
 	if (req && req->selected &&
-			(size_t)req->selected <= req->text.links_count) {
-		const char *link = req->text.links[req->selected - 1];
+			(size_t)req->selected <= req->page.links_count) {
+		const char *link = req->page.links[req->selected - 1];
 		const char format[] = " => %s ";
 		int len = utf8_width(link, MAX_URL) + sizeof(format) - 3;
 		int x = client->width - len;

@@ -56,12 +56,12 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	req = tab_completed(client->tab);
 	if (!req) return -1;
 	link--;
-	if (link >= req->text.links_count) {
+	if (link >= req->page.links_count) {
 		client->error = 1;
 		STRLCPY(client->cmd, "Invalid link number");
 		return 0;
 	}
-	request_follow(req, req->text.links[link], V(buf));
+	request_follow(req, req->page.links[link], V(buf));
 	tab_request(client->tab, buf);
 	return 0;
 }

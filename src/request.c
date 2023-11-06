@@ -76,15 +76,15 @@ int request_scroll(struct request* req, int scroll, struct rect rect) {
 
 	if (!req) return -1;
 
-	if (0 >= (ssize_t)req->text.length - rect.h + 2) {
+	if (0 >= (ssize_t)req->page.length - rect.h + 2) {
 		req->scroll = 0;
 		return 0;
 	}
 
 	req->scroll += scroll;
 	if (req->scroll < 0) req->scroll = 0;
-	else if ((size_t)req->scroll > req->text.length - rect.h + 2)
-		req->scroll = req->text.length - rect.h + 2;
+	else if ((size_t)req->scroll > req->page.length - rect.h + 2)
+		req->scroll = req->page.length - rect.h + 2;
 	return 0;
 }
 
@@ -139,7 +139,7 @@ int request_follow(struct request* req, const char *link,
 int request_free_ref(struct request req) {
 	free(req.data);
 	free(req.addr);
-	page_free(req.text);
+	page_free(req.page);
 	return 0;
 }
 

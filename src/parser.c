@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "macro.h"
 #include "error.h"
 #include "sandbox.h"
@@ -19,6 +20,7 @@
 #include "gemini.h"
 #include "request.h"
 #include "strlcpy.h"
+#include "strnstr.h"
 #define PARSER_INTERNAL
 #include "parser.h"
 
@@ -44,9 +46,11 @@ int parse_request(struct parser *parser, struct request *request) {
 
 	if (vread(parser->in, P(request->status))) return -1;
 	if (vread(parser->in, V(request->meta))) return -1;
+	if (vread(parser->in, P(request->page.mime))) return -1;
+	if (vread(parser->in, P(request->page.offset))) return -1;
 
-	request->text.links_count = 0;
-	request->text.links = NULL;
+	request->page.links_count = 0;
+	request->page.links = NULL;
 	ret = 0;
 	while (1) {
 
@@ -73,16 +77,17 @@ int parse_request(struct parser *parser, struct request *request) {
 		}
 		strlcpy(ptr, url, length);
 
-		tmp = realloc(request->text.links, sizeof(char*) * 
-				(request->text.links_count + 1));
+		tmp = realloc(request->page.links,
+			sizeof(char*) * (request->page.links_count + 1));
 		if (!tmp) {
 			ret = ERROR_MEMORY_FAILURE;
 			break;
 		}
-		request->text.links = tmp;
-		request->text.links[request->text.links_count] = ptr;
-		request->text.links_count++;
+		request->page.links = tmp;
+		request->page.links[request->page.links_count] = ptr;
+		request->page.links_count++;
 	}
+
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;
 }
@@ -94,25 +99,21 @@ void parser_page(int in, int out) {
 		int ret;
 		size_t length;
 		int width;
-		char meta[1024];
-		int code, bytes;
+		int mime;
 
 		if (vread(in, &length, sizeof(length))) break;
 		if (vread(in, &width, sizeof(width))) break;
+		if (vread(in, &mime, sizeof(mime))) break;
 
-		/* TODO: cache the mime type */
-		ret = 0;
-		if (parse_response(in, length, V(meta), &code, &bytes)) break;
-
-		switch (parser_mime(V(meta))) {
+		switch (mime) {
 		case MIME_GEMTEXT:
-			ret = parse_gemtext(in, length - bytes, width, out);
+			ret = parse_gemtext(in, length, width, out);
 			break;
 		case MIME_PLAIN:
-			ret = parse_plain(in, length - bytes, width, out);
+			ret = parse_plain(in, length, width, out);
 			break;
-		case MIME_UNKNOWN:
-			ret = parse_binary(in, length - bytes, width, out);
+		default:
+			ret = parse_binary(in, length, width, out);
 			break;
 		}
 
@@ -127,16 +128,20 @@ void parser_page(int in, int out) {
 int parse_page(struct parser *parser, struct request *request, int width) {
 
 	int ret;
+	size_t length;
 	if (!parser) parser = &page_parser;
 
 	pthread_mutex_lock(&parser->mutex);
 
-	write(parser->out, P(request->length));
+	length = request->length - request->page.offset;
+	write(parser->out, P(length));
 	write(parser->out, P(width));
+	write(parser->out, P(request->page.mime));
 
-	request->text.width = width;
-	ret = page_update(parser->in, parser->out, request->data,
-			request->length, &request->text);
+	request->page.width = width;
+	ret = page_update(parser->in, parser->out,
+			&request->data[request->page.offset],
+			length, &request->page);
 	if (ret) return ret;
 
 	pthread_mutex_unlock(&parser->mutex);

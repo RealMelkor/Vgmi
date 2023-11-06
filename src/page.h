@@ -7,6 +7,8 @@ struct page {
 	size_t links_count;
 	char **links;
 	int width;
+	int mime;
+	int offset;
 };
 
 #define TAB_SIZE 4
