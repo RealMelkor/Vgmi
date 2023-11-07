@@ -50,13 +50,7 @@ void tab_display_update(struct request *req, struct rect rect) {
 
 void tab_display_gemtext(struct request *req, struct rect rect) {
 
-	char *data, *start;
-
 	if (!req) return;
-
-	data = req->data;
-	start = strnstr(data, "\r\n", req->length);
-	if (!start) return;
 
 	if (req->page.width != rect.w - rect.x) {
 		/* TODO: should be done in the background */

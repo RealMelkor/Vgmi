@@ -137,7 +137,7 @@ int request_follow(struct request* req, const char *link,
 }
 
 int request_free_ref(struct request req) {
-	free(req.data);
+	free_readonly(req.data, req.length);
 	free(req.addr);
 	page_free(req.page);
 	return 0;

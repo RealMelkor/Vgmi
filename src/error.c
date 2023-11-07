@@ -26,6 +26,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_MEMORY_FAILURE:
 		strlcpy(out, "Memory failure", len);
 		break;
+	case ERROR_ERRNO:
+		strlcpy(out, strerror(errno), len);
+		break;
 	case ERROR_TLS_FAILURE:
 		strlcpy(out, error_tls, len);
 		break;

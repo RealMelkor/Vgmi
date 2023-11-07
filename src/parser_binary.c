@@ -18,7 +18,7 @@ int parse_binary(int in, size_t length, int width, int out) {
 
 	size_t i;
 	struct termwriter termwriter = {0};
-	int x;
+	unsigned int x;
 
 	if (width < 10) width = 10;
 
