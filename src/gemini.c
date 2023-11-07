@@ -1395,13 +1395,8 @@ int gmi_request_header(struct gmi_tab* tab) {
 		return -1;
 	}
 	char* ptr = strchr(buf, ' ');
-	if (!ptr) {
-		snprintf(tab->error, sizeof(tab->error),
-			 "Invalid data from: %s (no metadata)",
-			 tab->request.host);
-		return -1;
-	}
-	STRLCPY(tab->request.error, ptr + 1);
+	if (ptr && ptr + 1 >= strnstr(buf, "\r\n", sizeof(buf))) ptr = NULL;
+	if (ptr) STRLCPY(tab->request.error, ptr + 1);
 
 	int previous_code = tab->page.code;
 	char c = buf[2];
@@ -1416,17 +1411,23 @@ int gmi_request_header(struct gmi_tab* tab) {
 	switch (tab->page.code) {
 	case 10:
 	case 11:
-		ptr++;
-		STRLCPY(client.input.label, ptr);
-		ptr = strchr(client.input.label, '\n');
-		if (ptr) *ptr = '\0';
-		ptr = strchr(client.input.label, '\r');
-		if (ptr) *ptr = '\0';
+		if (ptr) {
+			ptr++;
+			STRLCPY(client.input.label, ptr);
+			ptr = strchr(client.input.label, '\n');
+			if (ptr) *ptr = '\0';
+			ptr = strchr(client.input.label, '\r');
+			if (ptr) *ptr = '\0';
+		} else client.input.label[0] = '\0';
 		tab->request.state = STATE_RECV_HEADER;
 		tab->request.recv = recv;
 		return 2; // input
 	case 20:
 	{
+		if (!ptr) {
+			STRLCPY(tab->request.meta, "text/gemini");
+			break;
+		}
 #ifdef TERMINAL_IMG_VIEWER
 		tab->page.img.tried = 0;
 #endif
