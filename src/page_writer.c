@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include "macro.h"
 #include "wcwidth.h"
 #define PAGE_INTERNAL
@@ -8,11 +9,22 @@
 #include "request.h"
 #include "parser.h"
 
+static int newline(struct termwriter *termwriter) {
+	struct page_cell cell = {0};
+	cell.special = PAGE_NEWLINE;
+	termwriter->sent++;
+	return write(termwriter->fd, P(cell)) != sizeof(cell);
+}
+
 int writecell(struct termwriter *termwriter, struct page_cell cell,
 		size_t pos) {
 
 	size_t i, x, nextspace;
 	size_t last_reset; /* bytes since last reset cell */
+
+	/* flush last cells before sending EOF */
+	if (cell.special == PAGE_EOF && termwriter->pos)
+		writenewline(termwriter, pos);
 
 	last_reset = termwriter->sent - termwriter->last_reset;
 	if (termwriter->sent && last_reset >= RESET_RATE / 2) {
@@ -24,6 +36,11 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 		write(termwriter->fd, P(cell));
 	}
 	
+	if (cell.codepoint == '\n') {
+		memset(&cell, 0, sizeof(cell));
+		cell.special = PAGE_NEWLINE;
+	}
+
 	if (cell.special == PAGE_BLANK) {
 		termwriter->sent++;
 		return write(termwriter->fd, P(cell)) != sizeof(cell);
@@ -35,6 +52,9 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 	}
 	nextspace = 0;
 	x = 0;
+	if (cell.special != PAGE_NEWLINE) {
+		newline(termwriter);
+	}
 	for (i = 0; i < termwriter->pos; i++) {
 		if (i >= nextspace) {
 			size_t j, nextspace_x;
@@ -46,10 +66,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 			}
 			if (nextspace_x - x <= termwriter->width &&
 					nextspace_x >= termwriter->width) {
-				struct page_cell cell = {0};
-				cell.special = PAGE_NEWLINE;
-				termwriter->sent++;
-				write(termwriter->fd, P(cell));
+				newline(termwriter);
 				x = 0;
 				nextspace = i;
 				continue;
@@ -62,10 +79,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 		}
 		x += termwriter->cells[i].width;
 		if (x > termwriter->width) {
-			struct page_cell cell = {0};
-			cell.special = PAGE_NEWLINE;
-			termwriter->sent++;
-			write(termwriter->fd, P(cell));
+			newline(termwriter);
 			x = 0;
 		}
 		termwriter->sent++;
@@ -75,8 +89,6 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 	}
 	termwriter->pos = 0;
 	termwriter->sent++;
-
-
 	return -(write(termwriter->fd, P(cell)) != sizeof(cell));
 }
 

@@ -113,7 +113,7 @@ void parser_page(int in, int out) {
 			ret = parse_plain(in, length, width, out);
 			break;
 		default:
-			ret = parse_gemtext(in, length, width, out);
+			ret = parse_binary(in, length, width, out);
 			break;
 		}
 
