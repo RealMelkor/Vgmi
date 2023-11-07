@@ -9,6 +9,21 @@
 #include "strnstr.h"
 #include "gemini.h"
 
+int gemini_status_code(int status) {
+	if (status < 10 || status >= 70) return -1;
+	switch (status) { /* if the code is known, return it as it is */
+	case 10: case 11:
+	case 20:
+	case 30:
+	case 31:
+	case 40: case 41: case 42: case 43: case 44:
+	case 50: case 51: case 52: case 53: case 59:
+	case 60: case 61: case 62:
+		return status;
+	}
+	return status - (status % 10);
+}
+
 int gemini_iserror(int status) {
 	return status < 10 || status >= 40;
 }

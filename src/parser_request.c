@@ -47,7 +47,7 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 	memset(meta, 0, len);
 	strlcpy(meta, ptr + 1, len);
 
-	*code = i;
+	*code = gemini_status_code(i);
 	return 0;
 }
 
@@ -66,6 +66,9 @@ void parser_request(int in, int out) {
 		write(out, P(request.status));
 		write(out, V(request.meta));
 		if (request.status == GMI_SUCCESS) {
+			if (!request.meta[0]) {
+				STRLCPY(request.meta, "text/gemini");
+			}
 			request.page.mime = parser_mime(V(request.meta));
 			request.page.offset = bytes;
 		} else {
