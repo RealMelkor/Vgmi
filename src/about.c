@@ -14,6 +14,7 @@
 #include "about.h"
 #include "error.h"
 #include "strlcpy.h"
+#include "secure.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "sandbox.h"
@@ -109,9 +110,8 @@ static int parse_data(struct request *request, char *data, size_t len) {
 }
 
 static int static_page(struct request *request, const char *data, size_t len) {
-	char *ptr = malloc(len);
-	if (!ptr) return ERROR_MEMORY_FAILURE;
-	memcpy(ptr, data, len);
+	char *ptr;
+	if (readonly(data, len, &ptr)) return ERROR_MEMORY_FAILURE;
 	return parse_data(request, ptr, len - 1);
 }
 
@@ -157,7 +157,8 @@ static int known_hosts_page(char **out, size_t *length_out) {
 		length += len - 1;
 	}
 
-	*out = data;
+	readonly(data, length, out);
+	free(data);
 	*length_out = length;
 	return 0;
 }

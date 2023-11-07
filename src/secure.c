@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 #ifdef __FreeBSD__
 #include <netinet/in.h>
 #include "sandbox.h"
@@ -164,15 +165,12 @@ int secure_send(struct secure *secure, const char *data, size_t len) {
 	return ERROR_TLS_FAILURE;
 }
 
-#include <sys/mman.h>
-
-int readonly(char *in, size_t length, char **out) {
+int readonly(const char *in, size_t length, char **out) {
 	void *ptr = mmap(NULL, length, PROT_READ|PROT_WRITE,
 			MAP_ANON|MAP_PRIVATE, -1, 0);
 	memcpy(ptr, in, length);
         if (mprotect(ptr, length, PROT_READ)) return -1;
 	*out = ptr;
-	free(in);
 	return 0;
 }
 
@@ -220,6 +218,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 	memset(&ptr[len], 0, pad);
 	*length = len + pad;
 	if (readonly(ptr, *length, data)) return ERROR_ERRNO;
+	free(ptr);
 	return 0;
 }
 
