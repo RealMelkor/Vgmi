@@ -29,22 +29,8 @@ int readnext(int fd, uint32_t *ch, size_t *pos) {
 	if (len > 1 && read(fd, &buf[1], len - 1) != len - 1) return -1;
 	if (len > 0 && pos) *pos += len;
 	utf8_char_to_unicode(ch, buf);
-	return 0;
-}
 
-int skip_meta(int fd, size_t *pos, size_t length) {
-	uint32_t prev = 0;
-	int found = 0;
-	for (*pos = 0; *pos < length; ) {
-		uint32_t ch;
-		if (readnext(fd, &ch, pos)) return -1;
-		if (ch == '\n' && prev == '\r') {
-			found = 1;
-			break;
-		}
-		prev = ch;
-	}
-	return -(!found);
+	return 0;
 }
 
 int vread(int fd, void *buf, size_t nbytes) {

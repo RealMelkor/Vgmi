@@ -66,27 +66,26 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 
 	char buf[32];
 	struct page_cell cell = {0}, cells[MAX_URL] = {0};
-	size_t initial_pos = *pos;
 	int i, j, rewrite;
 
 	/* readnext till finding not a space */ 
 	while (*pos < length) {
-		prevent_deadlock(*pos, &initial_pos, termwriter->fd);
-		if (readnext(in, &cell.codepoint, pos)) return -1;
+		if (readnext(in, &cell.codepoint, pos))
+			return -1;
 		if (!WHITESPACE(cell.codepoint)) break;
 	}
 
 	/* if ch is newline, abort since not a valid link */
 	if (cell.codepoint == '\n') {
-		writeto(termwriter, "=>", colorFromLine(LINE_TEXT), 0);
+		writeto(termwriter, "=>", colorFromLine(LINE_TEXT), 0, *pos);
 		*ch = '\n';
 		return 0;
 	}
 	/* readnext till find a space or newline */ 
 	cells[0] = cell;
 	for (i = 1; i < MAX_URL && *pos < length; i++) {
-		prevent_deadlock(*pos, &initial_pos, termwriter->fd);
-		if (readnext(in, &cells[i].codepoint, pos)) return -1;
+		if (readnext(in, &cells[i].codepoint, pos))
+			return -1;
 		if (!renderable(cells[i].codepoint)) {
 			i--;
 			continue;
@@ -107,7 +106,6 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 
 	*ch = rewrite ? '\n' : 0;
 	for (j = 0; !rewrite && j < MAX_URL && *pos < length; j++) {
-		prevent_deadlock(*pos, &initial_pos, termwriter->fd);
 		if (readnext(in, ch, pos)) return -1;
 		if (!WHITESPACE(*ch)) {
 			if (*ch == '\n') rewrite = i;
@@ -118,20 +116,20 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 	(*links)++;
 
 	j = snprintf(V(buf), "[%d]", *links);
-	writeto(termwriter, buf, colorFromLine(LINE_LINK), *links);
+	writeto(termwriter, buf, colorFromLine(LINE_LINK), *links, *pos);
 
 	cell.color = colorFromLine(LINE_TEXT);
 	cell.width = 1;
 	cell.link = 0;
 	cell.codepoint = ' ';
 	for (; j < 6; j++) {
-		writecell(termwriter, cell);
+		writecell(termwriter, cell, *pos);
 	}
 
 	if (ch && !rewrite) {
 		cell.codepoint = *ch;
 		cell.width = mk_wcwidth(*ch);
-		writecell(termwriter, cell);
+		writecell(termwriter, cell, *pos);
 	}
 
 	/* if finding newline reprint what was read */
@@ -140,7 +138,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 		cells[j].width = mk_wcwidth(cells[j].codepoint);
 		cells[j].link = 0;
 		cells[j].special = 0;
-		writecell(termwriter, cells[j]);
+		writecell(termwriter, cells[j], *pos);
 	}
 
 	return 0;
@@ -166,7 +164,9 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (*last) {
 			cell.codepoint = *last;
 			*last = 0;
-		} else if (readnext(in, &cell.codepoint, pos)) return -1;
+		} else if (readnext(in, &cell.codepoint, pos)) {
+			return -1;
+		}
 		if (preformat == -1) {
 			if (cell.codepoint == '\n') {
 				ret = PARSE_LINE_SKIP;
@@ -178,19 +178,24 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (cell.codepoint == '\n') break;
 		cell.width = mk_wcwidth(cell.codepoint);
 		if (cell.width >= termwriter->width) cell.width = 1;
-		if (!renderable(cell.codepoint)) continue;
-		
+		if (!renderable(cell.codepoint)) {
+			struct page_cell cell = {0};
+			cell.special = PAGE_BLANK;
+			writecell(termwriter, cell, *pos);
+			continue;
+		}
+
 		if (header) {
 			if (header < 3 && cell.codepoint == '#') {
 				color = nextHeader(color);
 				header++;
 			} else {
-				struct page_cell header_cell = {0};
-				header_cell.codepoint = '#';
-				header_cell.width = 1;
-				header_cell.color = colorFromLine(color);
+				struct page_cell cell = {0};
+				cell.codepoint = '#';
+				cell.width = 1;
+				cell.color = colorFromLine(color);
 				while (header) {
-					writecell(termwriter, header_cell);
+					writecell(termwriter, cell, *pos);
 					header--;
 				}
 			}
@@ -210,7 +215,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				prev_cell.codepoint = '=';
 				prev_cell.width = 1;
 				prev_cell.color = color;
-				writecell(termwriter, prev_cell);
+				writecell(termwriter, prev_cell, *pos);
 				link = 0;
 			}
 		}
@@ -231,14 +236,14 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 				prev_cell.width = 1;
 				prev_cell.color = colorFromLine(color);
 				while (preformat) {
-					writecell(termwriter, prev_cell);
+					writecell(termwriter, prev_cell, *pos);
 					preformat--;
 				}
 			}
 		}
 
 		/* start of the line */
-		if ((cell.codepoint == '`' || !*preformatted) && start) {
+		if (start && (cell.codepoint == '`' || !*preformatted)) {
 			switch (cell.codepoint) {
 			case '=':
 				link = 1;
@@ -261,7 +266,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		start = 0;
 		if (!header && !link && !preformat) {
 			cell.color = colorFromLine(color);
-			writecell(termwriter, cell);
+			writecell(termwriter, cell, *pos);
 		}
 	}
 	*_color = color;
@@ -286,7 +291,8 @@ int parse_gemtext(int in, size_t length, int width, int out) {
 	last = 0;
 	pos = 0;
 	while (pos < length) {
-		int ret = gemtext_parse_line(in, &pos, length, &color,
+		int ret;
+		ret = gemtext_parse_line(in, &pos, length, &color,
 				&links, &preformatted, &termwriter, &last);
 		if (ret == -1) return -1;
 		if (ret == PARSE_LINE_SKIP) continue;
@@ -295,13 +301,13 @@ int parse_gemtext(int in, size_t length, int width, int out) {
 			last = 0;
 		}
 
-		writenewline(&termwriter);
+		writenewline(&termwriter, pos);
 	}
 
 	{
 		struct page_cell eof = {0};
 		eof.special = PAGE_EOF;
-		writecell(&termwriter, eof);
+		writecell(&termwriter, eof, pos);
 	}
 
 	return 0;

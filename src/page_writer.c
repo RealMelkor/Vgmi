@@ -8,11 +8,24 @@
 #include "request.h"
 #include "parser.h"
 
-int writecell(struct termwriter *termwriter, struct page_cell cell) {
+int writecell(struct termwriter *termwriter, struct page_cell cell,
+		size_t pos) {
 
 	size_t i, x, nextspace;
+	size_t last_reset; /* bytes since last reset cell */
 
+	last_reset = termwriter->sent - termwriter->last_reset;
+	if (termwriter->sent && last_reset >= RESET_RATE / 2) {
+		struct page_cell cell = {0};
+		cell.special = PAGE_RESET;
+		cell.codepoint = pos;
+		cell.link = termwriter->sent++;
+		termwriter->last_reset = termwriter->sent;
+		write(termwriter->fd, P(cell));
+	}
+	
 	if (cell.special == PAGE_BLANK) {
+		termwriter->sent++;
 		return write(termwriter->fd, P(cell)) != sizeof(cell);
 	}
 	if (!cell.special && termwriter->pos < LENGTH(termwriter->cells)) {
@@ -35,6 +48,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell) {
 					nextspace_x >= termwriter->width) {
 				struct page_cell cell = {0};
 				cell.special = PAGE_NEWLINE;
+				termwriter->sent++;
 				write(termwriter->fd, P(cell));
 				x = 0;
 				nextspace = i;
@@ -50,25 +64,30 @@ int writecell(struct termwriter *termwriter, struct page_cell cell) {
 		if (x > termwriter->width) {
 			struct page_cell cell = {0};
 			cell.special = PAGE_NEWLINE;
+			termwriter->sent++;
 			write(termwriter->fd, P(cell));
 			x = 0;
 		}
+		termwriter->sent++;
 		if (write(termwriter->fd, P(termwriter->cells[i])) !=
 				sizeof(cell))
 			return -1;
 	}
 	termwriter->pos = 0;
+	termwriter->sent++;
+
+
 	return -(write(termwriter->fd, P(cell)) != sizeof(cell));
 }
 
-int writenewline(struct termwriter *termwriter) {
+int writenewline(struct termwriter *termwriter, size_t pos) {
 	struct page_cell newline = {0};
 	newline.special = PAGE_NEWLINE;
-	return writecell(termwriter, newline);
+	return writecell(termwriter, newline, pos);
 }
 
 int writeto(struct termwriter *termwriter, const char *str,
-			int color, int link) {
+			int color, int link, size_t pos) {
 	const char *ptr = str;
 	while (*ptr) {
 		struct page_cell cell = {0};
@@ -76,19 +95,8 @@ int writeto(struct termwriter *termwriter, const char *str,
 		cell.link = link;
 		cell.width = mk_wcwidth(cell.codepoint);
 		cell.color = color;
-		if (writecell(termwriter, cell)) return -1;
+		if (writecell(termwriter, cell, pos)) return -1;
 		ptr++;
-	}
-	return 0;
-}
-
-int prevent_deadlock(size_t pos, size_t *initial_pos, int fd) {
-	if (pos - *initial_pos > BLOCK_SIZE / 2) {
-		struct page_cell cell = {0};
-		cell.special = PAGE_RESET;
-		cell.codepoint = pos;
-		if (write(fd, P(cell)) != sizeof(cell)) return -1;
-		*initial_pos = pos;
 	}
 	return 0;
 }

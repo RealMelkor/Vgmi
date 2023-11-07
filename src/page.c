@@ -24,7 +24,7 @@ int page_display(struct page text, int from, int to, int selected) {
 		for (i = 0; i < text.lines[y].length; i++) {
 			struct page_cell cell = text.lines[y].cells[i];
 			int color = cell.color;
-			if (selected && cell.link == selected) {
+			if (selected && cell.link == (uint32_t)selected) {
 				color = TB_RED;
 			}
 			tb_set_cell(x, y - from, cell.codepoint,
@@ -39,7 +39,7 @@ int page_update(int in, int out, const char *data, size_t length,
 			struct page *page) {
 
 	int ret;
-	size_t i, pos, bytes_read;
+	size_t i, bytes_read, bytes_sent, cells_to_read, cells_read;
 	struct page_line line = {0};
 
 	/* clean up previous */
@@ -55,18 +55,22 @@ int page_update(int in, int out, const char *data, size_t length,
 		malloc((page->width + 1) * sizeof(struct page_cell));
 	if (!line.cells) return ERROR_MEMORY_FAILURE;
 
-	bytes_read = pos = ret = 0;
+	cells_read = cells_to_read = bytes_sent = bytes_read = ret = 0;
+
 	while (!ret) {
 
 		struct page_cell cell;
 		void *tmp;
 		int len;
 
-		if (pos < length && pos - bytes_read < 4096) {
-			int bytes = BLOCK_SIZE;
-			if (pos + bytes > length) bytes = length - pos;
-			write(out, &data[pos], bytes);
-			pos += bytes;
+		if (cells_to_read <= cells_read + RESET_RATE / sizeof(cell) &&
+				bytes_sent < length &&
+				bytes_read + RESET_RATE / 2 > bytes_sent) {
+			int bytes = RESET_RATE;
+			if (bytes_sent + bytes > length)
+				bytes = length - bytes_sent;
+			write(out, &data[bytes_sent], bytes);
+			bytes_sent += bytes;
 		}
 
 		len = read(in, P(cell));
@@ -74,12 +78,15 @@ int page_update(int in, int out, const char *data, size_t length,
 			ret = -1;
 			break;
 		}
+		bytes_read += len;
+		cells_read++;
 
 		switch (cell.special) {
 		case PAGE_EOF: break;
 		case PAGE_BLANK: break;
 		case PAGE_RESET:
 			bytes_read = cell.codepoint;
+			cells_to_read = cell.link;
 			break;
 		case PAGE_NEWLINE:
 		{

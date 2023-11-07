@@ -29,23 +29,16 @@ int parse_binary(int in, size_t length, int width, int out) {
 		uint8_t byte;
 		char buf[8];
 
-		if (i && i % 2048 == 0) {
-			struct page_cell cell = {0};
-			cell.special = PAGE_RESET;
-			cell.codepoint = i;
-			writecell(&termwriter, cell);
-		}
-
 		read(in, &byte, 1);
 		snprintf(V(buf), "%02X ", byte);
 
-		writeto(&termwriter, buf, 0, 0);
+		writeto(&termwriter, buf, 0, 0, i);
 	}
 
 	{
 		struct page_cell cell = {0};
 		cell.special = PAGE_EOF;
-		writecell(&termwriter, cell);
+		writecell(&termwriter, cell, i);
 	}
 	return 0;
 }

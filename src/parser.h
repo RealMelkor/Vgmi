@@ -13,7 +13,6 @@ struct parser;
 int vread(int fd, void *buf, size_t nbytes);
 int readnext(int fd, uint32_t *ch, size_t *pos);
 int renderable(uint32_t codepoint);
-int skip_meta(int fd, size_t *pos, size_t length);
 #endif
 
 #define WHITESPACE(X) ((X) <= ' ' && (X) != '\n')
