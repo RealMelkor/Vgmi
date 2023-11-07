@@ -2,14 +2,12 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#ifdef __linux__
+#if defined (__linux__) && !defined (DISABLE_SANDBOX)
 #include <linux/seccomp.h>
-#if __has_include(<linux/landlock.h>)
 #define _DEFAULT_SOURCE
 #include <sys/syscall.h>
 #include <sys/resource.h>
 #include <sys/prctl.h>
-#include <linux/landlock.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -116,6 +114,9 @@ int enable_seccomp() {
 }
 #endif
 
+#ifdef HAS_LANDLOCK
+#include <linux/landlock.h>
+
 static int landlock_create_ruleset(
 		const struct landlock_ruleset_attr *attr,
 		size_t size, uint32_t flags) {
@@ -179,11 +180,15 @@ int landlock_apply(int fd)
 	errno = err;
 	return ret;
 }
+#endif
 
 int sandbox_init() {
 
 	char path[2048];
-	int ret, fd;
+#ifdef HAS_LANDLOCK
+	int fd;
+#endif
+	int ret;
 	struct rlimit limit;
 
 	/* prevents from creating large file */
@@ -196,6 +201,7 @@ int sandbox_init() {
 
 	if ((ret = storage_path(V(path)))) return ret;
 
+#ifdef HAS_LANDLOCK
 	/* restrict filesystem access */
 	fd = landlock_init();
 	if (fd < 0) return ERROR_SANDBOX_FAILURE;
@@ -211,6 +217,7 @@ int sandbox_init() {
 	if (ret) return ERROR_SANDBOX_FAILURE;
 
 	if (landlock_apply(fd)) return ERROR_SANDBOX_FAILURE;
+#endif
 
 #ifdef ENABLE_SECCOMP_FILTER
 	if (enable_seccomp()) return ERROR_SANDBOX_FAILURE;
@@ -218,8 +225,6 @@ int sandbox_init() {
 
 	return 0;
 }
-#else
-#endif
 int sandbox_isolate() {
 	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT))
 		return ERROR_SANDBOX_FAILURE;

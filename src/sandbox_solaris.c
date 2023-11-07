@@ -2,7 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#ifdef sun
+#if defined (sun) && !defined (DISABLE_SANDBOX)
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

@@ -2,7 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#ifdef __FreeBSD__
+#if defined (__FreeBSD__) && !defined (DISABLE_SANDBOX)
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
