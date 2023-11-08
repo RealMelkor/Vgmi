@@ -23,12 +23,19 @@ int page_display(struct page text, int from, int to, int selected) {
 		if (y < 0) continue;
 		for (i = 0; i < text.lines[y].length; i++) {
 			struct page_cell cell = text.lines[y].cells[i];
-			int color = cell.color;
+			int fg = cell.color, bg = TB_DEFAULT;
 			if (selected && cell.link == (uint32_t)selected) {
-				color = TB_RED;
+				fg = TB_RED;
 			}
-			tb_set_cell(x, y - from, cell.codepoint,
-					color, TB_DEFAULT);
+			if (cell.selected) {
+				if (cell.selected == text.selected) {
+					bg = TB_WHITE;
+					if (!fg || fg == TB_WHITE ||
+							fg == TB_DEFAULT)
+						fg = TB_YELLOW;
+				} else bg = TB_YELLOW;
+			}
+			tb_set_cell(x, y - from, cell.codepoint, fg, bg);
 			x += cell.width;
 		}
 	}

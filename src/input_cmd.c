@@ -24,6 +24,17 @@ void client_enter_mode_cmdline(struct client *client) {
 	client->cursor = STRLCPY(client->cmd, ":");
 }
 
+static void refresh_search(struct client *client) {
+	if (client->cmd[0] != '/') return;
+	struct request *req;
+	STRLCPY(client->search, &client->cmd[1]);
+	if (!(req = tab_completed(client->tab))) return;
+	page_search(&req->page, client->search);
+	req->scroll = page_selection_line(req->page);
+	req->scroll -= client_display_rect(client).h / 2;
+	tab_scroll(client->tab, 0, client_display_rect(client));
+}
+
 int handle_cmd(struct client *client) {
 
 	struct command *command;
@@ -61,6 +72,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 
 	int len, prefix;
 	struct request *req;
+	int search_mode = client->cmd[0] == '/';
 
 	req = tab_input(client->tab);
 
@@ -75,7 +87,8 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		if (req) req->state = STATE_ENDED;
 		return 0;
 	case TB_KEY_ENTER:
-		if (req) {
+		if (search_mode) ;
+		else if (req) {
 			char url[2048];
 			int error;
 			req->state = STATE_ENDED;
@@ -101,6 +114,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			client->cursor = utf8_previous(client->cmd,
 						client->cursor);
 			client->cmd[client->cursor] = 0;
+			refresh_search(client);
 			return 0;
 		}
 		client->cursor = utf8_previous(client->tab->input,
@@ -119,6 +133,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 				&client->cmd[client->cursor], ev.ch);
 		client->cursor += len;
 		client->cmd[client->cursor] = '\0';
+		refresh_search(client);
 		return 0;
 	}
 

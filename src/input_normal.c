@@ -81,6 +81,33 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case ':':
 		client_enter_mode_cmdline(client);
 		break;
+	case '/':
+		{
+			struct request *req = tab_completed(client->tab);
+			if (!req) break;
+			client_enter_mode_cmdline(client);
+			client->cmd[0] = '/';
+			client->search[0] = '\0';
+			req->page.selected = 1;
+		}
+		break;
+	case 'n':
+	case 'N':
+		{
+			struct request *req = tab_completed(client->tab);
+			if (!req) break;
+			if (ev.ch == 'n') {
+				if (req->page.selected < req->page.occurrences)
+					req->page.selected++;
+			} else {
+				if (req->page.selected > 1)
+					req->page.selected--;
+			}
+			req->scroll = page_selection_line(req->page);
+			req->scroll -= client_display_rect(client).h / 2;
+		}
+		tab_scroll(client->tab, 0, client_display_rect(client));
+		break;
 	case 'u':
 		{
 			struct request *req = tab_completed(client->tab);

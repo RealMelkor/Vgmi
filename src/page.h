@@ -3,16 +3,20 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 struct page_line;
+struct page_search;
 
 struct page {
 	char title[1024];
 	struct page_line *lines;
+	struct page_search *results;
 	size_t length;
 	size_t links_count;
 	char **links;
 	int width;
 	int mime;
 	int offset;
+	unsigned int selected;
+	unsigned int occurrences;
 };
 
 #define TAB_SIZE 4
@@ -29,15 +33,21 @@ struct page {
 
 struct page_cell {
 	uint32_t codepoint;
-	uint8_t color;
-	uint8_t width;
 	uint32_t link;
-	uint8_t special;
+	uint32_t selected;
+	uint8_t	color;
+	unsigned width:4;
+	unsigned special:4;
 };
 
 struct page_line {
 	struct page_cell *cells;
 	size_t length;
+};
+
+struct page_search {
+	size_t line;
+	struct page_search *next;
 };
 
 struct termwriter {
@@ -60,3 +70,5 @@ int page_display(struct page text, int from, int to, int selected);
 int page_update(int in, int out, const char *data, size_t length,
 			struct page *page);
 int page_free(struct page page);
+void page_search(struct page *page, const char *search);
+int page_selection_line(struct page page);

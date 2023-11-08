@@ -2,7 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#define MAX_CMDLINE 4096
+#define MAX_CMDLINE 2048
 #define MAX_PREFIX 1024
 #define MAX_COUNT 10000000
 #define MAX_CMD_NAME 64
@@ -32,6 +32,7 @@ struct client {
 	int width;
 	int height;
 	char cmd[MAX_CMDLINE];
+	char search[MAX_CMDLINE];
 	char prefix[MAX_PREFIX];
 	int cursor;
 	int error;
