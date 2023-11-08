@@ -7,6 +7,8 @@
 #define MAX_COUNT 10000000
 #define MAX_CMD_NAME 64
 
+#define ERROR_INFO 0xAA
+
 #ifndef size_t
 #define size_t unsigned long
 #endif

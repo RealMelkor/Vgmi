@@ -111,6 +111,8 @@ int client_init(struct client* client) {
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))
 		return ret;
+	if ((ret = client_addcommand(client, "forget", command_forget)))
+		return ret;
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;

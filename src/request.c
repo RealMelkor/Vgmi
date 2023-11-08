@@ -13,7 +13,9 @@ struct request;
 #include "page.h"
 #include "request.h"
 #include "secure.h"
+#include "memory.h"
 #include "strlcpy.h"
+#include "strnstr.h"
 #include "dns.h"
 #include "about.h"
 #include "error.h"
@@ -107,9 +109,9 @@ int request_follow(struct request* req, const char *link,
 	}
 	if (link[0] == '/') {
 		int i;
-		ptr = strstr(req->url, "://");
-		if (!ptr) return -1;
-		ptr += 4;
+		ptr = strnstr(req->url, "://", sizeof(req->url));
+		if (!ptr) ptr = req->url;
+		else ptr += 4;
 		ptr = strchr(ptr, '/');
 		if (!ptr) ptr = req->url + strnlen(req->url, length);
 		ptr++;
@@ -118,14 +120,14 @@ int request_follow(struct request* req, const char *link,
 		i += strlcpy(&url[i], link, length - i);
 		return (size_t)i > length ? ERROR_INVALID_URL : 0;
 	}
-	if (strstr(link, "://")) {
+	if (strnstr(link, "://", MAX_URL)) {
 		strlcpy(url, link, length);
 		return 0;
 	}
 	strlcpy(url, req->url, length);
-	ptr = strstr(url, "://");
-	if (!ptr) return -1;
-	ptr += 3;
+	ptr = strnstr(url, "://", length);
+	if (!ptr) ptr = url;
+	else ptr += 3;
 	ptr = strrchr(ptr, '/');
 	if (!ptr) {
 		ptr = url + strnlen(url, length);

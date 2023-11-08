@@ -49,8 +49,10 @@ void client_draw(struct client* client) {
 	for (i = 0; i < client->width; i++) 
 		tb_set_cell(i, client->height - 2, ' ', TB_BLACK, TB_WHITE);
 
-	if (client->error)
-		tb_print(0, client->height - 1, TB_WHITE, TB_RED, client->cmd);
+	if (client->error) {
+		int color = client->error == ERROR_INFO ? TB_GREEN : TB_RED;
+		tb_print(0, client->height - 1, TB_WHITE, color, client->cmd);
+	}
 
 	if (client->mode == MODE_CMDLINE) {
 		tb_print(0, client->height - 1, TB_DEFAULT, TB_DEFAULT,

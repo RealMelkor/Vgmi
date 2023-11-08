@@ -12,6 +12,7 @@
 #include "tab.h"
 #include "request.h"
 #include "certificate.h"
+#include "error.h"
 
 int command_quit(struct client *client, const char* ptr, size_t len) {
 	if (strncmp(ptr, "q", len)) {
@@ -92,5 +93,43 @@ int command_gencert(struct client *client, const char* ptr, size_t len) {
 	}
 	if (certificate_create(req->name, V(client->cmd)))
 		client->error = 1;
+	return 0;
+}
+
+#include <time.h>
+#include "known_hosts.h"
+int command_forget(struct client *client, const char* ptr, size_t len) {
+
+	const char start[] = "forget ";
+	const char *host;
+	char buf[MAX_URL];
+	int i, ret;
+
+	if (!client->tab) return -1;
+
+	if (memcmp((void*)ptr, start, sizeof(start) - 1) ||
+			len <= sizeof(start) + 1) {
+		client->error = 1;
+		STRLCPY(client->cmd, "No host");
+		return 0;
+	}
+
+	host = &ptr[sizeof(start) - 1];
+	STRLCPY(buf, host);
+	i = strnlen(V(buf)) - 1;
+	for (; i > 0; i--) {
+		if (buf[i] <= ' ') buf[i] = '\0';
+	}
+
+	if ((ret = known_hosts_forget(buf))) {
+		client->error = 1;
+		error_string(ret, V(client->cmd));
+		return 0;
+	}
+
+	client->error = ERROR_INFO;
+	snprintf(V(client->cmd),
+		"Certificate for %s removed from well-known hosts", buf);
+
 	return 0;
 }

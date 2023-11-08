@@ -2,7 +2,6 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/pem.h>

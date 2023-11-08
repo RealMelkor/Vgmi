@@ -29,12 +29,21 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_ERRNO:
 		strlcpy(out, strerror(errno), len);
 		break;
+	case ERROR_UNKNOWN_PROTOCOL:
+		strlcpy(out, "Unknown protocol", len);
+		break;
+	case ERROR_UNKNOWN_HOST:
+		strlcpy(out, "Unknown host", len);
+		break;
 	case ERROR_TLS_FAILURE:
 		strlcpy(out, error_tls, len);
 		break;
 	case ERROR_GETADDRINFO:
 		ptr = gai_strerror(-((error & 0xFFFF0000) >> 16));
 		strlcpy(out, ptr, len);
+		break;
+	case ERROR_INVALID_ARGUMENT:
+		strlcpy(out, "Invalid argument", len);
 		break;
 	case ERROR_INVALID_METADATA:
 		strlcpy(out, "No metadata", len);

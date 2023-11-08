@@ -17,8 +17,9 @@ int main(int argc, char *argv[]) {
 	
 	struct client client = {0};
 	int ret;
+	const char *url = "about:newtab";
 
-	if (argc) if (!argv) printf("\n");
+	if (argc > 1) url = argv[1];
 
 	if ((ret = client_init(&client))) {
 		char error[1024];
@@ -28,7 +29,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	client.tab = tab_new();
-	tab_request(client.tab, "about:newtab");
+	tab_request(client.tab, url);
 
 	do {
 		client_display(&client);

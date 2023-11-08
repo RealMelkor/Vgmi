@@ -156,6 +156,25 @@ int known_hosts_verify(const char *host, const char *hash,
 	return known_hosts_write(host, hash, start, end);
 }
 
+int known_hosts_forget_id(int id) {
+	size_t i;
+	if ((size_t)id > known_hosts_length) return ERROR_INVALID_ARGUMENT;
+	known_hosts_length--;
+	for (i = id; i < known_hosts_length; i++) {
+		known_hosts[i] = known_hosts[i + 1];
+	}
+	return 0;
+}
+
+int known_hosts_forget(const char *host) {
+	size_t i;
+	for (i = 0; i < known_hosts_length; i++) {
+		if (!STRCMP(known_hosts[i].host, host)) break;
+	}
+	if (i == known_hosts_length) return ERROR_UNKNOWN_HOST;
+	return known_hosts_forget_id(i);
+}
+
 void known_hosts_free() {
 	free(known_hosts);
 }

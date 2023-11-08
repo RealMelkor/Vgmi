@@ -14,7 +14,7 @@
 #include "about.h"
 #include "error.h"
 #include "strlcpy.h"
-#include "secure.h"
+#include "memory.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "sandbox.h"
@@ -144,9 +144,10 @@ static int known_hosts_page(char **out, size_t *length_out) {
 
 		len = snprintf(V(buf),
 			"* %s\n> Hash: %s\n"
-			"> From: %s\n> Expiration: %s\n\n",
+			"> From: %s\n> Expiration: %s\n"
+			"=>/%ld Forget\n\n",
 			known_hosts[i].host, known_hosts[i].hash,
-			from, to) + 1;
+			from, to, i) + 1;
 		tmp = realloc(data, length + len);
 		if (!tmp) {
 			free(data);
@@ -164,6 +165,13 @@ static int known_hosts_page(char **out, size_t *length_out) {
 }
 
 int about_parse(struct request *request) {
+	char param[MAX_URL];
+	char *ptr = strchr(request->url, '/');
+	if (ptr) {
+		*ptr = 0;
+		ptr++;
+		STRLCPY(param, ptr);
+	} else param[0] = 0;
 	if (!strcmp(request->url, "about:about")) {
 		return static_page(request, V(about_page));
 	}
@@ -180,7 +188,15 @@ int about_parse(struct request *request) {
 	if (!strcmp(request->url, "about:known-hosts")) {
 		char *data;
 		size_t length;
-		int ret = known_hosts_page(&data, &length);
+		int ret;
+		if (ptr) {
+			int id = atoi(param);
+			if (!id && STRCMP(param, "0"))
+				return ERROR_INVALID_ARGUMENT;
+			if ((ret = known_hosts_forget_id(id))) return ret;
+			if ((ret = known_hosts_rewrite())) return ret;
+		}
+		ret = known_hosts_page(&data, &length);
 		if (ret) return ret;
 		return parse_data(request, data, length);
 	}
