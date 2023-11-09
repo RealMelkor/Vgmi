@@ -44,18 +44,13 @@ struct client {
 	void *last_request;
 };
 
-struct rect {
-	int x;
-	int y;
-	int w;
-	int h;
-};
-
 int client_init(struct client*);
 int client_destroy(struct client*);
 void client_draw(struct client*);
 void client_display(struct client*);
 struct rect client_display_rect(struct client*);
 int client_input(struct client*);
+int client_newtab(struct client *client, const char *url);
+int client_closetab(struct client *client);
 int client_addcommand(struct client*, const char*,
 			int (*)(struct client *, const char*, size_t));

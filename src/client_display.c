@@ -13,10 +13,13 @@
 #include "tab.h"
 #include "utf8.h"
 
+#define MULTIPLE_TABS(X) (X->tab->next || X->tab->prev)
+
 struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
 	rect.w = client->width;
-	rect.h = client->height - 2;
+	rect.y = MULTIPLE_TABS(client);
+	rect.h = client->height - 2 - rect.y;
 	return rect;
 }
 
@@ -42,6 +45,28 @@ void client_draw(struct client* client) {
 		client->error = 0;
 	}
 	client->last_request = req;
+
+	if (MULTIPLE_TABS(client)) {
+		struct tab *tab;
+		int x;
+		for (i = 0; i < client->width; i++) {
+			tb_set_cell(i, 0, ' ', TB_DEFAULT, TB_WHITE);
+		}
+		for (tab = client->tab; tab->prev; tab = tab->prev) ;
+		x = 0;
+		for (; tab; tab = tab->next) {
+			struct request *req = tab_completed(tab);
+			int fg = TB_BLACK, bg = TB_WHITE;
+			if (!req) continue;
+			if (x) tb_set_cell(x - 1, 0, '|', fg, bg);
+			if (tab == client->tab) {
+				fg = TB_WHITE;
+				bg = TB_DEFAULT;
+			}
+			tb_printf(x, 0, fg, bg, " %s ", req->page.title);
+			x += strnlen(V(req->page.title)) + 3;
+		}
+	}
 
 	client->width = tb_width();
 	client->height = tb_height();

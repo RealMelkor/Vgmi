@@ -5,6 +5,13 @@
 struct page_line;
 struct page_search;
 
+struct rect {
+	int x;
+	int y;
+	int w;
+	int h;
+};
+
 struct page {
 	char title[1024];
 	struct page_line *lines;
@@ -66,7 +73,7 @@ int writeto(struct termwriter *termwriter, const char *str,
 			int color, int link, size_t pos);
 #endif
 
-int page_display(struct page text, int from, int to, int selected);
+int page_display(struct page text, int from, struct rect rect, int selected);
 int page_update(int in, int out, const char *data, size_t length,
 			struct page *page);
 int page_free(struct page page);

@@ -51,6 +51,12 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 	return 0;
 }
 
+int parse_title(int in, int out) {
+	/* TODO */
+	if (in) return out;
+	return 0;
+}
+
 void parser_request(int in, int out) {
 	while (1) { /* TODO: send error code */
 
@@ -77,6 +83,7 @@ void parser_request(int in, int out) {
 		}
 		write(out, P(request.page.mime));
 		write(out, P(request.page.offset));
+		write(out, P(request.page.title));
 
 		if (is_gemtext(V(request.meta))) {
 			if (parse_links(in, length - bytes, out)) {

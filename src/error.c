@@ -32,6 +32,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_UNKNOWN_PROTOCOL:
 		strlcpy(out, "Unknown protocol", len);
 		break;
+	case ERROR_UNSUPPORTED_PROTOCOL:
+		strlcpy(out, "Protocol not supported", len);
+		break;
 	case ERROR_UNKNOWN_HOST:
 		strlcpy(out, "Unknown host", len);
 		break;

@@ -15,12 +15,22 @@
 #include "error.h"
 
 int command_quit(struct client *client, const char* ptr, size_t len) {
+	if (strncmp(ptr, "qa", len)) {
+		client->error = 1;
+		snprintf(V(client->cmd), "Trailing characters: %s", &ptr[3]);
+		return 0;
+	}
+	return 1;
+}
+
+int command_close(struct client *client, const char* ptr, size_t len) {
 	if (strncmp(ptr, "q", len)) {
 		client->error = 1;
 		snprintf(V(client->cmd), "Trailing characters: %s", &ptr[2]);
 		return 0;
 	}
-	return 1;
+	client_closetab(client);
+	return !client->tab;
 }
 
 int command_open(struct client *client, const char* ptr, size_t len) {

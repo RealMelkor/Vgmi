@@ -7,19 +7,21 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include "client.h"
 #define PAGE_INTERNAL
 #include "page.h"
 #include "termbox.h"
 #include "error.h"
 #include "macro.h"
 
-int page_display(struct page text, int from, int to, int selected) {
+int page_display(struct page text, int from, struct rect rect, int selected) {
 	int y;
+	int to = rect.h - rect.y;
 	from--;
 	for (y = from; y < (ssize_t)text.length && y < from + to; y++) {
 		size_t i;
 		int x;
-		x = OFFSETX;
+		x = rect.x + OFFSETX;
 		if (y < 0) continue;
 		for (i = 0; i < text.lines[y].length; i++) {
 			struct page_cell cell = text.lines[y].cells[i];
@@ -35,7 +37,8 @@ int page_display(struct page text, int from, int to, int selected) {
 						fg = TB_YELLOW;
 				} else bg = TB_YELLOW;
 			}
-			tb_set_cell(x, y - from, cell.codepoint, fg, bg);
+			tb_set_cell(x, rect.y + y - from, cell.codepoint,
+					fg, bg);
 			x += cell.width;
 		}
 	}

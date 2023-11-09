@@ -42,7 +42,6 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		{
 			struct request *req;
 			size_t i;
-			char buf[MAX_URL];
 			req = tab_completed(client->tab);
 			i = client->count;
 			client->count = 0;
@@ -89,6 +88,9 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			req->page.selected = 1;
 		}
 		break;
+	case 'q':
+		client_newtab(client, NULL);
+		break;
 	case 'n':
 	case 'N':
 		{
@@ -124,6 +126,18 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, -client->count,
 				client_display_rect(client));
+		client_reset(client);
+		break;
+	case 't':
+		if (!client->g) break;
+		if (client->tab->next)
+			client->tab = client->tab->next;
+		client_reset(client);
+		break;
+	case 'T':
+		if (!client->g) break;
+		if (client->tab->prev)
+			client->tab = client->tab->prev;
 		client_reset(client);
 		break;
 	case 'g':

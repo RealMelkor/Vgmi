@@ -44,6 +44,38 @@ int client_destroy(struct client *client) {
 	return 0;
 }
 
+int client_closetab(struct client *client) {
+	struct tab *tab, *next, *prev;
+	if (!client->tab) return 1;
+	tab = client->tab;
+	next = tab->next;
+	prev = tab->prev;
+	if (next) next->prev = prev;
+	if (prev) prev->next = next;
+	if (next) {
+		client->tab = next;
+	} else if (prev) {
+		client->tab = prev;
+	} else client->tab = NULL;
+	tab_free(tab);
+	return 0;
+}
+
+int client_newtab(struct client *client, const char *url) {
+	struct tab *tab;
+	if (!url) url = "about:newtab";
+	tab = tab_new();
+	if (!tab) return ERROR_MEMORY_FAILURE;
+	if (client->tab) {
+		tab->next = client->tab->next;
+		if (tab->next) tab->next->prev = tab;
+		tab->prev = client->tab;
+		client->tab->next = tab;
+	}
+	client->tab = tab;
+	return tab_request(client->tab, url);
+}
+
 int client_input(struct client *client) {
 
 	struct tb_event ev;
@@ -107,7 +139,8 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = parser_request_create())) return ret;
 	if ((ret = parser_page_create())) return ret;
-	if ((ret = client_addcommand(client, "q", command_quit))) return ret;
+	if ((ret = client_addcommand(client, "qa", command_quit))) return ret;
+	if ((ret = client_addcommand(client, "q", command_close))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))
 		return ret;

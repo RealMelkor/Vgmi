@@ -37,6 +37,10 @@ int request_process(struct request *request, struct secure *secure,
 	}
 
 	if ((ret = url_parse(request, url))) goto failed;
+	if (request->protocol != PROTOCOL_GEMINI) {
+		ret = ERROR_UNSUPPORTED_PROTOCOL;
+		goto failed;
+	}
 	if ((ret = dns_getip(request->name, &request->addr))) goto failed;
 	if ((ret = secure_connect(secure, *request))) goto failed;
 

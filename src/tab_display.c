@@ -56,8 +56,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 		/* TODO: should be done in the background */
 		tab_display_update(req, rect);
 	}
-	page_display(req->page, req->scroll,
-			rect.h - rect.y, req->selected);
+	page_display(req->page, req->scroll, rect, req->selected);
 }
 
 void tab_display_error(struct tab *tab) {
