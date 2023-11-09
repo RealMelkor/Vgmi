@@ -32,6 +32,8 @@ void client_display(struct client* client) {
 	tb_present();
 }
 
+#define TAB_WIDTH 32
+
 void client_draw(struct client* client) {
 
 	int i;
@@ -51,7 +53,6 @@ void client_draw(struct client* client) {
 	client->height = tb_height();
 
 	if (MULTIPLE_TABS(client)) {
-		const int default_width = 32;
 		struct tab *tab, *start;
 		int x, width;
 		int count, current;
@@ -59,20 +60,20 @@ void client_draw(struct client* client) {
 			tb_set_cell(i, 0, ' ', TB_DEFAULT, TB_WHITE);
 		}
 		for (tab = client->tab; tab->prev; tab = tab->prev) ;
-		count = 0;
+		current = count = 0;
 		for (start = tab; start; start = start->next) {
 			if (client->tab == start) current = count;
 			count++;
 		}
 		x = 0;
 		width = client->width / count - 2;
-		if (width > default_width) width = default_width;
+		if (width > TAB_WIDTH) width = TAB_WIDTH;
 		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {
-			struct request *req = tab_completed(tab);
+			char buf[TAB_WIDTH];
 			int fg = TB_BLACK, bg = TB_WHITE;
-			char buf[default_width];
 			size_t length;
+			struct request *req = tab_completed(tab);
 			if (width == 1) {
 				current--;
 				if (client->width < current * 4) continue;

@@ -71,6 +71,7 @@ int parse_links(int in, size_t length, int out) {
 	size_t i, pos;
 	char title[1024] = {0};
 
+	header = 0;
 	newline = 1;
 	link = 0;
 	pos = 0;
