@@ -38,10 +38,14 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 				client_display_rect(client));
 		client_reset(client);
 		break;
+	case TB_KEY_BACK_TAB:
 	case TB_KEY_TAB:
 		{
+			char url[MAX_URL];
 			struct request *req;
 			size_t i;
+			int ret;
+
 			req = tab_completed(client->tab);
 			i = client->count;
 			client->count = 0;
@@ -61,10 +65,20 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			i = req->selected;
 			req->selected = 0;
 			if (req->page.links_count < i) break;
-			i = tab_follow(client->tab, req->page.links[i - 1]);
-			if (i) {
+			ret = request_follow(req,
+					req->page.links[i - 1], V(url));
+			if (ret) {
 				client->error = 1;
-				error_string(i, V(client->cmd));
+				error_string(ret, V(client->cmd));
+			}
+			if (ev.key == TB_KEY_BACK_TAB) {
+				client_newtab(client, url);
+				break;
+			}
+			ret = tab_request(client->tab, url);
+			if (ret) {
+				client->error = 1;
+				error_string(ret, V(client->cmd));
 				break;
 			}
 			break;
