@@ -67,17 +67,29 @@ int format_link(const char *link, size_t length,
 
 int parse_links(int in, size_t length, int out) {
 
-	int newline, link;
-	size_t i;
+	int newline, link, header;
+	size_t i, pos;
+	char title[1024] = {0};
 
 	newline = 1;
 	link = 0;
-	/* bytes missing? */
+	pos = 0;
 	for (i = 0; i < length; ) {
 
 		uint32_t ch;
 
 		if (readnext(in, &ch, &i)) return -1;
+		if (header == 2) {
+			if (ch == '\n') {
+				newline = 1;
+				header = 0;
+				continue;
+			}
+			pos += utf8_unicode_to_char(&title[pos], ch);
+		}
+		if (header == 1 && WHITESPACE(ch)) {
+			header++;
+		}
 		if (!(link && ch == '>')) {
 			if (ch == '\n') {
 				newline = 1;
@@ -91,6 +103,9 @@ int parse_links(int in, size_t length, int out) {
 			if (ch == '=') {
 				link = 1;
 			}
+			if (!pos && ch == '#') {
+				header = 1;
+			}
 			newline = 0;
 			continue;
 		}
@@ -101,6 +116,7 @@ int parse_links(int in, size_t length, int out) {
 		}
 
 		link = 0;
+		header = 0;
 
 		if (i >= length || ch == '\n') continue;
 
@@ -128,5 +144,6 @@ int parse_links(int in, size_t length, int out) {
 	}
 	i = -1;
 	write(out, P(i));
+	write(out, V(title));
 	return 0;
 }

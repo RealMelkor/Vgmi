@@ -48,9 +48,6 @@ int parse_request(struct parser *parser, struct request *request) {
 	if (vread(parser->in, V(request->meta))) return -1;
 	if (vread(parser->in, P(request->page.mime))) return -1;
 	if (vread(parser->in, P(request->page.offset))) return -1;
-	if (vread(parser->in, V(request->page.title))) return -1;
-	if (!request->page.title[0])
-		STRLCPY(request->page.title, request->url);
 
 	request->page.links_count = 0;
 	request->page.links = NULL;
@@ -90,6 +87,10 @@ int parse_request(struct parser *parser, struct request *request) {
 		request->page.links[request->page.links_count] = ptr;
 		request->page.links_count++;
 	}
+
+	if (vread(parser->in, V(request->page.title))) return -1;
+	if (!request->page.title[0])
+		STRLCPY(request->page.title, request->url);
 
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;

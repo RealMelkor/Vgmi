@@ -7,6 +7,7 @@
 #include <string.h>
 #include "termbox.h"
 #include "macro.h"
+#include "strlcpy.h"
 #include "page.h"
 #include "request.h"
 #include "client.h"
@@ -46,30 +47,52 @@ void client_draw(struct client* client) {
 	}
 	client->last_request = req;
 
+	client->width = tb_width();
+	client->height = tb_height();
+
 	if (MULTIPLE_TABS(client)) {
-		struct tab *tab;
-		int x;
+		const int default_width = 32;
+		struct tab *tab, *start;
+		int x, width;
+		int count, current;
 		for (i = 0; i < client->width; i++) {
 			tb_set_cell(i, 0, ' ', TB_DEFAULT, TB_WHITE);
 		}
 		for (tab = client->tab; tab->prev; tab = tab->prev) ;
+		count = 0;
+		for (start = tab; start; start = start->next) {
+			if (client->tab == start) current = count;
+			count++;
+		}
 		x = 0;
+		width = client->width / count - 2;
+		if (width > default_width) width = default_width;
+		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {
 			struct request *req = tab_completed(tab);
 			int fg = TB_BLACK, bg = TB_WHITE;
-			if (!req) continue;
-			if (x) tb_set_cell(x - 1, 0, '|', fg, bg);
+			char buf[default_width];
+			size_t length;
+			if (width == 1) {
+				current--;
+				if (client->width < current * 4) continue;
+			}
+			strlcpy(buf, req ? req->page.title : "about:blank",
+					width);
+			length = strnlen(V(buf));
 			if (tab == client->tab) {
 				fg = TB_WHITE;
 				bg = TB_DEFAULT;
+				for (i = x; i < x + width + 2; i++)
+					tb_set_cell(i, 0, ' ', fg, bg);
 			}
-			tb_printf(x, 0, fg, bg, " %s ", req->page.title);
-			x += strnlen(V(req->page.title)) + 3;
+			tb_set_cell(x, 0, '[', fg, bg);
+			tb_set_cell(x + width + 1, 0, ']', fg, bg);
+			tb_printf(x + (width + 2 - length) / 2, 0,
+					fg, bg, "%s", buf);
+			x += width + 2;
 		}
 	}
-
-	client->width = tb_width();
-	client->height = tb_height();
 
 	for (i = 0; i < client->width; i++) 
 		tb_set_cell(i, client->height - 2, ' ', TB_BLACK, TB_WHITE);
