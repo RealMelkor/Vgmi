@@ -12,6 +12,7 @@
 #include "gemini.h"
 #include "page.h"
 #include "request.h"
+#include "parser.h"
 #include "secure.h"
 #include "tab.h"
 #include "strlcpy.h"
@@ -205,6 +206,22 @@ int tab_request(struct tab* tab, const char *url) {
 	if (pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED))
 		return ERROR_PTHREAD;
 	pthread_create(&args->thread, &tattr, tab_request_thread, args);
+	return 0;
+}
+
+int tab_follow(struct tab* tab, const char *link) {
+
+	struct request *req;
+	char url[MAX_URL], buf[MAX_URL];
+	int ret;
+
+	format_link(link, MAX_URL, V(buf));
+	if (!tab) return 0;
+	req = tab_completed(tab);
+	if (!req) return 0;
+	if ((ret = request_follow(tab->request, buf, V(url)))) return ret;
+	tab_request(tab, url);
+
 	return 0;
 }
 

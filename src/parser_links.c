@@ -17,10 +17,14 @@
 #define PARSER_INTERNAL
 #include "parser.h"
 
-static int format_link(const char *link, size_t length,
+int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
 	int i = 0, j = 0;
 	uint32_t prev = 0;
+	if (!strncmp(link, ".", length)) {
+		out[0] = '\0';
+		return 0;
+	}
 	while (link[i]) {
 		uint32_t ch;
 		int len;

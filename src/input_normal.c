@@ -62,14 +62,12 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			i = req->selected;
 			req->selected = 0;
 			if (req->page.links_count < i) break;
-			i = request_follow(req,
-					req->page.links[i - 1], V(buf));
+			i = tab_follow(client->tab, req->page.links[i - 1]);
 			if (i) {
 				client->error = 1;
 				error_string(i, V(client->cmd));
 				break;
 			}
-			tab_request(client->tab, buf);
 			break;
 		}
 	}
@@ -133,13 +131,13 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			client->g = 1;
 			break;
 		}
-		tab_scroll(client->tab, -100000,
+		tab_scroll(client->tab, -0x0FFFFFFF,
 				client_display_rect(client));
 		client_reset(client);
 		break;
 	case 'G':
 		client->count = 0;
-		tab_scroll(client->tab, 100000,
+		tab_scroll(client->tab, 0x0FFFFFFF,
 				client_display_rect(client));
 		client_reset(client);
 		break;
@@ -169,6 +167,9 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			}
 			client->tab->view = prev;
 		}
+		break;
+	case 'r':
+		tab_follow(client->tab, ".");
 		break;
 	}
 	return 0;

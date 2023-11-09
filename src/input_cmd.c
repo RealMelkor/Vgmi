@@ -25,8 +25,8 @@ void client_enter_mode_cmdline(struct client *client) {
 }
 
 static void refresh_search(struct client *client) {
-	if (client->cmd[0] != '/') return;
 	struct request *req;
+	if (client->cmd[0] != '/') return;
 	STRLCPY(client->search, &client->cmd[1]);
 	if (!(req = tab_completed(client->tab))) return;
 	page_search(&req->page, client->search);

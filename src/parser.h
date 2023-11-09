@@ -25,6 +25,7 @@ enum {
 };
 
 int is_gemtext(char *meta, size_t len);
+int format_link(const char *link, size_t length, char *out, size_t out_length);
 int parser_mime(char *meta, size_t len);
 int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 			int *bytes_read);
