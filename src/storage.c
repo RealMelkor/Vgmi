@@ -24,9 +24,10 @@
 #endif
 
 #define CONFIG_FOLDER "vgmi2"
-#define CONFIG_PATH "%s/.config/"CONFIG_FOLDER
+#define DOWNLOAD_PATH "Downloads"
+#define CONFIG_PATH ".config/"CONFIG_FOLDER
 
-int storage_fd = -1;
+int storage_fd = -1, download_fd = -1;
 
 static int storage_mkdir(const char *path) {
 
@@ -52,10 +53,28 @@ static int storage_mkdir(const char *path) {
 	return 0;
 }
 
+static int storage_from_home(char *out, size_t length, const char *dir) {
+
+	struct passwd *pw;
+	const char *path = getenv("HOME");
+
+	if (path) {
+		snprintf(out, length, "%s/%s", path, dir);
+		return 0;
+	}
+
+	pw = getpwuid(getuid());
+	if (pw) {
+		snprintf(out, length, "%s/%s", pw->pw_dir, dir);
+		return 0;
+	}
+
+	return -1;
+}
+
 int storage_path(char *out, size_t length) {
 
 	const char *path;
-	struct passwd *pw;
 
 	if (length > PATH_MAX) length = PATH_MAX;
 
@@ -66,22 +85,25 @@ int storage_path(char *out, size_t length) {
 		return 0;
 	}
 
-	path = getenv("HOME");
-	if (path) {
-		snprintf(out, length, CONFIG_PATH, path);
-		return 0;
-	}
-
-	pw = getpwuid(getuid());
-	if (pw) {
-		snprintf(out, length, CONFIG_PATH, pw->pw_dir);
-		return 0;
-	}
-
-	return -1;
+	return storage_from_home(out, length, CONFIG_PATH);
 }
 
-FILE* storage_fopen(const char *name, const char *mode) {
+int storage_download_path(char *out, size_t length) {
+
+	FILE *f;
+
+	if (length > PATH_MAX) length = PATH_MAX;
+
+	f = popen("xdg-user-dir DOWNLOAD 2>&1", "r");
+	if (f) {
+		fread(out, 1, length, f);
+		pclose(f);
+	}
+
+	return storage_from_home(out, length, DOWNLOAD_PATH);
+}
+
+static FILE* _fopen(const char *name, const char *mode, int dir) {
 
 	int fd;
 	int flags;
@@ -91,14 +113,31 @@ FILE* storage_fopen(const char *name, const char *mode) {
 	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND | O_CREAT;
 	else return NULL;
 
-	fd = openat(storage_fd, name, flags, 0600);
+	fd = openat(dir, name, flags, 0600);
 	if (fd < 0) return NULL;
 
 	return fdopen(fd, mode);
 }
 
+FILE* storage_fopen(const char *name, const char *mode) {
+	return _fopen(name, mode, storage_fd);
+}
+
+FILE* storage_download_fopen(const char *name, const char *mode) {
+	return _fopen(name, mode, download_fd);
+}
+
 int storage_open(const char *name, int flags, int mode) {
 	return openat(storage_fd, name, flags, mode);
+}
+
+int storage_download_open(const char *name, int flags, int mode) {
+	return openat(download_fd, name, flags, mode);
+}
+
+int storage_download_exist(const char *name) {
+	struct stat stat;
+	return !fstatat(download_fd, name, &stat, 0);
 }
 
 int storage_read(const char *name, char *out, size_t length,
@@ -124,12 +163,17 @@ int storage_read(const char *name, char *out, size_t length,
 
 int storage_init() {
 
-	char path[PATH_MAX];
+	char path[PATH_MAX], download[PATH_MAX];
 	int ret;
 
 	if (storage_path(V(path))) return ERROR_STORAGE_ACCESS;
+	if (storage_download_path(V(download))) return ERROR_STORAGE_ACCESS;
 	if (storage_mkdir(path)) return ERROR_STORAGE_ACCESS;
+	if (storage_mkdir(download)) return ERROR_STORAGE_ACCESS;
 	if ((ret = open(path, O_DIRECTORY)) < 0) return ERROR_STORAGE_ACCESS;
 	storage_fd = ret;
+	if ((ret = open(download, O_DIRECTORY)) < 0)
+		return ERROR_STORAGE_ACCESS;
+	download_fd = ret;
 	return 0;
 }

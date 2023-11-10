@@ -156,19 +156,10 @@ int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
 
 int landlock_init() {
 	struct landlock_ruleset_attr attr = {0};
-	attr.handled_access_fs =	LANDLOCK_ACCESS_FS_EXECUTE |
-					LANDLOCK_ACCESS_FS_READ_FILE |
+	attr.handled_access_fs =	LANDLOCK_ACCESS_FS_READ_FILE |
 					LANDLOCK_ACCESS_FS_READ_DIR |
 					LANDLOCK_ACCESS_FS_WRITE_FILE |
-					LANDLOCK_ACCESS_FS_REMOVE_DIR |
-					LANDLOCK_ACCESS_FS_REMOVE_FILE |
-					LANDLOCK_ACCESS_FS_MAKE_CHAR |
-					LANDLOCK_ACCESS_FS_MAKE_DIR |
-					LANDLOCK_ACCESS_FS_MAKE_REG |
-					LANDLOCK_ACCESS_FS_MAKE_SOCK |
-					LANDLOCK_ACCESS_FS_MAKE_FIFO |
-					LANDLOCK_ACCESS_FS_MAKE_BLOCK |
-					LANDLOCK_ACCESS_FS_MAKE_SYM;
+					LANDLOCK_ACCESS_FS_MAKE_REG;
 	return landlock_create_ruleset(&attr, sizeof(attr), 0);
 }
 
@@ -184,7 +175,7 @@ int landlock_apply(int fd)
 
 int sandbox_init() {
 
-	char path[2048];
+	char path[2048], download_path[2048];
 #ifdef HAS_LANDLOCK
 	int fd;
 #endif
@@ -200,12 +191,16 @@ int sandbox_init() {
 		return ERROR_SANDBOX_FAILURE;
 
 	if ((ret = storage_path(V(path)))) return ret;
+	if ((ret = storage_download_path(V(download_path)))) return ret;
 
 #ifdef HAS_LANDLOCK
 	/* restrict filesystem access */
 	fd = landlock_init();
 	if (fd < 0) return ERROR_SANDBOX_FAILURE;
 	ret = landlock_unveil_path(fd, path,
+					LANDLOCK_ACCESS_FS_WRITE_FILE |
+					LANDLOCK_ACCESS_FS_MAKE_REG);
+	ret |= landlock_unveil_path(fd, download_path,
 					LANDLOCK_ACCESS_FS_READ_FILE |
 					LANDLOCK_ACCESS_FS_WRITE_FILE |
 					LANDLOCK_ACCESS_FS_MAKE_REG);

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "strlcpy.h"
 #include "macro.h"
+#include "strnstr.h"
 #include "page.h"
 #include "client.h"
 #include "tab.h"
@@ -158,6 +159,63 @@ int command_forget(struct client *client, const char* ptr, size_t len) {
 	client->error = ERROR_INFO;
 	snprintf(V(client->cmd),
 		"Certificate for %s removed from well-known hosts", buf);
+
+	return 0;
+}
+
+#include "storage.h"
+int command_download(struct client *client, const char* args, size_t len) {
+
+	struct request *req;
+	FILE *f;
+	char name[MAX_URL], *ptr;
+	char buf[MAX_URL];
+	int i;
+
+	if (no_argument(client, args, len)) return 0;
+
+	req = tab_completed(client->tab);
+	if (!req) {
+		client->error = 1;
+		STRLCPY(client->cmd, "Invalid page");
+		return 0;
+	}
+
+	ptr = strnstr(req->url, "://", sizeof(req->url));
+	if (!ptr) STRLCPY(name, req->url);
+	else {
+		char *start;
+		size_t i = STRLCPY(buf, req->url);
+		for (; i > 0; i--) {
+			if (WHITESPACE(buf[i])) buf[i] = 0;
+			else if (buf[i] == '/') buf[i] = 0;
+			else break;
+		}
+		ptr = strrchr(buf, '/');
+		if (!ptr) ptr = buf;
+		else ptr++;
+		start = ptr;
+		for (i = 0; *ptr; i++) ptr++;
+		if (i < 2) STRLCPY(name, req->url);
+		else STRLCPY(name, start);
+	}
+
+	STRLCPY(buf, name);
+	for (i = 1; i < 128 && storage_download_exist(name); i++) {
+		snprintf(V(name), "%s (%d)", buf, i);
+	}
+	f = i < 128 ? storage_download_fopen(name, "wb") : NULL;
+	if (!f) {
+		client->error = 1;
+		error_string(ERROR_ERRNO, V(client->cmd));
+		return 0;
+	}
+	fwrite(&req->data[req->page.offset], 1,
+			req->length - req->page.offset, f);
+	fclose(f);
+
+	client->error = ERROR_INFO;
+	snprintf(V(client->cmd), "File downloaded : %s", name);
 
 	return 0;
 }

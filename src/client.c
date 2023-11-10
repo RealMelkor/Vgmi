@@ -151,6 +151,8 @@ int client_init(struct client* client) {
 		return ret;
 	if ((ret = client_addcommand(client, "forget", command_forget)))
 		return ret;
+	if ((ret = client_addcommand(client, "download", command_download)))
+		return ret;
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
