@@ -182,6 +182,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 			struct page_cell cell = {0};
 			cell.special = PAGE_BLANK;
 			writecell(termwriter, cell, *pos);
+			start = 0;
 			continue;
 		}
 

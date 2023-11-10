@@ -8,6 +8,7 @@ enum {
 };
 
 struct parser;
+struct request;
 
 #ifdef PARSER_INTERNAL
 int vread(int fd, void *buf, size_t nbytes);

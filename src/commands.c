@@ -141,7 +141,7 @@ int command_forget(struct client *client, const char* ptr, size_t len) {
 	int i, ret;
 
 	if (need_argument(client, ptr, len, "No host")) return 0;
-	if (!client->tab) return -1;
+	if (!client->tab) return 0;
 
 	host = ptr;
 	STRLCPY(buf, host);
@@ -217,5 +217,22 @@ int command_download(struct client *client, const char* args, size_t len) {
 	client->error = ERROR_INFO;
 	snprintf(V(client->cmd), "File downloaded : %s", name);
 
+	return 0;
+}
+
+#include "bookmarks.h"
+int command_add(struct client *client, const char* args, size_t len) {
+
+	int ret;
+	struct request *req;
+
+	if (!client->tab || !len) return 0;
+	req = tab_completed(client->tab);
+	if (!(req = tab_completed(client->tab))) return 0;
+	if ((ret = bookmark_add(req->url, args)) ||
+			(ret = bookmark_rewrite())) {
+		error_string(ret, V(client->cmd));
+		client->error = 1;
+	}
 	return 0;
 }

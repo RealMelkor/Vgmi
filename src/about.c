@@ -29,6 +29,7 @@ HEADER \
 "# List of \"about\" pages\n\n" \
 "=>about:about\n" \
 "=>about:blank\n" \
+"=>about:bookmarks\n" \
 "=>about:certificate\n" \
 "=>about:downloads\n" \
 "=>about:history\n" \
@@ -52,19 +53,10 @@ HEADER \
 "ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF\n" \
 "OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.\n\n";
 
-char newtab_page[] =
+char newtab_page_header[] =
 HEADER \
 "# Vgmi - " VERSION "\n\n" \
-"A Gemini client written in C with vim-like keybindings\n\n" \
-"=>gemini://geminispace.info Geminispace\n" \
-"=>gemini://geminispace.info/search Search\n" \
-"=> gemini://gemini.rmf-dev.com\n" \
-"=>about:blank\n" \
-"=>about:newtab\n" \
-"=>about:history\n" \
-"=>about:about\n" \
-"=>gemini://gemini.rmf-dev.com/repo/Vaati/Vgmi/readme Vgmi\n" \
-"=>gemini://gemini.rmf-dev.com/static/ static files\n";
+"A Gemini client written in C with vim-like keybindings\n\n## Bookmarks\n\n";
 
 char sandbox_page[] =
 HEADER \
@@ -164,9 +156,78 @@ static int known_hosts_page(char **out, size_t *length_out) {
 	return 0;
 }
 
+#include "bookmarks.h"
+static int bookmarks_page(char **out, size_t *length_out) {
+
+	char *data = NULL;
+	size_t length = 0;
+	size_t i;
+	const char title[] = "# Bookmarks\n\n";
+
+	length = sizeof(header) + sizeof(title);
+	data = malloc(length);
+	if (!data) return ERROR_MEMORY_FAILURE;
+	strlcpy(data, header, length);
+	strlcpy(&data[sizeof(header) - 1], title, length - sizeof(header));
+	length -= 2;
+
+	for (i = 0; i < bookmark_length; i++) {
+
+		char buf[1024];
+		int len;
+		void *tmp;
+
+		len = snprintf(V(buf), "=>%s %s\n=>/%ld Delete\n\n",
+				bookmarks[i].url, bookmarks[i].name, i) + 1;
+		tmp = realloc(data, length + len);
+		if (!tmp) {
+			free(data);
+			return ERROR_MEMORY_FAILURE;
+		}
+		data = tmp;
+		strlcpy(&data[length], buf, len);
+		length += len - 1;
+	}
+
+	readonly(data, length, out);
+	free(data);
+	*length_out = length;
+	return 0;
+}
+
+int newtab_page(char **out, size_t *length_out) {
+	size_t length = sizeof(newtab_page_header), i;
+	char *data = malloc(length);
+	if (!data) return ERROR_MEMORY_FAILURE;
+	strlcpy(data, newtab_page_header, length);
+	for (i = 0; i < bookmark_length; i++) {
+		void *ptr;
+		char line[sizeof(struct bookmark) + 8];
+		size_t line_length;
+		line_length = snprintf(V(line), "=>%s %s\n",
+				bookmarks[i].url, bookmarks[i].name);
+		ptr = realloc(data, length + line_length + 1);
+		if (!ptr) {
+			free(data);
+			return ERROR_MEMORY_FAILURE;
+		}
+		data = ptr;
+		strlcpy(&data[length - 1], line, line_length + 1);
+		length += line_length;
+	}
+	*out = data;
+	*length_out = length;
+	return 0;
+}
+
 int about_parse(struct request *request) {
+
 	char param[MAX_URL];
 	char *ptr = strchr(request->url, '/');
+	char *data;
+	size_t length;
+	int ret;
+
 	if (ptr) {
 		*ptr = 0;
 		ptr++;
@@ -179,16 +240,25 @@ int about_parse(struct request *request) {
 		request->status = GMI_SUCCESS;
 		return 0;
 	}
+	if (!strcmp(request->url, "about:bookmarks")) {
+		if (ptr) {
+			int id = atoi(param);
+			if (!id && STRCMP(param, "0"))
+				return ERROR_INVALID_ARGUMENT;
+			if ((ret = bookmark_remove(id))) return ret;
+			if ((ret = bookmark_rewrite())) return ret;
+		}
+		if ((ret = bookmarks_page(&data, &length))) return ret;
+		return parse_data(request, data, length);
+	}
 	if (!strcmp(request->url, "about:license")) {
 		return static_page(request, V(license_page));
 	}
 	if (!strcmp(request->url, "about:newtab")) {
-		return static_page(request, V(newtab_page));
+		if ((ret = newtab_page(&data, &length))) return ret;
+		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:known-hosts")) {
-		char *data;
-		size_t length;
-		int ret;
 		if (ptr) {
 			int id = atoi(param);
 			if (!id && STRCMP(param, "0"))
@@ -196,8 +266,7 @@ int about_parse(struct request *request) {
 			if ((ret = known_hosts_forget_id(id))) return ret;
 			if ((ret = known_hosts_rewrite())) return ret;
 		}
-		ret = known_hosts_page(&data, &length);
-		if (ret) return ret;
+		if ((ret = known_hosts_page(&data, &length))) return ret;
 		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:history")) {

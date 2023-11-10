@@ -175,6 +175,7 @@ int known_hosts_forget(const char *host) {
 	return known_hosts_forget_id(i);
 }
 
+/* TODO: make it O(1) */
 int known_hosts_expired(const char *host) {
 	size_t i;
 	for (i = 0; i < known_hosts_length; i++) {

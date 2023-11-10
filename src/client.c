@@ -26,6 +26,7 @@ struct rect;
 #include "storage.h"
 #include "sandbox.h"
 #include "parser.h"
+#include "bookmarks.h"
 
 int client_destroy(struct client *client) {
 	struct command *command;
@@ -143,6 +144,7 @@ int client_init(struct client* client) {
 	if ((ret = client_addcommand(client, "q", command_close))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
 	if ((ret = client_addcommand(client, "s", command_search))) return ret;
+	if ((ret = client_addcommand(client, "add", command_add))) return ret;
 	if ((ret = client_addcommand(client, "nt", command_newtab)))
 		return ret;
 	if ((ret = client_addcommand(client, "tabnew", command_newtab)))
@@ -155,6 +157,7 @@ int client_init(struct client* client) {
 		return ret;
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
+	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
 	if ((ret = sandbox_init())) {
 		tb_shutdown();

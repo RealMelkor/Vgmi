@@ -5,7 +5,7 @@
 
 #ifdef KNOWN_HOSTS_INTERNAL
 struct known_host {
-	char host[256];
+	char host[MAX_HOST];
 	char hash[128];
 	time_t start;
 	time_t end;

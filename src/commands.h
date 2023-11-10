@@ -10,3 +10,4 @@ int command_gencert(struct client *client, const char* ptr, size_t len);
 int command_forget(struct client *client, const char* ptr, size_t len);
 int command_newtab(struct client *client, const char* ptr, size_t len);
 int command_download(struct client *client, const char* ptr, size_t len);
+int command_add(struct client *client, const char* args, size_t len);
