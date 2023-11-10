@@ -20,7 +20,7 @@ struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
 	rect.w = client->width;
 	rect.y = MULTIPLE_TABS(client);
-	rect.h = client->height - 2 - rect.y;
+	rect.h = client->height - 1 - rect.y;
 	return rect;
 }
 
@@ -66,7 +66,7 @@ void client_draw(struct client* client) {
 			count++;
 		}
 		x = 0;
-		width = client->width / count - 2;
+		width = (client->width - count * 2) / count;
 		if (width > TAB_WIDTH) width = TAB_WIDTH;
 		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {

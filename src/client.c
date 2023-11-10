@@ -142,6 +142,11 @@ int client_init(struct client* client) {
 	if ((ret = client_addcommand(client, "qa", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "q", command_close))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
+	if ((ret = client_addcommand(client, "s", command_search))) return ret;
+	if ((ret = client_addcommand(client, "nt", command_newtab)))
+		return ret;
+	if ((ret = client_addcommand(client, "tabnew", command_newtab)))
+		return ret;
 	if ((ret = client_addcommand(client, "gencert", command_gencert)))
 		return ret;
 	if ((ret = client_addcommand(client, "forget", command_forget)))

@@ -89,8 +89,8 @@ int request_scroll(struct request* req, int scroll, struct rect rect) {
 
 	req->scroll += scroll;
 	if (req->scroll < 0) req->scroll = 0;
-	else if ((size_t)req->scroll > req->page.length - rect.h)
-		req->scroll = req->page.length - rect.h;
+	else if ((size_t)req->scroll > req->page.length - rect.h + rect.y + 2)
+		req->scroll = req->page.length - rect.h + rect.y + 2;
 	return 0;
 }
 

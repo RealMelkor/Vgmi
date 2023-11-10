@@ -3,6 +3,7 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include "macro.h"
@@ -15,6 +16,7 @@
 #include "client.h"
 #include "tab.h"
 #include "error.h"
+#include "parser.h"
 
 void client_enter_mode_cmdline(struct client *client) {
 	client->count = 0;
@@ -41,10 +43,22 @@ int handle_cmd(struct client *client) {
 	const char invalid[] = "Invalid command: %s";
 	char name[MAX_CMD_NAME], cmd[MAX_CMDLINE - sizeof(invalid)];
 	size_t i;
+	int number;
 
 	ASSERT(sizeof(cmd) > sizeof(name))
 
 	STRLCPY(cmd, &client->cmd[1]);
+
+	number = atoi(cmd);
+	if (number || !STRCMP(cmd, "0")) {
+		struct request *req;
+		if (!client->tab) return 0;
+		req = tab_completed(client->tab);
+		if (!req) return 0;
+		req->scroll = number;
+		request_scroll(req, 0, client_display_rect(client));
+		return 0;
+	}
 
 	for (i = 0; i < sizeof(name); ) {
 		char c = cmd[i];
@@ -59,7 +73,11 @@ int handle_cmd(struct client *client) {
 	}
 	for (command = client->commands; command; command = command->next) {
 		if (STRCMP(command->name, name)) continue;
-		if (command->command(client, cmd, sizeof(cmd)))
+		{
+			i = strnlen(V(command->name));
+			for (; cmd[i] && WHITESPACE(cmd[i]); i++) ;
+		}
+		if (command->command(client, &cmd[i], sizeof(cmd) - i))
 			return 1;
 		return 0;
 	}

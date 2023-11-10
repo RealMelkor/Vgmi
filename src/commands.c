@@ -13,46 +13,77 @@
 #include "request.h"
 #include "certificate.h"
 #include "error.h"
+#include "parser.h"
+
+static int need_argument(struct client * client,
+			const char *field, size_t len, char *error) {
+	if (!(!len || !*field)) return 0;
+	client->error = 1;
+	STRLCPY(client->cmd, error);
+	return 1;
+}
+
+static int no_argument(struct client * client, const char *field, size_t len) {
+	if (!len || !*field) return 0;
+	client->error = 1;
+	snprintf(V(client->cmd), "Trailing characters: %s", field);
+	return 1;
+}
 
 int command_quit(struct client *client, const char* ptr, size_t len) {
-	if (strncmp(ptr, "qa", len)) {
-		client->error = 1;
-		snprintf(V(client->cmd), "Trailing characters: %s", &ptr[3]);
-		return 0;
-	}
+	if (no_argument(client, ptr, len)) return 0;
 	return 1;
 }
 
 int command_close(struct client *client, const char* ptr, size_t len) {
-	if (strncmp(ptr, "q", len)) {
-		client->error = 1;
-		snprintf(V(client->cmd), "Trailing characters: %s", &ptr[2]);
-		return 0;
-	}
+	if (no_argument(client, ptr, len)) return 0;
 	client_closetab(client);
 	return !client->tab;
 }
 
+int command_newtab(struct client *client, const char* ptr, size_t len) {
+
+	int ret;
+	const char *url = "about:newtab";
+
+	if (!client->tab || !len) return 0;
+	if (*ptr) url = ptr;
+
+	if ((ret = client_newtab(client, url))) {
+		client->error = 1;
+		error_string(ret, V(client->cmd));
+	}
+	return 0;
+}
+
+int command_search(struct client *client, const char* ptr, size_t len) {
+
+	int ret;
+	char url[MAX_URL];
+
+	if (!client->tab || !len) return 0;
+	if (need_argument(client, ptr, len, "Empty query")) return 0;
+
+	snprintf(V(url), "gemini://geminispace.info/search?%s", ptr);
+
+	if ((ret = tab_request(client->tab, url))) {
+		client->error = 1;
+		error_string(ret, V(client->cmd));
+	}
+	return 0;
+}
+
 int command_open(struct client *client, const char* ptr, size_t len) {
 
-	const char start[] = "o ";
-	const char *url;
 	size_t link;
 	struct request *req;
 	char buf[MAX_URL];
 	int i;
 
-	if (!client->tab) return -1;
+	if (need_argument(client, ptr, len, "No URL")) return 0;
+	if (!client->tab) return 0;
 
-	if (memcmp((void*)ptr, start, sizeof(start) - 1) ||
-			len <= sizeof(start) + 1) {
-		client->error = 1;
-		STRLCPY(client->cmd, "No URL");
-		return 0;
-	}
-
-	url = &ptr[sizeof(start) - 1];
-	STRLCPY(buf, url);
+	STRLCPY(buf, ptr);
 	i = strnlen(V(buf)) - 1;
 	for (; i > 0; i--) {
 		if (buf[i] <= ' ') buf[i] = '\0';
@@ -65,7 +96,7 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	}
 
 	req = tab_completed(client->tab);
-	if (!req) return -1;
+	if (!req) return 0;
 	link--;
 	if (link >= req->page.links_count) {
 		client->error = 1;
@@ -79,15 +110,9 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 
 int command_gencert(struct client *client, const char* ptr, size_t len) {
 
-	const char start[] = "gencert";
 	struct request *req;
 
-	if (strncmp(ptr, start, len)) {
-		client->error = 1;
-		snprintf(V(client->cmd), "Trailing characters: %s",
-				&ptr[sizeof(start)]);
-		return 0;
-	}
+	if (no_argument(client, ptr, len)) return 0;
 
 	req = tab_completed(client->tab);
 	if (!req) {
@@ -110,21 +135,14 @@ int command_gencert(struct client *client, const char* ptr, size_t len) {
 #include "known_hosts.h"
 int command_forget(struct client *client, const char* ptr, size_t len) {
 
-	const char start[] = "forget ";
 	const char *host;
 	char buf[MAX_URL];
 	int i, ret;
 
+	if (need_argument(client, ptr, len, "No host")) return 0;
 	if (!client->tab) return -1;
 
-	if (memcmp((void*)ptr, start, sizeof(start) - 1) ||
-			len <= sizeof(start) + 1) {
-		client->error = 1;
-		STRLCPY(client->cmd, "No host");
-		return 0;
-	}
-
-	host = &ptr[sizeof(start) - 1];
+	host = ptr;
 	STRLCPY(buf, host);
 	i = strnlen(V(buf)) - 1;
 	for (; i > 0; i--) {
