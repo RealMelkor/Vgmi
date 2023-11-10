@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include "termbox.h"
 #include "macro.h"
 #include "strlcpy.h"
@@ -13,6 +14,7 @@
 #include "client.h"
 #include "tab.h"
 #include "utf8.h"
+#include "known_hosts.h"
 
 #define MULTIPLE_TABS(X) (X->tab->next || X->tab->prev)
 
@@ -120,7 +122,14 @@ void client_draw(struct client* client) {
 		tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE, "%s",
 				req_input->url);
 	} else {
-		tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE, "%s (%s)",
+		int expired = 0, fg = TB_BLACK, bg = TB_WHITE;
+		if (req && known_hosts_expired(req->name) > 0) {
+			expired = 1;
+			fg = TB_WHITE;
+			bg = TB_RED;
+		}
+		tb_printf(0, client->height - 2, fg, bg, "%s%s (%s)",
+				expired ? "[Certificate expired] " : "",
 				req ? req->url : "about:blank",
 				req ? req->meta : "");
 	}
@@ -135,5 +144,7 @@ void client_draw(struct client* client) {
 		tb_printf(x, client->height - 2, TB_WHITE, TB_BLUE,
 				format, link);
 	}
+
+
 
 }

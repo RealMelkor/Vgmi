@@ -18,6 +18,7 @@
 #include "strnstr.h"
 #include "error.h"
 #include "parser.h"
+#include "known_hosts.h"
 
 void tab_clean_requests(struct tab *tab);
 
@@ -110,4 +111,5 @@ void tab_display(struct tab *tab, struct client *client) {
 		tab_display_loading(tab, rect);
 		break;
 	}
+
 }

@@ -17,6 +17,7 @@ extern size_t known_hosts_length;
 int known_hosts_verify(const char *, const char *, time_t, time_t);
 int known_hosts_load();
 int known_hosts_rewrite();
+int known_hosts_expired(const char *host);
 int known_hosts_forget(const char *host);
 int known_hosts_forget_id(int id);
 void known_hosts_free();
