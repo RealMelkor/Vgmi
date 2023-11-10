@@ -74,9 +74,9 @@ void tab_display_request(struct request *req, struct rect rect) {
 		tab_display_gemtext(req, rect);
 		break;
 	case GMI_INPUT:
+	case GMI_SECRET:
 		break;
 	default:
-		tab_display_gemtext(req, rect);
 		break;
 	}
 }

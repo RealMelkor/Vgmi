@@ -36,7 +36,7 @@ void parser_request(int in, int out);
 
 int parse_request(struct parser *parser, struct request *request) {
 
-	int ret;
+	int ret, gemtext;
 	if (!parser) parser = &request_parser;
 
 	pthread_mutex_lock(&parser->mutex);
@@ -44,15 +44,17 @@ int parse_request(struct parser *parser, struct request *request) {
 	write(parser->out, P(request->length));
 	write(parser->out, request->data, request->length);
 
-	if (vread(parser->in, P(request->status))) return -1;
-	if (vread(parser->in, V(request->meta))) return -1;
-	if (vread(parser->in, P(request->page.mime))) return -1;
-	if (vread(parser->in, P(request->page.offset))) return -1;
+	if ((ret = vread(parser->in, P(request->status)))) goto fail;
+	if ((ret = vread(parser->in, V(request->meta)))) goto fail;
+	if ((ret = vread(parser->in, P(request->page.mime)))) goto fail;
+	if ((ret = vread(parser->in, P(request->page.offset)))) goto fail;
 
+	gemtext = request->status == GMI_SUCCESS &&
+			is_gemtext(V(request->meta));
 	request->page.links_count = 0;
 	request->page.links = NULL;
 	ret = 0;
-	while (1) {
+	while (gemtext) {
 
 		size_t length = 0;
 		char url[MAX_URL] = {0};
@@ -88,10 +90,11 @@ int parse_request(struct parser *parser, struct request *request) {
 		request->page.links_count++;
 	}
 
-	if (vread(parser->in, V(request->page.title))) return -1;
-	if (!request->page.title[0])
+	if (gemtext && (ret = vread(parser->in, V(request->page.title))))
+		goto fail;
+	if (!gemtext || !request->page.title[0])
 		STRLCPY(request->page.title, request->url);
-
+fail:
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;
 }
@@ -146,7 +149,6 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 	ret = page_update(parser->in, parser->out,
 			&request->data[request->page.offset],
 			length, &request->page);
-	if (ret) return ret;
 
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;

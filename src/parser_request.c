@@ -84,19 +84,15 @@ void parser_request(int in, int out) {
 		write(out, P(request.page.mime));
 		write(out, P(request.page.offset));
 
-		if (is_gemtext(V(request.meta))) {
+		if (request.status == GMI_SUCCESS &&
+				is_gemtext(V(request.meta))) {
 			if (parse_links(in, length - bytes, out)) {
 				break;
 			}
 		} else {
-			/* TODO: check if the data seems renderable */
 			uint8_t byte;
-			size_t count, i;
-			for (i = bytes; i < length; i++) {
-				read(in, &byte, 1);
-			}
-			count = -1;
-			write(out, P(count));
+			size_t i;
+			for (i = bytes; i < length; i++) read(in, &byte, 1);
 		}
 	}
 }

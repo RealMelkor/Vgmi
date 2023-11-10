@@ -144,7 +144,4 @@ void client_draw(struct client* client) {
 		tb_printf(x, client->height - 2, TB_WHITE, TB_BLUE,
 				format, link);
 	}
-
-
-
 }

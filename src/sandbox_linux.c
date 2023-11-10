@@ -198,10 +198,10 @@ int sandbox_init() {
 	fd = landlock_init();
 	if (fd < 0) return ERROR_SANDBOX_FAILURE;
 	ret = landlock_unveil_path(fd, path,
+					LANDLOCK_ACCESS_FS_READ_FILE |
 					LANDLOCK_ACCESS_FS_WRITE_FILE |
 					LANDLOCK_ACCESS_FS_MAKE_REG);
 	ret |= landlock_unveil_path(fd, download_path,
-					LANDLOCK_ACCESS_FS_READ_FILE |
 					LANDLOCK_ACCESS_FS_WRITE_FILE |
 					LANDLOCK_ACCESS_FS_MAKE_REG);
 	ret |= landlock_unveil_path(fd, "/etc/hosts",

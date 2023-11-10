@@ -202,7 +202,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		return ERROR_TLS_FAILURE;
 	}
 	memset(&ptr[len], 0, pad);
-	*length = len + pad;
+	*length = len;
 	if (readonly(ptr, *length, data)) return ERROR_ERRNO;
 	free(ptr);
 	return 0;

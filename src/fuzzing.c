@@ -9,40 +9,42 @@
 #include <fcntl.h>
 #include <string.h>
 #include "macro.h"
-#include "gemtext.h"
+#include "page.h"
+#include "request.h"
+#include "parser.h"
 
 int parse_file(const char *path) {
 
-	FILE *f;
-	char *data;
 	size_t length;
-	const int pad = 16;
-	int fd, i;
+	int in, out, i;
 
-	f = fopen(path, "r");
-	if (!f) return -1;
-	fseek(f, 0, SEEK_END);
-	length = ftell(f);
-	data = malloc(length + pad);
-	fseek(f, 0, SEEK_SET);
-	fread(data, 1, length, f);
-	fclose(f);
-	memset(&data[length], 0, pad);
+	in = open(path, O_RDONLY);
+	if (in < 0) return -1;
+	length = lseek(in, 0, SEEK_END);
+	close(in);
 
-	fd = open("/dev/null", O_WRONLY);
-	if (fd < 0) return -1;
+	out = open("/dev/null", O_WRONLY);
+	if (out < 0) return -1;
 
-	for (i = 0; i < 4096; i++)
-		gemtext_parse(data, length, i, fd);
-	free(data);
+	/* test range of different width */
+	for (i = 0; i < 1024; i++) {
+		in = open(path, O_RDONLY);
+		if (in < 0) {
+			close(out);
+			return -1;
+		}
+		parse_gemtext(in, length, i, out);
+		close(in);
+	}
+
+	close(out);
 	return 0;
 }
 
+/* warning: doesn't detect deadlock */
 int fuzzing(int iterations) {
 
 	int i;
-	char buf[4096];
-	const int pad = 16;
 	int fd, randfd;
 
 	fd = open("/dev/null", O_WRONLY);
@@ -52,17 +54,19 @@ int fuzzing(int iterations) {
 	if (randfd < 0) return -1;
 
 	for (i = 0; i < iterations; i++) {
-		int j, width, length;
+		int width;
+		size_t length, j;
 		read(randfd, P(j));
 		width = j % 40 + 5;
 		read(randfd, P(j));
-		length = j % sizeof(buf);
-		if (length < pad) length += pad;
-		if (length != read(randfd, buf, length)) return -1;
-		gemtext_parse(buf, length - pad, width, fd);
-		if (i % 100000 == 0)
+		length = j % 10000;
+		parse_gemtext(randfd, length, width, fd);
+		parse_binary(randfd, length, width, fd);
+		parse_plain(randfd, length, width, fd);
+		if (i % 100 == 0) {
 			printf("%d/%d (%d%%)\n", i, iterations,
 					i * 100 / iterations);
+		}
 	}
 	return 0;
 }
