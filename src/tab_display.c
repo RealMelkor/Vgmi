@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include "termbox.h"
 #include "macro.h"
+#include "config.h"
 #include "client.h"
 #include "gemini.h"
 #include "page.h"
@@ -52,6 +53,13 @@ void tab_display_update(struct request *req, struct rect rect) {
 void tab_display_gemtext(struct request *req, struct rect rect) {
 
 	if (!req) return;
+
+	if (req->length > MAXIMUM_DISPLAY_LENGTH) {
+		tb_printf(rect.x + 2, rect.y + 1, TB_RED, TB_DEFAULT,
+			"The response is too large to be displayed : "
+			"%d bytes", req->length);
+		return;
+	}
 
 	if (req->page.width != rect.w - rect.x) {
 		/* TODO: should be done in the background */
