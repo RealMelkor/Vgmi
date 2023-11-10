@@ -13,13 +13,15 @@
 
 int sandbox_init() {
 
-	char path[2048];
+	char path[2048], download_path[2048];
 	int ret;
 
 	if ((ret = storage_path(V(path)))) return ret;
+	if ((ret = storage_download_path(V(download_path)))) return ret;
 	if (unveil("/etc/resolv.conf", "r")) return ERROR_SANDBOX_FAILURE;
 	if (unveil("/etc/hosts", "r")) return ERROR_SANDBOX_FAILURE;
 	if (unveil(path, "rwc")) return ERROR_SANDBOX_FAILURE;
+	if (unveil(download_path, "rwc")) return ERROR_SANDBOX_FAILURE;
 	if (unveil(NULL, NULL)) return ERROR_SANDBOX_FAILURE;
 
 	if (pledge("tty stdio inet dns rpath wpath cpath", ""))
