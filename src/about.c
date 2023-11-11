@@ -34,7 +34,8 @@
 "* / - Open search mode\n" \
 "* : - Open input mode\n" \
 "* u - Open input mode with the current url\n" \
-"* f - Show history\n" \
+"* b - Open about:bookmarks in a new tab\n" \
+"* f - Open about:history in a new tab\n" \
 "* r - Reload the page\n" \
 "* [number]Tab - Scroll up\n" \
 "* Tab - Follow the selected link\n" \
@@ -283,6 +284,7 @@ int about_parse(struct request *request) {
 	}
 	if (!strcmp(request->url, "about:blank")) {
 		request->status = GMI_SUCCESS;
+		STRLCPY(request->page.title, "about:blank");
 		return 0;
 	}
 	if (!strcmp(request->url, "about:bookmarks")) {

@@ -109,11 +109,11 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	return 0;
 }
 
-int command_gencert(struct client *client, const char* ptr, size_t len) {
+int command_gencert(struct client *client, const char* args, size_t len) {
 
 	struct request *req;
 
-	if (no_argument(client, ptr, len)) return 0;
+	if (no_argument(client, args, len)) return 0;
 
 	req = tab_completed(client->tab);
 	if (!req) {

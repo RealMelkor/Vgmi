@@ -102,9 +102,6 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			req->page.selected = 1;
 		}
 		break;
-	case 'q':
-		client_newtab(client, NULL);
-		break;
 	case 'n':
 	case 'N':
 		{
@@ -146,12 +143,16 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		if (!client->g) break;
 		if (client->tab->next)
 			client->tab = client->tab->next;
+		else while (client->tab->prev)
+			client->tab = client->tab->prev;
 		client_reset(client);
 		break;
 	case 'T':
 		if (!client->g) break;
 		if (client->tab->prev)
 			client->tab = client->tab->prev;
+		else while (client->tab->next)
+			client->tab = client->tab->next;
 		client_reset(client);
 		break;
 	case 'g':
@@ -198,6 +199,12 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		break;
 	case 'r':
 		tab_follow(client->tab, ".");
+		break;
+	case 'b':
+		client_newtab(client, "about:bookmarks");
+		break;
+	case 'f':
+		client_newtab(client, "about:history");
 		break;
 	}
 	return 0;
