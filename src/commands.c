@@ -172,8 +172,6 @@ int command_download(struct client *client, const char* args, size_t len) {
 	char buf[MAX_URL];
 	int i;
 
-	if (no_argument(client, args, len)) return 0;
-
 	req = tab_completed(client->tab);
 	if (!req) {
 		client->error = 1;
@@ -181,9 +179,11 @@ int command_download(struct client *client, const char* args, size_t len) {
 		return 0;
 	}
 
-	ptr = strnstr(req->url, "://", sizeof(req->url));
-	if (!ptr) STRLCPY(name, req->url);
-	else {
+	if (len && *args) {
+		STRLCPY(name, args);
+	} else if (!strnstr(req->url, "://", sizeof(req->url))) {
+		STRLCPY(name, req->url);
+	} else {
 		char *start;
 		size_t i = STRLCPY(buf, req->url);
 		for (; i > 0; i--) {
@@ -202,7 +202,15 @@ int command_download(struct client *client, const char* args, size_t len) {
 
 	STRLCPY(buf, name);
 	for (i = 1; i < 128 && storage_download_exist(name); i++) {
-		snprintf(V(name), "%s (%d)", buf, i);
+		char *dot;
+		dot = strrchr(buf, '.');
+		if (!dot || dot == buf) {
+			snprintf(V(name), "%s (%d)", buf, i);
+			continue;
+		}
+		*dot = '\0';
+		snprintf(V(name), "%s (%d).%s", buf, i, dot + 1);
+		*dot = '.';
 	}
 	f = i < 128 ? storage_download_fopen(name, "wb") : NULL;
 	if (!f) {
@@ -230,6 +238,18 @@ int command_add(struct client *client, const char* args, size_t len) {
 	req = tab_completed(client->tab);
 	if (!(req = tab_completed(client->tab))) return 0;
 	if ((ret = bookmark_add(req->url, args)) ||
+			(ret = bookmark_rewrite())) {
+		error_string(ret, V(client->cmd));
+		client->error = 1;
+	}
+	return 0;
+}
+
+int command_help(struct client *client, const char* args, size_t len) {
+	int ret;
+	if (no_argument(client, args, len)) return 0;
+	if (!client->tab) return 0;
+	if ((ret = client_newtab(client, "about:help")) ||
 			(ret = bookmark_rewrite())) {
 		error_string(ret, V(client->cmd));
 		client->error = 1;

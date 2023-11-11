@@ -155,6 +155,8 @@ int client_init(struct client* client) {
 		return ret;
 	if ((ret = client_addcommand(client, "download", command_download)))
 		return ret;
+	if ((ret = client_addcommand(client, "help", command_help)))
+		return ret;
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;

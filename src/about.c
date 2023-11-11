@@ -21,6 +21,37 @@
 #include "parser.h"
 
 #define HEADER "20 text/gemini\r\n"
+#define HELP_INFO \
+"## Keybindings\n\n" \
+"* k - Scroll up\n" \
+"* j - Scroll up\n" \
+"* gT - Switch to the previous tab\n" \
+"* gt - Switch to the next tab\n" \
+"* h - Go back in history\n" \
+"* l - Go forward in history\n" \
+"* gg - Go at the top of the page\n" \
+"* G - Go at the bottom of the page\n" \
+"* / - Open search mode\n" \
+"* : - Open input mode\n" \
+"* u - Open input mode with the current url\n" \
+"* f - Show history\n" \
+"* r - Reload the page\n" \
+"* [number]Tab - Scroll up\n" \
+"* Tab - Follow the selected link\n" \
+"* Shift+Tab - Open the selected link in a new tab\n\n" \
+"You can prefix a movement key with a number to repeat it.\n\n" \
+"## Commands\n\n" \
+"* :q - Close the current tab\n" \
+"* :qa - Close all tabs, exit the program\n" \
+"* :o [url] - Open an url\n" \
+"* :s [search] - Search the Geminispace using geminispace.info\n" \
+"* :nt [url] - Open a new tab, the url is optional\n" \
+"* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
+"* :[number] - Scroll to the line number\n" \
+"* :gencert - Generate a certificate for the current capsule\n" \
+"* :forget <host> - Forget the certificate for an host\n" \
+"* :download [name] - Download the current page, the name is optional\n" \
+"* :help - Open about:help in a new tab\n" \
 
 static const char header[] = HEADER;
 
@@ -37,6 +68,11 @@ HEADER \
 "=>about:license\n" \
 "=>about:newtab\n" \
 "=>about:sandbox\n";
+
+char help_page[] =
+HEADER \
+"# Help\n\n" \
+HELP_INFO;
 
 char license_page[] =
 HEADER \
@@ -196,12 +232,12 @@ static int bookmarks_page(char **out, size_t *length_out) {
 }
 
 int newtab_page(char **out, size_t *length_out) {
+	void *ptr;
 	size_t length = sizeof(newtab_page_header), i;
 	char *data = malloc(length);
 	if (!data) return ERROR_MEMORY_FAILURE;
 	strlcpy(data, newtab_page_header, length);
 	for (i = 0; i < bookmark_length; i++) {
-		void *ptr;
 		char line[sizeof(struct bookmark) + 8];
 		size_t line_length;
 		line_length = snprintf(V(line), "=>%s %s\n",
@@ -215,6 +251,15 @@ int newtab_page(char **out, size_t *length_out) {
 		strlcpy(&data[length - 1], line, line_length + 1);
 		length += line_length;
 	}
+	ptr = realloc(data, length + sizeof(HELP_INFO));
+	if (!ptr) {
+		free(data);
+		return ERROR_MEMORY_FAILURE;
+	}
+	data = ptr;
+	data[length - 1] = '\n';
+	strlcpy(&data[length], HELP_INFO, sizeof(HELP_INFO));
+	length += sizeof(HELP_INFO);
 	*out = data;
 	*length_out = length;
 	return 0;
@@ -250,6 +295,9 @@ int about_parse(struct request *request) {
 		}
 		if ((ret = bookmarks_page(&data, &length))) return ret;
 		return parse_data(request, data, length);
+	}
+	if (!strcmp(request->url, "about:help")) {
+		return static_page(request, V(help_page));
 	}
 	if (!strcmp(request->url, "about:license")) {
 		return static_page(request, V(license_page));
