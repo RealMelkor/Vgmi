@@ -26,6 +26,10 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case TB_KEY_ESC:
 		client->count = 0;
 		break;
+	case TB_KEY_ARROW_DOWN:
+		goto down;
+	case TB_KEY_ARROW_UP:
+		goto up;
 	case TB_KEY_PGUP:
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, -client->count * client->height,
@@ -87,6 +91,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	if (ev.ch >= '0' && ev.ch <= '9') {
 		client->count = client->count * 10 + ev.ch - '0';
 		if (client->count > MAX_COUNT) client->count = MAX_COUNT;
+		return 0;
 	}
 	switch (ev.ch) {
 	case ':':
@@ -128,12 +133,14 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		}
 		break;
 	case 'j':
+down:
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, client->count,
 				client_display_rect(client));
 		client_reset(client);
 		break;
 	case 'k':
+up:
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, -client->count,
 				client_display_rect(client));
