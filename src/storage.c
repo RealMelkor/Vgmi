@@ -98,6 +98,16 @@ int storage_download_path(char *out, size_t length) {
 	if (f) {
 		fread(out, 1, length, f);
 		pclose(f);
+		if (out[0] == '/') { /* success if the output is a path */
+			size_t i;
+			for (i = 0; i < length; i++) {
+				if (out[i] < ' ') {
+					out[i] = 0;
+					break;
+				}
+			}
+			return 0;
+		}
 	}
 
 	return storage_from_home(out, length, DOWNLOAD_PATH);
