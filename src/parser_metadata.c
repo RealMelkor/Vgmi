@@ -28,6 +28,7 @@ int parser_mime(char *meta, size_t len) {
 	metadata_trim(meta, len, V(mime));
 	if (!strncmp(mime, "text/gemini", sizeof(mime))) return MIME_GEMTEXT;
 	if (!strncmp(mime, "text/plain", sizeof(mime))) return MIME_PLAIN;
+	if (!memcmp(mime, "image/", sizeof("image/") - 1)) return MIME_IMAGE;
 	return MIME_UNKNOWN;
 }
 

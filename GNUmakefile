@@ -21,7 +21,9 @@ OBJS = $(subst src,obj,$(OBJ))
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
 
 vgmi: ${OBJ}
-	${CC} -o $@ ${OBJS} ${LDFLAGS}
+	${CC} -O2 -c -o stb_image/stbimage.o -I./include \
+		stb_image/libstbimage.c
+	${CC} -o $@ stb_image/stbimage.o ${OBJS} ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin

@@ -22,6 +22,7 @@ int renderable(uint32_t codepoint);
 enum {
 	MIME_GEMTEXT,
 	MIME_PLAIN,
+	MIME_IMAGE,
 	MIME_UNKNOWN
 };
 

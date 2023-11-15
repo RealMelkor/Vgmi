@@ -149,5 +149,6 @@ int page_free(struct page page) {
 		free(page.links[i]);
 	}
 	free(page.links);
+	free(page.img);
 	return 0;
 }

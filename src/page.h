@@ -24,6 +24,9 @@ struct page {
 	int offset;
 	unsigned int selected;
 	unsigned int occurrences;
+	int img_w;
+	int img_h;
+	void *img;
 };
 
 #define TAB_SIZE 4
@@ -42,7 +45,7 @@ struct page_cell {
 	uint32_t codepoint;
 	uint32_t link;
 	uint32_t selected;
-	uint8_t	color;
+	uint32_t color;
 	unsigned width:4;
 	unsigned special:4;
 };

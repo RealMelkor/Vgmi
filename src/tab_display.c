@@ -20,6 +20,7 @@
 #include "error.h"
 #include "parser.h"
 #include "known_hosts.h"
+#include "image.h"
 
 void tab_clean_requests(struct tab *tab);
 
@@ -61,6 +62,19 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 		return;
 	}
 
+#ifdef ENABLE_IMAGE
+	if (req->page.mime == MIME_IMAGE) {
+		if (!req->page.img) {
+			int offset = req->page.offset;
+			req->page.img = image_load(
+				&req->data[offset], req->length - offset,
+				&req->page.img_w, &req->page.img_h);
+		}
+		image_display(req->page.img, req->page.img_w, req->page.img_h,
+				rect.y);
+		return;
+	}
+#endif
 	if (req->page.width != rect.w - rect.x) {
 		/* TODO: should be done in the background */
 		tab_display_update(req, rect);

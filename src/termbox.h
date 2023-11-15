@@ -166,6 +166,16 @@ SOFTWARE.
 #define TB_HARDCAP_EXIT_MOUSE   "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l"
 
 /* Colors (numeric) and attributes (bitwise) (tb_cell.fg, tb_cell.bg) */
+#if __has_include(<stb_image.h>)
+#define TB_BLACK                0x0010
+#define TB_RED                  0x0009
+#define TB_GREEN                0x0002
+#define TB_YELLOW               0x000B
+#define TB_BLUE                 0x000C
+#define TB_MAGENTA              0x000D
+#define TB_CYAN                 0x000E
+#define TB_WHITE                0x000F
+#else
 #define TB_BLACK                0x0001
 #define TB_RED                  0x0002
 #define TB_GREEN                0x0003
@@ -174,6 +184,7 @@ SOFTWARE.
 #define TB_MAGENTA              0x0006
 #define TB_CYAN                 0x0007
 #define TB_WHITE                0x0008
+#endif
 #define TB_BOLD                 0x0100
 #define TB_UNDERLINE            0x0200
 #define TB_REVERSE              0x0400

@@ -27,6 +27,7 @@ struct rect;
 #include "sandbox.h"
 #include "parser.h"
 #include "bookmarks.h"
+#include "image.h"
 
 int client_destroy(struct client *client) {
 	struct command *command;
@@ -161,6 +162,9 @@ int client_init(struct client* client) {
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
+#ifdef ENABLE_IMAGE
+	if (tb_set_output_mode(TB_OUTPUT_256)) return ERROR_TERMBOX_FAILURE;
+#endif
 	if ((ret = sandbox_init())) {
 		tb_shutdown();
 		return ret;
