@@ -3,20 +3,99 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdlib.h>
+#define ENABLE_IMAGE
 #include "image.h"
 #ifdef ENABLE_IMAGE
+#include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/socket.h>
 #include "sandbox.h"
 #include "termbox.h"
 #include "error.h"
+#include "macro.h"
 
-#define IMG_MEMORY 1024 * 1024 * 8
+#define IMG_MEMORY 1024 * 1024 * 16
+
+void image_parser(int fd, char *data, size_t length) {
+	while (1) {
+		int size;
+		int x, y;
+		void *img;
+		if (read(fd, P(size)) != sizeof(size)) break;
+		if ((unsigned)size > length || size == 0) goto fail;
+		write(fd, P(size));
+		if (read(fd, data, size) != size) goto fail;
+		img = image_load(data, size, &x, &y);
+		if (!img) goto fail;
+		write(fd, P(x));
+		write(fd, P(y));
+		write(fd, img, x * y * 3);
+		continue;
+fail:
+		size = -1;
+		write(fd, P(size));
+	}
+}
+
+int image_fd = -1;
+void *image_parse(void *data, int len, int *x, int *y) {
+	int _x, _y, size;
+	void *img;
+	if (image_fd == -1) return NULL;
+	write(image_fd, P(len));
+	read(image_fd, P(size));
+	if (size == -1) return NULL;
+	write(image_fd, data, len);
+	read(image_fd, P(_x));
+	if (_x == -1) return NULL;
+	read(image_fd, P(_y));
+	size = _x * _y * 3;
+	img = malloc(size);
+	if (!img) {
+		uint8_t byte;
+		int i;
+		for (i = 0; i < size; i++) read(image_fd, &byte, 1);
+		return NULL;
+	}
+	if (read(image_fd, img, size) != size) {
+		free(img);
+		return NULL;
+	}
+	*x = _x;
+	*y = _y;
+	return img;
+}
 
 int image_init() {
-	void *memory = malloc(IMG_MEMORY);
-	if (!memory) return ERROR_MEMORY_FAILURE;
+
+	int fd[2];
+	uint8_t byte;
+	void *memory;
+
+	socketpair(PF_LOCAL, SOCK_STREAM, 0, fd);
+	if (fork()) {
+		close(fd[0]);
+		byte = -1;
+		read(fd[1], &byte, 1);
+		if (byte) return ERROR_MEMORY_FAILURE;
+		image_fd = fd[1];
+		return 0;
+	}
+	close(fd[1]);
+	byte = 0;
+	write(fd[0], &byte, 1);
+	memory = malloc(IMG_MEMORY);
+	if (!memory) goto exit;
 	image_memory_set(memory, IMG_MEMORY);
-	return 0;
+	memory = malloc(IMG_MEMORY);
+	if (!memory) goto exit;
+	sandbox_set_name("vgmi [image]");
+	sandbox_isolate();
+	image_parser(fd[0], memory, IMG_MEMORY);
+exit:
+	close(fd[0]);
+	exit(0);
 }
 
 static int color_abs(int c, int x, int i) {

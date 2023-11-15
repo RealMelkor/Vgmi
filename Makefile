@@ -12,9 +12,8 @@ LDFLAGS=-s -L/usr/local/lib -lm -ltls -lcrypto -lssl -lpthread
 #CC=gcc
 
 build: src/*
-	${CC} -O2 -c -o stb_image/stbimage.o -I./include \
-		stb_image/libstbimage.c
-	${CC} ${CFLAGS} src/*.c stb_image/stbimage.o -o vgmi ${LDFLAGS}
+	${CC} -O2 -c -o stb_image/stb_image.o -I./include stb_image/stb_image.c
+	${CC} ${CFLAGS} src/*.c stb_image/stb_image.o -o vgmi ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin/

@@ -36,9 +36,10 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 	tab->loading = (now.tv_sec * 10 + now.tv_nsec / 100000000) %
 			(sizeof(off) / sizeof(*off));
 
-	for (i = 0; i < (int)(sizeof(off) / sizeof(*off)); i++)
+	for (i = 0; i < (int)(sizeof(off) / sizeof(*off)); i++) {
 		tb_set_cell(x + off[i][0], y + off[i][1], ' ', TB_WHITE,
-			i != tab->loading ? TB_WHITE : TB_BLUE);
+				i != tab->loading ? TB_WHITE : TB_BLUE);
+	}
 }
 
 void tab_display_update(struct request *req, struct rect rect) {
@@ -66,12 +67,17 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	if (req->page.mime == MIME_IMAGE) {
 		if (!req->page.img) {
 			int offset = req->page.offset;
-			req->page.img = image_load(
+			req->page.img = image_parse(
 				&req->data[offset], req->length - offset,
 				&req->page.img_w, &req->page.img_h);
 		}
-		image_display(req->page.img, req->page.img_w, req->page.img_h,
-				rect.y);
+		if (req->page.img) {
+			image_display(req->page.img,
+				req->page.img_w, req->page.img_h, rect.y);
+		} else {
+			tb_printf(2, rect.y + 1, TB_RED, TB_DEFAULT,
+					"Failed to load the image");
+		}
 		return;
 	}
 #endif

@@ -17,13 +17,11 @@ OBJ = ${SRC:.c=.o}
 OBJS = $(subst src,obj,$(OBJ))
 
 .c.o:
-	mkdir -p obj
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
 
 vgmi: ${OBJ}
-	${CC} -O2 -c -o stb_image/stbimage.o -I./include \
-		stb_image/libstbimage.c
-	${CC} -o $@ stb_image/stbimage.o ${OBJS} ${LDFLAGS}
+	${CC} -g -c -o obj/stb_image.o -I./include stb_image/stb_image.c
+	${CC} -o $@ obj/stb_image.o ${OBJS} ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin
