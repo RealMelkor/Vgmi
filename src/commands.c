@@ -237,6 +237,7 @@ int command_add(struct client *client, const char* args, size_t len) {
 	if (!client->tab || !len) return 0;
 	req = tab_completed(client->tab);
 	if (!(req = tab_completed(client->tab))) return 0;
+	if (!*args) args = req->page.title;
 	if ((ret = bookmark_add(req->url, args)) ||
 			(ret = bookmark_rewrite())) {
 		error_string(ret, V(client->cmd));

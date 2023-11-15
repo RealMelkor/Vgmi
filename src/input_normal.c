@@ -205,7 +205,11 @@ up:
 		}
 		break;
 	case 'r':
-		tab_follow(client->tab, ".");
+		{
+			struct request *req = tab_completed(client->tab);
+			if (!req) break;
+			tab_request(client->tab, req->url);
+		}
 		break;
 	case 'b':
 		client_newtab(client, "about:bookmarks");
