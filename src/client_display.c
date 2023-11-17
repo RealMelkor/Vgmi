@@ -59,7 +59,7 @@ void client_draw(struct client* client) {
 		int x, width;
 		int count, current;
 		for (i = 0; i < client->width; i++) {
-			tb_set_cell(i, 0, ' ', TB_DEFAULT, TB_WHITE);
+			tb_set_cell(i, 0, ' ', TB_REVERSE, TB_DEFAULT);
 		}
 		for (tab = client->tab; tab->prev; tab = tab->prev) ;
 		current = count = 0;
@@ -73,7 +73,7 @@ void client_draw(struct client* client) {
 		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {
 			char buf[TAB_WIDTH];
-			int fg = TB_BLACK, bg = TB_WHITE;
+			int fg = TB_REVERSE, bg = TB_DEFAULT;
 			size_t length;
 			struct request *req = tab_completed(tab);
 			if (width == 1) {
@@ -84,7 +84,7 @@ void client_draw(struct client* client) {
 					width);
 			length = strnlen(V(buf));
 			if (tab == client->tab) {
-				fg = TB_WHITE;
+				fg = TB_DEFAULT;
 				bg = TB_DEFAULT;
 				for (i = x; i < x + width + 2; i++)
 					tb_set_cell(i, 0, ' ', fg, bg);
@@ -98,7 +98,7 @@ void client_draw(struct client* client) {
 	}
 
 	for (i = 0; i < client->width; i++) 
-		tb_set_cell(i, client->height - 2, ' ', TB_BLACK, TB_WHITE);
+		tb_set_cell(i, client->height - 2, ' ', TB_REVERSE, TB_DEFAULT);
 
 	if (client->error) {
 		int color = client->error == ERROR_INFO ? TB_GREEN : TB_RED;
@@ -119,10 +119,10 @@ void client_draw(struct client* client) {
 
 	req_input = tab_input(client->tab);
 	if (req_input) {
-		tb_printf(0, client->height - 2, TB_BLACK, TB_WHITE, "%s",
+		tb_printf(0, client->height - 2, TB_REVERSE, TB_DEFAULT, "%s",
 				req_input->url);
 	} else {
-		int expired = 0, fg = TB_BLACK, bg = TB_WHITE;
+		int expired = 0, fg = TB_REVERSE, bg = TB_DEFAULT;
 		if (req && known_hosts_expired(req->name) > 0) {
 			expired = 1;
 			fg = TB_WHITE;
