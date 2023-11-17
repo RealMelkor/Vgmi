@@ -45,7 +45,7 @@ struct page_cell {
 	uint32_t codepoint;
 	uint32_t link;
 	uint32_t selected;
-	uint32_t color;
+	uint16_t color;
 	unsigned width:4;
 	unsigned special:4;
 };
