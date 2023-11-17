@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "macro.h"
 #include "wcwidth.h"
+#include "termbox.h"
 #define PAGE_INTERNAL
 #include "page.h"
 #include "request.h"
@@ -34,6 +35,7 @@ int parse_plain(int in, size_t length, int width, int out) {
 		} else {
 			cell.codepoint = ch;
 			cell.width = mk_wcwidth(ch);
+			cell.color = TB_DEFAULT;
 		}
 		cells++;
 		writecell(&termwriter, cell, i);

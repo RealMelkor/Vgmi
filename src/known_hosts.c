@@ -50,7 +50,7 @@ int known_hosts_load() {
 
 	while (ch != EOF) {
 
-		char line[1024];
+		char line[1024] = {0};
 		char *host, *hash, *start, *end;
 		size_t i;
 		struct known_host known_host;

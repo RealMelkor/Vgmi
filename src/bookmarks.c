@@ -34,7 +34,7 @@ int bookmark_load() {
 		int ch;
 		void *ptr;
 		struct bookmark bookmark = {0};
-		j = space = 0;
+		ch = j = space = 0;
 		for (i = 0; ; i++) {
 			int len;
 			ch = fgetc(f);

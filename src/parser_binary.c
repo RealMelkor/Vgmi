@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "macro.h"
 #include "wcwidth.h"
+#include "termbox.h"
 #define PAGE_INTERNAL
 #include "page.h"
 #include "request.h"
@@ -40,7 +41,7 @@ int parse_binary(int in, size_t length, int width, int out) {
 			x = 0;
 		}
 
-		writeto(&termwriter, buf, 0, 0, i);
+		writeto(&termwriter, buf, TB_DEFAULT, 0, i);
 	}
 
 	{

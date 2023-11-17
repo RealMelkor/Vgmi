@@ -3,12 +3,12 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdlib.h>
-#define ENABLE_IMAGE
 #include "image.h"
 #ifdef ENABLE_IMAGE
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
 #include "sandbox.h"
 #include "termbox.h"
@@ -19,9 +19,13 @@
 
 void image_parser(int fd, char *data, size_t length) {
 	while (1) {
-		int size;
-		int x, y;
+
+		int x, y, size;
 		void *img;
+
+		img = NULL;
+		size = y = x = 0;
+
 		if (read(fd, P(size)) != sizeof(size)) break;
 		if ((unsigned)size > length || size == 0) goto fail;
 		write(fd, P(size));
@@ -87,9 +91,11 @@ int image_init() {
 	write(fd[0], &byte, 1);
 	memory = malloc(IMG_MEMORY);
 	if (!memory) goto exit;
+	memset(memory, 0, IMG_MEMORY);
 	image_memory_set(memory, IMG_MEMORY);
 	memory = malloc(IMG_MEMORY);
 	if (!memory) goto exit;
+	memset(memory, 0, IMG_MEMORY);
 	sandbox_set_name("vgmi [image]");
 	sandbox_isolate();
 	image_parser(fd[0], memory, IMG_MEMORY);

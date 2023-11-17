@@ -10,7 +10,7 @@
 
 void page_search(struct page *page, const char *search) {
 	size_t y, x, length;
-	uint32_t field[1024], occurrences;
+	uint32_t field[1024] = {0}, occurrences;
 	while (page->results) {
 		struct page_search *next = page->results->next;
 		free(page->results);

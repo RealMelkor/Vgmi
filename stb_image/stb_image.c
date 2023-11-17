@@ -51,7 +51,6 @@ void image_memory_set(void *memory, size_t len) {
 #ifdef STATIC_ALLOC
 	img_memory = memory;
 	img_memory_length = len;
-	memset(img_memory, 0, len);
 #else
 	free(memory);
 #endif

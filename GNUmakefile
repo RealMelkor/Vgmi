@@ -17,6 +17,7 @@ OBJ = ${SRC:.c=.o}
 OBJS = $(subst src,obj,$(OBJ))
 
 .c.o:
+	mkdir -p obj
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
 
 vgmi: ${OBJ}

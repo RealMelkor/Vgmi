@@ -70,7 +70,7 @@ void tab_clean_requests(struct tab *tab) {
 				request->state = STATE_ENDED;
 		}
 	}
-	next = prev = NULL;
+	prev = NULL;
 	for (request = tab->request; request; request = next) {
 		next = request->next;
 		if (request != tab->request &&
