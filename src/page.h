@@ -30,7 +30,7 @@ struct page {
 };
 
 #define TAB_SIZE 4
-#define RESET_RATE 2048 /* send reset cell every 2048 bytes */
+#define PARSER_CHUNK 2048 /* send reset cell every 2048 bytes */
 
 #define PAGE_NEWLINE	(uint8_t)1
 #define PAGE_EOF	(uint8_t)2

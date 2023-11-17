@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <poll.h>
 #include "client.h"
 #define PAGE_INTERNAL
 #include "page.h"
@@ -51,6 +52,7 @@ int page_update(int in, int out, const char *data, size_t length,
 	int ret;
 	size_t i, bytes_read, bytes_sent, cells_to_read, cells_read;
 	struct page_line line = {0};
+	struct pollfd pfd;
 
 	/* clean up previous */
 	for (i = 0; i < page->length; i++) {
@@ -66,6 +68,8 @@ int page_update(int in, int out, const char *data, size_t length,
 	if (!line.cells) return ERROR_MEMORY_FAILURE;
 
 	cells_read = cells_to_read = bytes_sent = bytes_read = ret = 0;
+	pfd.fd = in;
+	pfd.events = POLLIN;
 
 	while (!ret) {
 
@@ -73,10 +77,8 @@ int page_update(int in, int out, const char *data, size_t length,
 		void *tmp;
 		int len;
 
-		if (cells_to_read <= cells_read + RESET_RATE / sizeof(cell) &&
-				bytes_sent < length &&
-				bytes_read + RESET_RATE / 2 > bytes_sent) {
-			int bytes = RESET_RATE;
+		if (!poll(&pfd, 1, 0)) {
+			int bytes = PARSER_CHUNK;
 			if (bytes_sent + bytes > length)
 				bytes = length - bytes_sent;
 			write(out, &data[bytes_sent], bytes);

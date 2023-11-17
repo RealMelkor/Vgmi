@@ -31,7 +31,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 		writenewline(termwriter, pos);
 
 	last_reset = termwriter->sent - termwriter->last_reset;
-	if (termwriter->sent && last_reset >= RESET_RATE / 2) {
+	if (termwriter->sent && last_reset >= PARSER_CHUNK / 2) {
 		struct page_cell cell = {0};
 		cell.special = PAGE_RESET;
 		cell.codepoint = pos;

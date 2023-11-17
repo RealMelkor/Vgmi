@@ -155,11 +155,17 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 }
 
 int parser_create(struct parser *parser, int type, char *name) {
+
 	int in_pipe[2], out_pipe[2];
 	unsigned char byte;
-	if (pipe(in_pipe)) return -1;
-	if (pipe(out_pipe)) return -1;
-	if (fork()) {
+	pid_t pid;
+
+	if (pipe(in_pipe)) return ERROR_ERRNO;
+	if (pipe(out_pipe)) return ERROR_ERRNO;
+
+	pid = fork();
+	if (pid < 0) return ERROR_ERRNO;
+	if (pid) {
 		int len;
 		close(in_pipe[1]);
 		close(out_pipe[0]);
