@@ -5,7 +5,7 @@ PREFIX = /usr
 CC = cc
 
 CFLAGS = -ansi -std=c89 -O2 -Wall -Wpedantic -Wextra \
-		-I./include -D_POSIX_C_SOURCE=200809L
+		-I./include -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
 # MacOS
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
@@ -21,7 +21,7 @@ OBJS = $(subst src,obj,$(OBJ))
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
 
 vgmi: ${OBJ}
-	${CC} -g -c -o obj/stb_image.o -I./include stb_image/stb_image.c
+	${CC} -O2 -c -o obj/stb_image.o -I./include stb_image/stb_image.c
 	${CC} -o $@ obj/stb_image.o ${OBJS} ${LDFLAGS}
 
 install:
