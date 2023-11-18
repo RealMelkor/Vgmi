@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/socket.h>
+#include <poll.h>
 #include "sandbox.h"
 #include "termbox.h"
 #include "error.h"
@@ -17,7 +17,56 @@
 
 #define IMG_MEMORY 1024 * 1024 * 16
 
-void image_parser(int fd, char *data, size_t length) {
+static int _write(int fd, char *data, int length) {
+	int i;
+	for (i = 0; i < length;) {
+		int bytes = write(fd, &data[i], length - i);
+		if (bytes < 1) return -1;
+		i += bytes;
+	}
+	return 0;
+}
+
+static int _read(int fd, void *ptr, int length) {
+	int i;
+	char *data = ptr;
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	for (i = 0; i < length;) {
+		int bytes;
+		if (!poll(&pfd, 1, 3000)) return -1;
+		bytes = read(fd, &data[i], length);
+		if (bytes < 1) return -1;
+		i += bytes;
+	}
+	return 0;
+}
+
+static int __read(int fd, void *ptr, int length) {
+	int i;
+	char *data = ptr;
+	for (i = 0; i < length;) {
+		int bytes;
+		bytes = read(fd, &data[i], length);
+		if (bytes < 1) return -1;
+		i += bytes;
+	}
+	return 0;
+}
+
+static int empty_pipe(int fd) {
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	while (poll(&pfd, 1, 0)) {
+		uint8_t byte;
+		if (read(fd, &byte, 1) != 1) return -1;
+	}
+	return 0;
+}
+
+void image_parser(int in, int out, char *data, size_t length) {
 	while (1) {
 
 		int x, y, size;
@@ -26,43 +75,41 @@ void image_parser(int fd, char *data, size_t length) {
 		img = NULL;
 		size = y = x = 0;
 
-		if (read(fd, P(size)) != sizeof(size)) break;
+		if (read(in, P(size)) != sizeof(size)) break;
 		if ((unsigned)size > length || size == 0) goto fail;
-		write(fd, P(size));
-		if (read(fd, data, size) != size) goto fail;
+		write(out, P(size));
+		if (__read(in, data, size)) goto fail;
 		img = image_load(data, size, &x, &y);
 		if (!img) goto fail;
-		write(fd, P(x));
-		write(fd, P(y));
-		write(fd, img, x * y * 3);
+		write(out, P(x));
+		write(out, P(y));
+		if (_write(out, img, x * y * 3)) break;
 		continue;
 fail:
 		size = -1;
-		write(fd, P(size));
+		write(out, P(size));
 	}
 }
 
-int image_fd = -1;
+#define OK(X) if (X) return NULL
+int image_fd_out = -1;
+int image_fd_in = -1;
 void *image_parse(void *data, int len, int *x, int *y) {
 	int _x, _y, size;
 	void *img;
-	if (image_fd == -1) return NULL;
-	write(image_fd, P(len));
-	read(image_fd, P(size));
-	if (size == -1) return NULL;
-	write(image_fd, data, len);
-	read(image_fd, P(_x));
-	if (_x == -1) return NULL;
-	read(image_fd, P(_y));
+	if (image_fd_out == -1 || image_fd_in == -1) return NULL;
+	empty_pipe(image_fd_in);
+	write(image_fd_out, P(len));
+	OK(_read(image_fd_in, P(size)));
+	OK(size != len);
+	OK(_write(image_fd_out, data, len));
+	OK(_read(image_fd_in, P(_x)));
+	OK(_x == -1);
+	OK(_read(image_fd_in, P(_y)));
 	size = _x * _y * 3;
+	OK(size < 1 || size > IMG_MEMORY);
 	img = malloc(size);
-	if (!img) {
-		uint8_t byte;
-		int i;
-		for (i = 0; i < size; i++) read(image_fd, &byte, 1);
-		return NULL;
-	}
-	if (read(image_fd, img, size) != size) {
+	if (!img || _read(image_fd_in, img, size)) {
 		free(img);
 		return NULL;
 	}
@@ -73,22 +120,29 @@ void *image_parse(void *data, int len, int *x, int *y) {
 
 int image_init() {
 
-	int fd[2];
+	int in[2], out[2];
 	uint8_t byte;
 	void *memory;
+	pid_t pid;
 
-	socketpair(PF_LOCAL, SOCK_STREAM, 0, fd);
-	if (fork()) {
-		close(fd[0]);
+	if (pipe(in)) return ERROR_ERRNO;
+	if (pipe(out)) return ERROR_ERRNO;
+	pid = fork();
+	if (pid < 0) return ERROR_ERRNO;
+	if (pid) {
+		close(in[1]);
+		close(out[0]);
+
 		byte = -1;
-		read(fd[1], &byte, 1);
-		if (byte) return ERROR_MEMORY_FAILURE;
-		image_fd = fd[1];
+		read(in[0], &byte, 1);
+		if (byte) return ERROR_SANDBOX_FAILURE;
+		image_fd_out = out[1];
+		image_fd_in = in[0];
 		return 0;
 	}
-	close(fd[1]);
-	byte = 0;
-	write(fd[0], &byte, 1);
+	close(in[0]);
+	close(out[1]);
+
 	memory = malloc(IMG_MEMORY);
 	if (!memory) goto exit;
 	memset(memory, 0, IMG_MEMORY);
@@ -98,9 +152,12 @@ int image_init() {
 	memset(memory, 0, IMG_MEMORY);
 	sandbox_set_name("vgmi [image]");
 	sandbox_isolate();
-	image_parser(fd[0], memory, IMG_MEMORY);
+	byte = 0;
+	write(in[1], &byte, 1);
+	image_parser(out[0], in[1], memory, IMG_MEMORY);
 exit:
-	close(fd[0]);
+	close(in[1]);
+	close(out[0]);
 	exit(0);
 }
 
