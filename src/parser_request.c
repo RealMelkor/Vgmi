@@ -10,6 +10,7 @@
 #include "strnstr.h"
 #include "macro.h"
 #include "error.h"
+#include "sandbox.h"
 #include "gemini.h"
 #include "page.h"
 #include "request.h"
@@ -58,6 +59,7 @@ int parse_title(int in, int out) {
 }
 
 void parser_request(int in, int out) {
+	parser_sandbox(out, "vgmi [request]");
 	while (1) { /* TODO: send error code */
 
 		int ret, bytes;

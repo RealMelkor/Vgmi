@@ -3,6 +3,7 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdlib.h>
+#define ENABLE_IMAGE
 #include "image.h"
 #ifdef ENABLE_IMAGE
 #include <stdio.h>
@@ -13,6 +14,7 @@
 #include "sandbox.h"
 #include "termbox.h"
 #include "error.h"
+#include "proc.h"
 #include "macro.h"
 
 #define IMG_MEMORY 1024 * 1024 * 16
@@ -66,7 +68,28 @@ static int empty_pipe(int fd) {
 	return 0;
 }
 
-void image_parser(int in, int out, char *data, size_t length) {
+void image_parser(int in, int out) {
+
+	char *data;
+	size_t length;
+	uint8_t byte;
+
+	data = malloc(IMG_MEMORY);
+	if (!data) return;
+	memset(data, 0, IMG_MEMORY);
+	image_memory_set(data, IMG_MEMORY);
+
+	length = IMG_MEMORY;
+	data = malloc(length);
+	if (!data) return;
+	memset(data, 0, length);
+
+	sandbox_set_name("vgmi [image]");
+	sandbox_isolate();
+
+	byte = 0;
+	write(out, &byte, 1);
+
 	while (1) {
 
 		int x, y, size;
@@ -119,46 +142,7 @@ void *image_parse(void *data, int len, int *x, int *y) {
 }
 
 int image_init() {
-
-	int in[2], out[2];
-	uint8_t byte;
-	void *memory;
-	pid_t pid;
-
-	if (pipe(in)) return ERROR_ERRNO;
-	if (pipe(out)) return ERROR_ERRNO;
-	pid = fork();
-	if (pid < 0) return ERROR_ERRNO;
-	if (pid) {
-		close(in[1]);
-		close(out[0]);
-
-		byte = -1;
-		read(in[0], &byte, 1);
-		if (byte) return ERROR_SANDBOX_FAILURE;
-		image_fd_out = out[1];
-		image_fd_in = in[0];
-		return 0;
-	}
-	close(in[0]);
-	close(out[1]);
-
-	memory = malloc(IMG_MEMORY);
-	if (!memory) goto exit;
-	memset(memory, 0, IMG_MEMORY);
-	image_memory_set(memory, IMG_MEMORY);
-	memory = malloc(IMG_MEMORY);
-	if (!memory) goto exit;
-	memset(memory, 0, IMG_MEMORY);
-	sandbox_set_name("vgmi [image]");
-	sandbox_isolate();
-	byte = 0;
-	write(in[1], &byte, 1);
-	image_parser(out[0], in[1], memory, IMG_MEMORY);
-exit:
-	close(in[1]);
-	close(out[0]);
-	exit(0);
+	return proc_fork("--image", &image_fd_in, &image_fd_out);
 }
 
 static int color_abs(int c, int x, int i) {

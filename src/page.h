@@ -24,6 +24,7 @@ struct page {
 	int offset;
 	unsigned int selected;
 	unsigned int occurrences;
+	int img_tried;
 	int img_w;
 	int img_h;
 	void *img;

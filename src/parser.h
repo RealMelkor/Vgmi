@@ -39,3 +39,6 @@ int parse_gemtext(int in, size_t length, int width, int out);
 int parse_plain(int in, size_t length, int width, int out);
 int parse_binary(int in, size_t length, int width, int out);
 int parse_links(int in, size_t length, int out);
+void parser_page(int in, int out);
+void parser_request(int in, int out);
+int parser_sandbox(int out, const char *title);

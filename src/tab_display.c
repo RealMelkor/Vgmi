@@ -65,11 +65,12 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 
 #ifdef ENABLE_IMAGE
 	if (req->page.mime == MIME_IMAGE) {
-		if (!req->page.img) {
+		if (!req->page.img && !req->page.img_tried) {
 			int offset = req->page.offset;
 			req->page.img = image_parse(
 				&req->data[offset], req->length - offset,
 				&req->page.img_w, &req->page.img_h);
+			req->page.img_tried = 1;
 		}
 		if (req->page.img) {
 			image_display(req->page.img,

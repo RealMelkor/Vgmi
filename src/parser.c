@@ -15,6 +15,7 @@
 #include "macro.h"
 #include "error.h"
 #include "sandbox.h"
+#include "proc.h"
 #include "url.h"
 #include "page.h"
 #include "gemini.h"
@@ -101,6 +102,7 @@ fail:
 
 void parser_page(int in, int out) {
 	char *data = NULL;
+	parser_sandbox(out, "vgmi [page]");
 	while (1) { /* TODO: send error code */
 
 		int ret;
@@ -154,57 +156,31 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 	return ret;
 }
 
-int parser_create(struct parser *parser, int type, char *name) {
-
-	int in_pipe[2], out_pipe[2];
-	unsigned char byte;
-	pid_t pid;
-
-	if (pipe(in_pipe)) return ERROR_ERRNO;
-	if (pipe(out_pipe)) return ERROR_ERRNO;
-
-	pid = fork();
-	if (pid < 0) return ERROR_ERRNO;
-	if (pid) {
-		int len;
-		close(in_pipe[1]);
-		close(out_pipe[0]);
-		len = read(in_pipe[0], &byte, 1);
-		if (len != 1) return ERROR_SANDBOX_FAILURE;
-		if (byte) return byte;
-		parser->in = in_pipe[0];
-		parser->out = out_pipe[1];
-		pthread_mutex_init(&parser->mutex, NULL);
-		return 0;
-	}
-	close(in_pipe[0]);
-	close(out_pipe[1]);
-	byte = 0;
-	sandbox_set_name(name);
-	if (sandbox_isolate()) byte = ERROR_SANDBOX_FAILURE;
-	write(in_pipe[1], &byte, 1);
+int parser_create(struct parser *parser, int type) {
 	switch (type) {
 	case PARSER_GEMTEXT:
-		parser_page(out_pipe[0], in_pipe[1]);
+		proc_fork("--page", &parser->in, &parser->out);
 		break;
 	case PARSER_REQUEST:
-		parser_request(out_pipe[0], in_pipe[1]);
+		proc_fork("--request", &parser->in, &parser->out);
 		break;
 	}
-#ifdef __linux__
-	syscall(SYS_exit, EXIT_SUCCESS);
-#else
-	exit(0);
-#endif
 	return 0;
 }
 
 int parser_request_create() {
-	return parser_create(&request_parser, PARSER_REQUEST,
-			"vgmi [request]");
+	return parser_create(&request_parser, PARSER_REQUEST);
 }
 
 int parser_page_create() {
-	return parser_create(&page_parser, PARSER_GEMTEXT,
-			"vgmi [page]");
+	return parser_create(&page_parser, PARSER_GEMTEXT);
+}
+
+int parser_sandbox(int out, const char *title) {
+	uint8_t byte;
+	sandbox_set_name(title);
+	if (sandbox_isolate()) return -1;
+	byte = 0;
+	write(out, &byte, 1);
+	return 0;
 }

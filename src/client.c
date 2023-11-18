@@ -141,6 +141,9 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = parser_request_create())) return ret;
 	if ((ret = parser_page_create())) return ret;
+#ifdef ENABLE_IMAGE
+	if ((ret = image_init())) return ret;
+#endif
 	if ((ret = client_addcommand(client, "qa", command_quit))) return ret;
 	if ((ret = client_addcommand(client, "q", command_close))) return ret;
 	if ((ret = client_addcommand(client, "o", command_open))) return ret;
@@ -161,9 +164,6 @@ int client_init(struct client* client) {
 	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
-#ifdef ENABLE_IMAGE
-	if ((ret = image_init())) return ret;
-#endif
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
 #ifdef ENABLE_IMAGE
 	if (tb_set_output_mode(TB_OUTPUT_256)) return ERROR_TERMBOX_FAILURE;
