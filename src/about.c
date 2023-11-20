@@ -19,6 +19,8 @@
 #include "known_hosts.h"
 #include "sandbox.h"
 #include "parser.h"
+#define HISTORY_INTERNAL
+#include "history.h"
 
 #define HEADER "20 text/gemini\r\n"
 #define HELP_INFO \
@@ -104,20 +106,24 @@ HEADER \
 "Devices access\t\t: "SANDBOX_DEVICE"\n" \
 "Parser isolation\t: "SANDBOX_PARSER"\n";
 
-char *show_history(struct request *request, size_t *length_out) {
+char *show_history(size_t *length_out) {
 
 	size_t length = 0;
 	char *data = NULL;
-	struct request *req;
+	struct history_entry *entry;
+	const char title[] = "# History\n\n";
 
-	data = malloc(sizeof(header) + 1);
+	data = malloc(sizeof(header) + sizeof(title) + 1);
 	if (!data) return NULL;
-	length = sizeof(header) - 1;
+	length = sizeof(header) + sizeof(title) - 1;
 	strlcpy(data, header, length + 1);
+	strlcpy(&data[sizeof(header) - 1], title, length + 1 - sizeof(header));
+	length -= 1;
 
-	for (req = request; req; req = req->next) {
-		char buf[2048], *tmp;
-		int len = snprintf(V(buf), "=>%s\n", request->url);
+	for (entry = history; entry; entry = entry->next) {
+		char buf[sizeof(*entry)], *tmp;
+		int len = snprintf(V(buf), "=>%s %s\n",
+				entry->url, entry->title) + 1;
 		tmp = realloc(data, length + len + 1);
 		if (!tmp) {
 			free(data);
@@ -125,7 +131,7 @@ char *show_history(struct request *request, size_t *length_out) {
 		}
 		data = tmp;
 		strlcpy(&data[length], buf, len);
-		length += len;
+		length += len - 1;
 	}
 	*length_out = length;
 	return data;
@@ -321,7 +327,7 @@ int about_parse(struct request *request) {
 	}
 	if (!strcmp(request->url, "about:history")) {
 		size_t length;
-		char *data = show_history(request, &length);
+		char *data = show_history(&length);
 		if (!data) return ERROR_MEMORY_FAILURE;
 		return parse_data(request, data, length - 1);
 	}

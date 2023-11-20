@@ -28,6 +28,7 @@ struct rect;
 #include "parser.h"
 #include "bookmarks.h"
 #include "image.h"
+#include "history.h"
 
 int client_destroy(struct client *client) {
 	struct command *command;
@@ -42,6 +43,8 @@ int client_destroy(struct client *client) {
 		command = next;
 	}
 	known_hosts_free();
+	history_save();
+	history_free();
 	if (tb_shutdown()) return ERROR_TERMBOX_FAILURE;
 	return 0;
 }
@@ -172,6 +175,7 @@ int client_init(struct client* client) {
 		tb_shutdown();
 		return ret;
 	}
+	history_init();
 
 	return 0;
 }

@@ -20,6 +20,7 @@ struct request;
 #include "about.h"
 #include "error.h"
 #include "parser.h"
+#include "history.h"
 
 int request_process(struct request *request, struct secure *secure,
 			const char *url) {
@@ -53,6 +54,7 @@ int request_process(struct request *request, struct secure *secure,
 	if (parse_request(NULL, request)) goto failed;
 
 	request->state = STATE_COMPLETED;
+	history_add(request->url, request->page.title);
 	return 0;
 failed:
 	request->state = STATE_FAILED;

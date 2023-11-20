@@ -29,15 +29,18 @@ int main(int argc, char *argv[]) {
 		if (!strcmp(argv[1], "--image")) {
 			image_parser(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
+			return 0;
 		}
 #endif
 		if (!strcmp(argv[1], "--page")) {
 			parser_page(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
+			return 0;
 		}
 		if (!strcmp(argv[1], "--request")) {
 			parser_request(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
+			return 0;
 		}
 		url = argv[1];
 	}

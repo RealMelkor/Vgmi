@@ -122,3 +122,19 @@ int utf8_width(const char *ptr, size_t length) {
 	}
 	return width;
 }
+
+int utf8_cpy(char *dst, const char *src, size_t length) {
+	size_t i;
+	for (i = 0; i < length; ) {
+		size_t len = utf8_char_length(src[i]);
+		if (i + len >= length) {
+			dst[i] = '\0';
+			break;
+		}
+		while (len--) {
+			dst[i] = src[i];
+			i++;
+		}
+	}
+	return 0;
+}
