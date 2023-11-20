@@ -3,7 +3,6 @@
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
 #include <stdlib.h>
-#define ENABLE_IMAGE
 #include "image.h"
 #ifdef ENABLE_IMAGE
 #include <stdio.h>

@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
 			image_parser(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
 		}
+#endif
 		if (!strcmp(argv[1], "--page")) {
 			parser_page(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
@@ -38,7 +39,6 @@ int main(int argc, char *argv[]) {
 			parser_request(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
 		}
-#endif
 		url = argv[1];
 	}
 

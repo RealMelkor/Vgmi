@@ -5,10 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "macro.h"
-#include "strlcpy.h"
-#include "storage.h"
 #include <unistd.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -17,7 +15,11 @@
 #include <linux/limits.h>
 #endif
 #include <errno.h>
+#include "macro.h"
+#include "strlcpy.h"
+#include "storage.h"
 #include "error.h"
+#include "utf8.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024
@@ -99,12 +101,15 @@ int storage_download_path(char *out, size_t length) {
 		fread(out, 1, length, f);
 		pclose(f);
 		if (out[0] == '/') { /* success if the output is a path */
-			size_t i;
-			for (i = 0; i < length; i++) {
-				if (out[i] < ' ') {
+			size_t i = 0;
+			while (i < length) {
+				uint32_t ch;
+				int len = utf8_char_to_unicode(&ch, &out[i]);
+				if (ch < ' ') {
 					out[i] = 0;
 					break;
 				}
+				i += len;
 			}
 			return 0;
 		}
