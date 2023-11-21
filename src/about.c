@@ -75,16 +75,18 @@ void *dyn_strcat(char *dst, size_t *dst_length,
 }
 
 static int parse_data(struct request *request, char *data, size_t len) {
+	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
 	request->status = GMI_SUCCESS;
 	request->length = len;
-	request->data = data;
+	free(data);
 	return parse_request(NULL, request);
 }
 
 static int static_page(struct request *request, const char *data, size_t len) {
-	char *ptr;
-	if (readonly(data, len, &ptr)) return ERROR_MEMORY_FAILURE;
-	return parse_data(request, ptr, len - 1);
+	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
+	request->status = GMI_SUCCESS;
+	request->length = len - 1;
+	return parse_request(NULL, request);
 }
 
 int about_parse(struct request *request) {

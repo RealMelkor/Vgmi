@@ -34,7 +34,7 @@ int client_destroy(struct client *client) {
 	struct command *command;
 	struct tab *tab;
 	if (!client) return ERROR_NULL_ARGUMENT;
-	for (tab = client->tab; tab->prev; tab = tab->prev) ;
+	for (tab = client->tab; tab && tab->prev; tab = tab->prev) ;
 	while (tab) {
 		struct tab *next = tab->next;
 		tab_free(tab);

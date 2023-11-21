@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include "macro.h"
 #include "strlcpy.h"
-#include "memory.h"
 #include "error.h"
 #define ABOUT_INTERNAL
 #include "about.h"
@@ -30,8 +29,7 @@ int about_history(char **out, size_t *length_out) {
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 	}
 
-	readonly(data, length, out);
-	free(data);
+	*out = data;
 	*length_out = length;
 	return 0;
 fail:

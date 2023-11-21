@@ -8,7 +8,6 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
-#include "memory.h"
 #include "bookmarks.h"
 #define ABOUT_INTERNAL
 #include "about.h"
@@ -41,8 +40,7 @@ int about_bookmarks(char **out, size_t *length_out) {
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 	}
 
-	readonly(data, length, out);
-	free(data);
+	*out = data;
 	*length_out = length;
 	return 0;
 fail:

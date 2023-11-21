@@ -9,7 +9,6 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
-#include "memory.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #define ABOUT_INTERNAL
@@ -54,8 +53,7 @@ int about_known_hosts(char **out, size_t *length_out) {
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 	}
 
-	readonly(data, length, out);
-	free(data);
+	*out = data;
 	*length_out = length;
 	return 0;
 fail:

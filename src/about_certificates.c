@@ -10,7 +10,6 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
-#include "memory.h"
 #include "storage.h"
 #define ABOUT_INTERNAL
 #include "about.h"
@@ -71,8 +70,7 @@ int about_certificates(char **out, size_t *length_out) {
 
 	closedir(dir);
 
-	readonly(data, length, out);
-	free(data);
+	*out = data;
 	*length_out = length;
 	return 0;
 fail:
