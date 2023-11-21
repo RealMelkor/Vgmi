@@ -134,9 +134,7 @@ int about_parse(struct request *request) {
 		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:history")) {
-		size_t length;
-		char *data = about_history(&length);
-		if (!data) return ERROR_MEMORY_FAILURE;
+		if ((ret = about_history(&data, &length))) return ret;
 		return parse_data(request, data, length - 1);
 	}
 	if (!strcmp(request->url, "about:sandbox")) {

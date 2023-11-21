@@ -24,7 +24,6 @@ int about_certificates_param(const char *param) {
 	len = STRLCPY(path, param);
 	if (len >= sizeof(path)) return ERROR_INVALID_ARGUMENT;
 	strlcpy(&path[len], ".crt", sizeof(path) - len);
-	f = storage_fopen(path, "r");
 	if (!(f = storage_fopen(path, "r"))) return ERROR_INVALID_ARGUMENT;
 	fclose(f);
 	strlcpy(&path[len], ".key", sizeof(path) - len);
