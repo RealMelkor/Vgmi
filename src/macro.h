@@ -13,3 +13,6 @@
 #define MAX_URL 1024
 #define MAX_HOST 1024
 #define LENGTH(X) (sizeof(X) / sizeof(*X))
+#ifndef PATH_MAX
+#define PATH_MAX 1024
+#endif
