@@ -37,6 +37,7 @@ struct sock_filter filter[] = {
 #ifdef __NR_open
         SC_ALLOW(open),
 #endif
+        SC_ALLOW(dup),
 #ifdef __NR_dup2
         SC_ALLOW(dup2),
 #endif
@@ -103,6 +104,10 @@ struct sock_filter filter[] = {
 #ifdef __NR_pselect6
 	SC_ALLOW(pselect6),
 #endif
+	SC_ALLOW(getdents),
+	SC_ALLOW(getdents64),
+	SC_ALLOW(unlink),
+	SC_ALLOW(unlinkat),
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 

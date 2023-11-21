@@ -2,7 +2,6 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-#pragma GCC diagnostic ignored "-Woverlength-strings"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +29,7 @@ HEADER \
 "=>about:about\n" \
 "=>about:blank\n" \
 "=>about:bookmarks\n" \
-"=>about:certificate\n" \
+"=>about:certificates\n" \
 "=>about:config\n" \
 "=>about:downloads\n" \
 "=>about:help\n" \
@@ -63,6 +62,17 @@ HEADER \
 "IPC access\t\t\t: "SANDBOX_IPC"\n" \
 "Devices access\t\t: "SANDBOX_DEVICE"\n" \
 "Parser isolation\t: "SANDBOX_PARSER"\n";
+
+void *dyn_strcat(char *dst, size_t *dst_length,
+			const char *src, size_t src_len) {
+	const size_t sum = *dst_length + src_len;
+	void *ptr = realloc(dst, sum);
+	if (!ptr) return NULL;
+	dst = ptr;
+	strlcpy(&dst[*dst_length ? strnlen(dst, *dst_length) : 0], src, sum);
+	*dst_length = strnlen(dst, sum);
+	return dst;
+}
 
 static int parse_data(struct request *request, char *data, size_t len) {
 	request->status = GMI_SUCCESS;
@@ -101,6 +111,11 @@ int about_parse(struct request *request) {
 	if (!strcmp(request->url, "about:bookmarks")) {
 		if (ptr && (ret = about_bookmarks_param(param))) return ret;
 		if ((ret = about_bookmarks(&data, &length))) return ret;
+		return parse_data(request, data, length);
+	}
+	if (!strcmp(request->url, "about:certificates")) {
+		if (ptr && (ret = about_certificates_param(param))) return ret;
+		if ((ret = about_certificates(&data, &length))) return ret;
 		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:help")) {

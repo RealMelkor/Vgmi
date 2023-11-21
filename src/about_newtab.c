@@ -19,35 +19,24 @@ HEADER \
 "A Gemini client written in C with vim-like keybindings\n\n## Bookmarks\n\n";
 
 int about_newtab(char **out, size_t *length_out) {
-	void *ptr;
-	size_t length = sizeof(newtab_page_header), i;
-	char *data = malloc(length);
-	if (!data) return ERROR_MEMORY_FAILURE;
-	strlcpy(data, newtab_page_header, length);
+	size_t length, i;
+	char *data;
+	if (!(data = dyn_strcat(NULL, &length, V(newtab_page_header))))
+		goto fail;
 	for (i = 0; i < bookmark_length; i++) {
 		char line[sizeof(struct bookmark) + 8];
 		size_t line_length;
 		line_length = snprintf(V(line), "=>%s %s\n",
 				bookmarks[i].url, bookmarks[i].name);
-		ptr = realloc(data, length + line_length + 1);
-		if (!ptr) {
-			free(data);
-			return ERROR_MEMORY_FAILURE;
-		}
-		data = ptr;
-		strlcpy(&data[length - 1], line, line_length + 1);
-		length += line_length;
+		if (!(data = dyn_strcat(data, &length, line, line_length)))
+			goto fail;
 	}
-	ptr = realloc(data, length + sizeof(HELP_INFO));
-	if (!ptr) {
-		free(data);
-		return ERROR_MEMORY_FAILURE;
-	}
-	data = ptr;
-	data[length - 1] = '\n';
-	strlcpy(&data[length], HELP_INFO, sizeof(HELP_INFO));
-	length += sizeof(HELP_INFO);
+	if (!(data = dyn_strcat(data, &length, V("\n")))) goto fail;
+	if (!(data = dyn_strcat(data, &length, V(HELP_INFO)))) goto fail;
 	*out = data;
 	*length_out = length;
 	return 0;
+fail:
+	free(data);
+	return ERROR_MEMORY_FAILURE;
 }

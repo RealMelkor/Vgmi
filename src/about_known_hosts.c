@@ -30,18 +30,13 @@ int about_known_hosts(char **out, size_t *length_out) {
 	size_t i;
 	const char title[] = "# Known hosts\n\n";
 
-	length = sizeof(header) + sizeof(title);
-	data = malloc(length);
-	if (!data) return ERROR_MEMORY_FAILURE;
-	strlcpy(data, header, length);
-	strlcpy(&data[sizeof(header) - 1], title, length - sizeof(header));
-	length -= 2;
+	if (!(data = dyn_strcat(data, &length, V(header)))) goto fail;
+	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
 
 	for (i = 0; i < known_hosts_length; i++) {
 
 		char buf[1024], from[64], to[64];
 		int len;
-		void *tmp;
 		struct tm *tm;
 
 		tm = localtime(&known_hosts[i].start);
@@ -56,18 +51,14 @@ int about_known_hosts(char **out, size_t *length_out) {
 			"=>/%ld Forget\n\n",
 			known_hosts[i].host, known_hosts[i].hash,
 			from, to, i) + 1;
-		tmp = realloc(data, length + len);
-		if (!tmp) {
-			free(data);
-			return ERROR_MEMORY_FAILURE;
-		}
-		data = tmp;
-		strlcpy(&data[length], buf, len);
-		length += len - 1;
+		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 	}
 
 	readonly(data, length, out);
 	free(data);
 	*length_out = length;
 	return 0;
+fail:
+	free(data);
+	return ERROR_MEMORY_FAILURE;
 }

@@ -12,6 +12,7 @@
 #endif
 
 #ifdef ABOUT_INTERNAL
+#pragma GCC diagnostic ignored "-Woverlength-strings"
 #define HELP_INFO \
 "## Keybindings\n\n" \
 "* k - Scroll up\n" \
@@ -52,6 +53,10 @@ int about_bookmarks_param(const char *param);
 int about_known_hosts(char **out, size_t *length_out);
 int about_known_hosts_arg(const char *param);
 int about_newtab(char **out, size_t *length_out);
+int about_certificates(char **out, size_t *length_out);
+int about_certificates_param(const char *param);
+void *dyn_strcat(char *dst, size_t *dst_length,
+			const char *src, size_t src_len);
 #endif
 
 struct request;

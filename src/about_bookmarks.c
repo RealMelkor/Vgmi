@@ -28,33 +28,24 @@ int about_bookmarks(char **out, size_t *length_out) {
 	size_t i;
 	const char title[] = "# Bookmarks\n\n";
 
-	length = sizeof(header) + sizeof(title);
-	data = malloc(length);
-	if (!data) return ERROR_MEMORY_FAILURE;
-	strlcpy(data, header, length);
-	strlcpy(&data[sizeof(header) - 1], title, length - sizeof(header));
-	length -= 2;
+	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
+	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
 
 	for (i = 0; i < bookmark_length; i++) {
 
 		char buf[1024];
 		int len;
-		void *tmp;
 
 		len = snprintf(V(buf), "=>%s %s\n=>/%ld Delete\n\n",
 				bookmarks[i].url, bookmarks[i].name, i) + 1;
-		tmp = realloc(data, length + len);
-		if (!tmp) {
-			free(data);
-			return ERROR_MEMORY_FAILURE;
-		}
-		data = tmp;
-		strlcpy(&data[length], buf, len);
-		length += len - 1;
+		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 	}
 
 	readonly(data, length, out);
 	free(data);
 	*length_out = length;
 	return 0;
+fail:
+	free(data);
+	return ERROR_MEMORY_FAILURE;
 }
