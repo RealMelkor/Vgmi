@@ -19,8 +19,8 @@ HEADER \
 "A Gemini client written in C with vim-like keybindings\n\n## Bookmarks\n\n";
 
 int about_newtab(char **out, size_t *length_out) {
-	size_t length, i;
-	char *data;
+	size_t length = 0, i;
+	char *data = NULL;
 	if (!(data = dyn_strcat(NULL, &length, V(newtab_page_header))))
 		goto fail;
 	for (i = 0; i < bookmark_length; i++) {
@@ -33,7 +33,8 @@ int about_newtab(char **out, size_t *length_out) {
 	}
 	if (!(data = dyn_strcat(data, &length, V("\n")))) goto fail;
 	if (!(data = dyn_strcat(data, &length, V(HELP_INFO)))) goto fail;
-	*out = data;
+	readonly(data, length, out);
+	free(data);
 	*length_out = length;
 	return 0;
 fail:

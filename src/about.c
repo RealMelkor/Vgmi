@@ -65,7 +65,7 @@ HEADER \
 
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
-	const size_t sum = *dst_length + src_len;
+	const size_t sum = (dst ? *dst_length : 0) + src_len + 1;
 	void *ptr = realloc(dst, sum);
 	if (!ptr) return NULL;
 	dst = ptr;

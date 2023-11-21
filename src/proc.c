@@ -43,8 +43,8 @@ int proc_fork(char *arg, int *fd_in, int *fd_out) {
 		close(STDIN_FILENO);
 		dup(out[0]);
 
-		execv(argv_ptr[0], argv);
-		printf("execv failed\n");
+		execvp(argv_ptr[0], argv);
+		printf("execvp failed\n");
 fail:
 		close(in[0]);
 		close(out[1]);

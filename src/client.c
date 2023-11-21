@@ -32,9 +32,13 @@ struct rect;
 
 int client_destroy(struct client *client) {
 	struct command *command;
+	struct tab *tab;
 	if (!client) return ERROR_NULL_ARGUMENT;
-	if (client->tab) {
-		tab_free(client->tab);
+	for (tab = client->tab; tab->prev; tab = tab->prev) ;
+	while (tab) {
+		struct tab *next = tab->next;
+		tab_free(tab);
+		tab = next;
 	}
 	command = client->commands;
 	while (command) {
@@ -45,6 +49,7 @@ int client_destroy(struct client *client) {
 	known_hosts_free();
 	history_save();
 	history_free();
+	free(bookmarks);
 	if (tb_shutdown()) return ERROR_TERMBOX_FAILURE;
 	return 0;
 }
