@@ -12,6 +12,7 @@ struct client;
 struct rect;
 #include "macro.h"
 #include "error.h"
+#include "config.h"
 #include "gemini.h"
 #include "page.h"
 #include "request.h"
@@ -49,6 +50,7 @@ int client_destroy(struct client *client) {
 	known_hosts_free();
 	history_save();
 	history_free();
+	config_save();
 	free(bookmarks);
 	if (tb_shutdown()) return ERROR_TERMBOX_FAILURE;
 	return 0;
@@ -147,6 +149,8 @@ int client_init(struct client* client) {
 	int ret;
 
 	memset(client, 0, sizeof(*client));
+	if ((ret = storage_init())) return ret;
+	config_load();
 	if ((ret = parser_request_create())) return ret;
 	if ((ret = parser_page_create())) return ret;
 #ifdef ENABLE_IMAGE
@@ -169,7 +173,6 @@ int client_init(struct client* client) {
 		return ret;
 	if ((ret = client_addcommand(client, "help", command_help)))
 		return ret;
-	if ((ret = storage_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;

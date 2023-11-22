@@ -187,8 +187,10 @@ int sandbox_init() {
 	int ret;
 	struct rlimit limit;
 
+	if (!config.enableSandbox) return 0;
+
 	/* prevents from creating large file */
-	limit.rlim_max = limit.rlim_cur = MAXIMUM_LENGTH;
+	limit.rlim_max = limit.rlim_cur = config.maximumBodyLength;
 	if (setrlimit(RLIMIT_FSIZE, &limit))
 		return ERROR_SANDBOX_FAILURE;
 
@@ -225,7 +227,9 @@ int sandbox_init() {
 
 	return 0;
 }
+
 int sandbox_isolate() {
+	if (!config.enableSandbox) return 0;
 	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT))
 		return ERROR_SANDBOX_FAILURE;
 	return 0;

@@ -15,8 +15,7 @@
 #include "error.h"
 #include "proc.h"
 #include "macro.h"
-
-#define IMG_MEMORY 1024 * 1024 * 16
+#include "config.h"
 
 static int _write(int fd, char *data, int length) {
 	int i;
@@ -73,12 +72,12 @@ void image_parser(int in, int out) {
 	size_t length;
 	uint8_t byte;
 
-	data = malloc(IMG_MEMORY);
+	data = malloc(config.imageParserScratchPad);
 	if (!data) return;
-	memset(data, 0, IMG_MEMORY);
-	image_memory_set(data, IMG_MEMORY);
+	memset(data, 0, config.imageParserScratchPad);
+	image_memory_set(data, config.imageParserScratchPad);
 
-	length = IMG_MEMORY;
+	length = config.imageParserScratchPad;
 	data = malloc(length);
 	if (!data) return;
 	memset(data, 0, length);
@@ -129,7 +128,7 @@ void *image_parse(void *data, int len, int *x, int *y) {
 	OK(_x == -1);
 	OK(_read(image_fd_in, P(_y)));
 	size = _x * _y * 3;
-	OK(size < 1 || size > IMG_MEMORY);
+	OK(size < 1 || size > config.imageParserScratchPad);
 	img = malloc(size);
 	if (!img || _read(image_fd_in, img, size)) {
 		free(img);
@@ -141,6 +140,7 @@ void *image_parse(void *data, int len, int *x, int *y) {
 }
 
 int image_init() {
+	if (!config.enableImage) return 0;
 	return proc_fork("--image", &image_fd_in, &image_fd_out);
 }
 

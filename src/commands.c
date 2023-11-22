@@ -8,6 +8,7 @@
 #include "strlcpy.h"
 #include "macro.h"
 #include "strnstr.h"
+#include "config.h"
 #include "page.h"
 #include "client.h"
 #include "tab.h"
@@ -65,7 +66,7 @@ int command_search(struct client *client, const char* ptr, size_t len) {
 	if (!client->tab || !len) return 0;
 	if (need_argument(client, ptr, len, "Empty query")) return 0;
 
-	snprintf(V(url), "gemini://geminispace.info/search?%s", ptr);
+	snprintf(V(url), config.searchEngineURL, ptr);
 
 	if ((ret = tab_request(client->tab, url))) {
 		client->error = 1;

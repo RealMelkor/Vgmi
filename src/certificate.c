@@ -12,9 +12,7 @@
 #endif
 #include "storage.h"
 #include "strlcpy.h"
-
-#define EXPIRATION 3600 * 24 * 365 * 2
-#define CERTIFICATE_BITS 2048
+#include "config.h"
 
 int certificate_getpath(const char *host, char *crt, size_t crt_len,
 				char *key, size_t key_len) {
@@ -45,7 +43,7 @@ int certificate_create(char *host, char *error, int errlen) {
 	BIGNUM *bne = BN_new();
 	X509 *x509 = X509_new();
 	if (BN_set_word(bne, 65537) != 1) goto failed;
-	if (RSA_generate_key_ex(rsa, CERTIFICATE_BITS, bne, NULL) != 1)
+	if (RSA_generate_key_ex(rsa, config.certificateBits, bne, NULL) != 1)
 		goto failed;
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
@@ -60,7 +58,7 @@ int certificate_create(char *host, char *error, int errlen) {
 		goto failed;
 
 	X509_gmtime_adj(X509_getm_notBefore(x509), 0);
-	X509_gmtime_adj(X509_getm_notAfter(x509), EXPIRATION);
+	X509_gmtime_adj(X509_getm_notAfter(x509), config.certificateLifespan);
 
 	if (X509_set_pubkey(x509, pkey) != 1) goto failed;
 

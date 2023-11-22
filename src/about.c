@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include "macro.h"
+#include "config.h"
 #include "gemini.h"
 #include "page.h"
 #include "request.h"
@@ -62,6 +63,16 @@ HEADER \
 "IPC access\t\t\t: "SANDBOX_IPC"\n" \
 "Devices access\t\t: "SANDBOX_DEVICE"\n" \
 "Parser isolation\t: "SANDBOX_PARSER"\n";
+
+char sandbox_disabled_page[] =
+HEADER \
+"# Sandbox information\n\n" \
+"The sandbox is disabled, enable it in about:config.\n" \
+"Filesystem access\t: Unrestricted\n" \
+"IPC access\t\t\t: Unrestricted\n" \
+"Devices access\t\t: Unrestricted\n" \
+"Parser isolation\t: Unrestricted\n";
+
 
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
@@ -140,6 +151,9 @@ int about_parse(struct request *request) {
 		return parse_data(request, data, length - 1);
 	}
 	if (!strcmp(request->url, "about:sandbox")) {
+		if (!config.enableSandbox) {
+			return static_page(request, V(sandbox_disabled_page));
+		}
 		return static_page(request, V(sandbox_page));
 	}
 	return ERROR_INVALID_URL;

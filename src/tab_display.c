@@ -56,7 +56,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 
 	if (!req) return;
 
-	if (req->length > MAXIMUM_DISPLAY_LENGTH) {
+	if (req->length > config.maximumDisplayLength) {
 		tb_printf(rect.x + 2, rect.y + 1, TB_RED, TB_DEFAULT,
 			"The response is too large to be displayed : "
 			"%d bytes", req->length);
@@ -64,7 +64,7 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	}
 
 #ifdef ENABLE_IMAGE
-	if (req->page.mime == MIME_IMAGE) {
+	if (config.enableImage && req->page.mime == MIME_IMAGE) {
 		if (!req->page.img && !req->page.img_tried) {
 			int offset = req->page.offset;
 			req->page.img = image_parse(

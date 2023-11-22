@@ -175,7 +175,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 
 	ptr = NULL;
 	i = len = allocated = 0;
-	while (len < MAXIMUM_LENGTH) {
+	while (len < config.maximumBodyLength) {
 		if (len + sizeof(buf) > allocated) {
 			char *tmp;
 			allocated += sizeof(buf);
@@ -192,7 +192,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		memcpy(&ptr[len], buf, i);
 		len += i;
 	}
-	if (len >= MAXIMUM_LENGTH) {
+	if (len >= config.maximumBodyLength) {
 		free(ptr);
 		return ERROR_RESPONSE_TOO_LARGE;
 	}

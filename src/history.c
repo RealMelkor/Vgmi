@@ -11,6 +11,7 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
+#include "config.h"
 #include "utf8.h"
 #include "storage.h"
 #define HISTORY_INTERNAL
@@ -22,11 +23,13 @@ pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct history_entry *history = NULL;
 
 int history_load(const char *path) {
+
 	struct history_entry entry = {0};
 	struct history_entry *last = NULL;
-	FILE *f = storage_fopen(path, "r");
+	FILE *f;
 	unsigned int i, part;
-	if (!f) return ERROR_STORAGE_ACCESS;
+
+	if (!(f = storage_fopen(path, "r"))) return ERROR_STORAGE_ACCESS;
 
 	i = part = 0;
 	while (1) {
@@ -88,6 +91,7 @@ int history_load(const char *path) {
 }
 
 void history_init() {
+	if (!config.enableHistory) return;
 	history_load(HISTORY);
 }
 
@@ -111,7 +115,10 @@ int history_save() {
 }
 
 int history_add(const char *url, const char *title) {
+
 	struct history_entry *entry;
+
+	if (!config.enableHistory) return 0;
 	entry = malloc(sizeof(*entry));
 	if (!entry) return ERROR_MEMORY_FAILURE;
 	UTF8CPY(entry->title, title);

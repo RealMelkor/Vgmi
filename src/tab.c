@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include "termbox.h"
 #include "macro.h"
+#include "config.h"
 #include "client.h"
 #include "gemini.h"
 #include "page.h"
@@ -17,9 +18,6 @@
 #include "tab.h"
 #include "strlcpy.h"
 #include "error.h"
-
-#define MAX_CACHED_PAGE 15
-#define MAX_REDIRECT 5
 
 struct request_thread {
 	pthread_t thread;
@@ -66,7 +64,7 @@ void tab_clean_requests(struct tab *tab) {
 	found = 0;
 	for (request = tab->request; request; request = request->next) {
 		if (request->state == STATE_COMPLETED) {
-			if (found++ > MAX_CACHED_PAGE)
+			if (found++ > config.maximumCachedPages)
 				request->state = STATE_ENDED;
 		}
 	}
@@ -104,7 +102,7 @@ void* tab_request_thread(void *ptr) {
 
 	iterations = 0;
 restart:
-	if (iterations > MAX_REDIRECT) {
+	if (iterations > config.maximumCachedPages) {
 		request.error = ERROR_TOO_MANY_REDIRECT;
 		error_string(request.error, V(tab->error));
 		tab->failure = 1;
