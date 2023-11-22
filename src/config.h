@@ -29,23 +29,26 @@ struct field {
 	char name[128];
 	int type;
 	void *ptr;
+	int restart;
 };
 
 static struct field fields[] = {
-	{"hexviewer.enabled", VALUE_INT, &config.enableHexViewer},
-	{"image.enabled", VALUE_INT, &config.enableImage},
-	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad},
-	{"sandbox.enabled", VALUE_INT, &config.enableSandbox},
-	{"history.enabled", VALUE_INT, &config.enableHistory},
-	{"certificate.bits", VALUE_INT, &config.certificateBits},
-	{"certificate.expiration", VALUE_INT, &config.certificateLifespan},
-	{"request.maxbody", VALUE_INT, &config.maximumBodyLength},
-	{"request.maxdisplay", VALUE_INT, &config.maximumDisplayLength},
-	{"request.maxredirects", VALUE_INT, &config.maximumRedirects},
-	{"request.cachedpages", VALUE_INT, &config.maximumCachedPages},
-	{"search.url", VALUE_STRING, &config.searchEngineURL},
+	{"hexviewer.enabled", VALUE_INT, &config.enableHexViewer, 0},
+	{"image.enabled", VALUE_INT, &config.enableImage, 1},
+	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad, 1},
+	{"sandbox.enabled", VALUE_INT, &config.enableSandbox, 1},
+	{"history.enabled", VALUE_INT, &config.enableHistory, 0},
+	{"certificate.bits", VALUE_INT, &config.certificateBits, 0},
+	{"certificate.expiration", VALUE_INT, &config.certificateLifespan, 0},
+	{"request.maxbody", VALUE_INT, &config.maximumBodyLength, 0},
+	{"request.maxdisplay", VALUE_INT, &config.maximumDisplayLength, 0},
+	{"request.maxredirects", VALUE_INT, &config.maximumRedirects, 0},
+	{"request.cachedpages", VALUE_INT, &config.maximumCachedPages, 0},
+	{"search.url", VALUE_STRING, &config.searchEngineURL, 0},
 };
 #endif
 
 int config_load();
 int config_save();
+int config_set_field(int id, const char *value);
+int config_correction();

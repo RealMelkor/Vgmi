@@ -76,8 +76,8 @@ HEADER \
 
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
-	const size_t sum = (dst ? *dst_length : 0) + src_len + 1;
-	void *ptr = realloc(dst, sum);
+	const size_t sum = (dst ? *dst_length : 0) + src_len + 2;
+	void *ptr = realloc(dst, sum + 1);
 	if (!ptr) return NULL;
 	dst = ptr;
 	strlcpy(&dst[*dst_length ? strnlen(dst, *dst_length) : 0], src, sum);
@@ -156,9 +156,20 @@ int about_parse(struct request *request) {
 		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:config")) {
+		int query = ptr ? (strchr(param, '?') != NULL) : 0;
 		ret = ptr ? about_config_arg(param, &data, &length) :
 				about_config(&data, &length);
 		if (ret) return ret;
+		if (ptr) {
+			int len = strnlen(V(request->url));
+			if (len + strnlen(V(param)) + 1 > sizeof(request->url))
+				return ERROR_INVALID_ARGUMENT;
+			request->url[len] = '/';
+			strlcpy(&request->url[len + 1], param,
+					sizeof(request->url) - len - 1);
+		}
+		/* reset url on succesful query */
+		if (query) STRLCPY(request->url, "about:config");
 		return parse_data_(request, data, length - 1,
 					ptr ? GMI_INPUT : GMI_SUCCESS);
 	}

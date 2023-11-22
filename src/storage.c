@@ -192,3 +192,9 @@ int storage_init() {
 	download_fd = ret;
 	return 0;
 }
+
+int storage_close() {
+	close(storage_fd);
+	close(download_fd);
+	return 0;
+}

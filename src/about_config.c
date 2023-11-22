@@ -13,12 +13,27 @@
 #define ABOUT_INTERNAL
 #include "about.h"
 
-int about_config_arg(const char *param, char **out, size_t *length_out) {
-	int id = atoi(param);
+int about_config_arg(char *param, char **out, size_t *length_out) {
+	int id, len;
 	size_t length = 0;
 	char *data;
-	if (!id && strcmp(param, "0")) return ERROR_INVALID_ARGUMENT;
-	if (!(data = dyn_strcat(NULL, &length, V("10 test\r\n11\0"))))
+	char *query = strchr(param, '?');
+	char buf[1024];
+	if (query) {
+		*query = '\0';
+		query++;
+	}
+	id = atoi(param);
+	if ((!id && strcmp(param, "0")) || (unsigned)id > LENGTH(fields)) {
+		return ERROR_INVALID_ARGUMENT;
+	}
+	if (query) {
+		int ret = config_set_field(id, query);
+		if (ret) return ret;
+		return about_config(out, length_out);
+	}
+	len = snprintf(V(buf), "10 %s\r\n0", fields[id].name);
+	if (!(data = dyn_strcat(NULL, &length, buf, len)))
 		return ERROR_MEMORY_FAILURE;
 	*out = data;
 	*length_out = length;
@@ -38,14 +53,17 @@ int about_config(char **out, size_t *length_out) {
 	for (i = 0; i < LENGTH(fields); i++) {
 		char buf[2048];
 		int len = 0;
+		char *info = fields[i].restart ? "(Restart required)" : "";
 		switch (fields[i].type) {
 		case VALUE_INT:
-	       		len = snprintf(V(buf), "=>%d %s = %d\n", i,
-					fields[i].name, *(int*)fields[i].ptr);
+			len = snprintf(V(buf), "=>%d %s = %d %s\n", i,
+					fields[i].name, *(int*)fields[i].ptr,
+					info);
 			break;
 		case VALUE_STRING:
-	       		len = snprintf(V(buf), "=>%d %s = %s\n", i,
-					fields[i].name, (char*)fields[i].ptr);
+			len = snprintf(V(buf), "=>%d %s = %s %s\n", i,
+					fields[i].name, (char*)fields[i].ptr,
+					info);
 			break;
 		}
 		if (!len) continue;

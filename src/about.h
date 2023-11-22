@@ -56,7 +56,7 @@ int about_newtab(char **out, size_t *length_out);
 int about_certificates(char **out, size_t *length_out);
 int about_certificates_param(const char *param);
 int about_config(char **out, size_t *length_out);
-int about_config_arg(const char *param, char **out, size_t *length_out);
+int about_config_arg(char *param, char **out, size_t *length_out);
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len);
 #endif

@@ -7,6 +7,7 @@
 #endif
 
 #ifdef ENABLE_IMAGE
+extern int image_process;
 int image_init();
 int image_display(unsigned char* data, int w, int h, int offsety);
 void image_memory_set(void *memory, size_t len);

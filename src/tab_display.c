@@ -64,7 +64,8 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 	}
 
 #ifdef ENABLE_IMAGE
-	if (config.enableImage && req->page.mime == MIME_IMAGE) {
+	if (image_process && config.enableImage &&
+			req->page.mime == MIME_IMAGE) {
 		if (!req->page.img && !req->page.img_tried) {
 			int offset = req->page.offset;
 			req->page.img = image_parse(
@@ -82,6 +83,12 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 		return;
 	}
 #endif
+	if (!config.enableHexViewer && req->page.mime != MIME_GEMTEXT &&
+			req->page.mime != MIME_GEMTEXT) {
+		tb_printf(2, rect.y + 1, TB_RED, TB_DEFAULT,
+				"Unable to display binary data.");
+		return;
+	}
 	if (req->page.width != rect.w - rect.x) {
 		/* TODO: should be done in the background */
 		tab_display_update(req, rect);

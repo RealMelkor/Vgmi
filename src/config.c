@@ -8,6 +8,7 @@
 #include <string.h>
 #include "macro.h"
 #include "strlcpy.h"
+#include "strnstr.h"
 #include "error.h"
 #include "image.h"
 #include "storage.h"
@@ -53,6 +54,28 @@ static int set_field(struct field field, int v, char *str) {
 		}
 		break;
 	}
+	return 0;
+}
+
+int config_set_field(int id, const char *value) {
+	if (id < 0 || (unsigned)id > LENGTH(fields))
+		return ERROR_INVALID_ARGUMENT;
+	switch (fields[id].type) {
+	case VALUE_INT:
+		{
+			int ivalue = atoi(value);
+			if (!ivalue && strcmp(value, "0"))
+				return ERROR_INVALID_ARGUMENT;
+			*(int*)fields[id].ptr = ivalue;
+		}
+		break;
+	case VALUE_STRING:
+		strlcpy(fields[id].ptr, value, CONFIG_STRING_LENGTH);
+		break;
+	default:
+		return ERROR_INVALID_ARGUMENT;
+	}
+	config_correction();
 	return 0;
 }
 
@@ -107,6 +130,7 @@ int config_load() {
 	}
 	
 	fclose(f);
+	config_correction();
 	return 0;
 }
 
@@ -130,5 +154,29 @@ int config_save() {
 	}
 
 	fclose(f);
+	return 0;
+}
+
+int config_correction() {
+	size_t i;
+	for (i = 0; i < LENGTH(fields); i++) {
+		if (!STRCMP(fields[i].name, "request.maxdisplay")) {
+			unsigned int *value =  fields[i].ptr;
+			if (*value < 4096) *value = 4096;
+		}
+		if (!STRCMP(fields[i].name, "search.url")) {
+			char *value = fields[i].ptr;
+			char *ptr = strnstr(value, "%s", CONFIG_STRING_LENGTH);
+			char *second;
+			if (ptr) {
+				second = strnstr(ptr + 1, "%s",
+					CONFIG_STRING_LENGTH - (ptr - value));
+			}
+			if (!ptr || second) {
+				strlcpy(fields[i].ptr, DEFAULT_SEARCH_URL,
+						CONFIG_STRING_LENGTH);
+			}
+		}
+	}
 	return 0;
 }

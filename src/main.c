@@ -17,6 +17,8 @@
 #include "image.h"
 #include "tab.h"
 #include "proc.h"
+#include "storage.h"
+#include "config.h"
 
 int main(int argc, char *argv[]) {
 	
@@ -27,6 +29,9 @@ int main(int argc, char *argv[]) {
 	if (argc > 1) {
 #ifdef ENABLE_IMAGE
 		if (!strcmp(argv[1], "--image")) {
+			if (storage_init()) return -1;
+			config_load();
+			storage_close();
 			image_parser(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
 			return 0;

@@ -17,6 +17,8 @@
 #include "macro.h"
 #include "config.h"
 
+int image_process = 0;
+
 static int _write(int fd, char *data, int length) {
 	int i;
 	for (i = 0; i < length;) {
@@ -140,8 +142,12 @@ void *image_parse(void *data, int len, int *x, int *y) {
 }
 
 int image_init() {
+	int ret;
 	if (!config.enableImage) return 0;
-	return proc_fork("--image", &image_fd_in, &image_fd_out);
+	ret = proc_fork("--image", &image_fd_in, &image_fd_out);
+	if (ret) return ret;
+	image_process = 1;
+	return 0;
 }
 
 static int color_abs(int c, int x, int i) {
