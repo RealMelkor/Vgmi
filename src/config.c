@@ -9,39 +9,15 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
-#include "config.h"
 #include "image.h"
 #include "storage.h"
+#define CONFIG_INTERNAL
+#include "config.h"
 
 #define DEFAULT_SEARCH_URL "gemini://geminispace.info/search?%s"
 #define CONFIG_FILE "config.conf"
 
-enum {
-	VALUE_STRING,
-	VALUE_INT
-};
-
 struct config config = {0};
-struct field {
-	char name[128];
-	int type;
-	void *ptr;
-};
-
-struct field fields[] = {
-	{"hexviewer.enabled", VALUE_INT, &config.enableHexViewer},
-	{"image.enabled", VALUE_INT, &config.enableImage},
-	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad},
-	{"sandbox.enabled", VALUE_INT, &config.enableSandbox},
-	{"history.enabled", VALUE_INT, &config.enableHistory},
-	{"certificate.bits", VALUE_INT, &config.certificateBits},
-	{"certificate.expiration", VALUE_INT, &config.certificateLifespan},
-	{"request.maxbody", VALUE_INT, &config.maximumBodyLength},
-	{"request.maxdisplay", VALUE_INT, &config.maximumDisplayLength},
-	{"request.maxredirects", VALUE_INT, &config.maximumRedirects},
-	{"request.cachedpages", VALUE_INT, &config.maximumCachedPages},
-	{"search.url", VALUE_STRING, &config.searchEngineURL},
-};
 
 void config_default() {
 	memset(&config, 0, sizeof(config));

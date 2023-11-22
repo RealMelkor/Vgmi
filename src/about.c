@@ -85,6 +85,15 @@ void *dyn_strcat(char *dst, size_t *dst_length,
 	return dst;
 }
 
+static int parse_data_(struct request *request,
+			char *data, size_t len, int status) {
+	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
+	request->status = status;
+	request->length = len;
+	free(data);
+	return parse_request(NULL, request);
+}
+
 static int parse_data(struct request *request, char *data, size_t len) {
 	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
 	request->status = GMI_SUCCESS;
@@ -145,6 +154,13 @@ int about_parse(struct request *request) {
 		if (ptr && (ret = about_known_hosts_arg(param))) return ret;
 		if ((ret = about_known_hosts(&data, &length))) return ret;
 		return parse_data(request, data, length);
+	}
+	if (!strcmp(request->url, "about:config")) {
+		ret = ptr ? about_config_arg(param, &data, &length) :
+				about_config(&data, &length);
+		if (ret) return ret;
+		return parse_data_(request, data, length - 1,
+					ptr ? GMI_INPUT : GMI_SUCCESS);
 	}
 	if (!strcmp(request->url, "about:history")) {
 		if ((ret = about_history(&data, &length))) return ret;

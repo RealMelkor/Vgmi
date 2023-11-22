@@ -7,6 +7,7 @@
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
+#include "config.h"
 #define ABOUT_INTERNAL
 #include "about.h"
 #define HISTORY_INTERNAL
@@ -21,6 +22,10 @@ int about_history(char **out, size_t *length_out) {
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
+	if (!config.enableHistory) {
+		const char str[] = "History is disabled\n";
+		if (!(data = dyn_strcat(data, &length, V(str)))) goto fail;
+	}
 
 	for (entry = history; entry; entry = entry->next) {
 		char buf[sizeof(*entry)];
