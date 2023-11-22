@@ -12,3 +12,22 @@ int command_newtab(struct client *client, const char* ptr, size_t len);
 int command_download(struct client *client, const char* ptr, size_t len);
 int command_add(struct client *client, const char* args, size_t len);
 int command_help(struct client *client, const char* args, size_t len);
+
+struct command {
+	char name[MAX_CMD_NAME];
+	int (*command)(struct client*, const char*, size_t);
+};
+
+static struct command commands[] = {
+	{"qa",		command_quit},
+	{"q",		command_close},
+	{"o",		command_open},
+	{"s",		command_search},
+	{"add",		command_add},
+	{"nt",		command_newtab},
+	{"tabnew",	command_newtab},
+	{"gencert",	command_gencert},
+	{"forget",	command_forget},
+	{"download",	command_download},
+	{"help",	command_help},
+};

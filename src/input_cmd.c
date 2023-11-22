@@ -14,6 +14,7 @@
 #include "page.h"
 #include "request.h"
 #include "client.h"
+#include "commands.h"
 #include "tab.h"
 #include "error.h"
 #include "parser.h"
@@ -39,7 +40,6 @@ static void refresh_search(struct client *client) {
 
 int handle_cmd(struct client *client) {
 
-	struct command *command;
 	const char invalid[] = "Invalid command: %s";
 	char name[MAX_CMD_NAME], cmd[MAX_CMDLINE - sizeof(invalid)];
 	size_t i;
@@ -71,13 +71,12 @@ int handle_cmd(struct client *client) {
 		for (; i < len; i++)
 			name[i] = cmd[i];
 	}
-	for (command = client->commands; command; command = command->next) {
-		if (STRCMP(command->name, name)) continue;
-		{
-			i = strnlen(V(command->name));
-			for (; cmd[i] && WHITESPACE(cmd[i]); i++) ;
-		}
-		if (command->command(client, &cmd[i], sizeof(cmd) - i))
+	for (i = 0; i < LENGTH(commands); i++) {
+		int j;
+		if (STRCMP(commands[i].name, name)) continue;
+		j = strnlen(V(commands[i].name));
+		for (; cmd[j] && WHITESPACE(cmd[j]); j++) ;
+		if (commands[i].command(client, &cmd[j], sizeof(cmd) - j))
 			return 1;
 		return 0;
 	}

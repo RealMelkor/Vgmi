@@ -18,7 +18,6 @@ struct rect;
 #include "request.h"
 #include "tab.h"
 #include "client.h"
-#include "commands.h"
 #include "termbox.h"
 #include "utf8.h"
 #include "input.h"
@@ -32,7 +31,6 @@ struct rect;
 #include "history.h"
 
 int client_destroy(struct client *client) {
-	struct command *command;
 	struct tab *tab;
 	if (!client) return ERROR_NULL_ARGUMENT;
 	for (tab = client->tab; tab && tab->prev; tab = tab->prev) ;
@@ -40,12 +38,6 @@ int client_destroy(struct client *client) {
 		struct tab *next = tab->next;
 		tab_free(tab);
 		tab = next;
-	}
-	command = client->commands;
-	while (command) {
-		struct command *next = command->next;
-		free(command);
-		command = next;
 	}
 	known_hosts_free();
 	history_save();
@@ -128,22 +120,6 @@ int client_input(struct client *client) {
 	return 0;
 }
 
-int client_addcommand(struct client *client, const char *name,
-			int (*cmd)(struct client*, const char*, size_t)) {
-
-	struct command *command;
-
-	if (strlen(name) > sizeof(command->name))
-		return ERROR_INVALID_COMMAND_NAME;
-        command	= malloc(sizeof(struct command));
-	if (!command) return ERROR_MEMORY_FAILURE;
-	command->command = cmd;
-	STRLCPY(command->name, name);
-	command->next = client->commands;
-	client->commands = command;
-	return 0;
-}
-
 int client_init(struct client* client) {
 
 	int ret;
@@ -156,23 +132,6 @@ int client_init(struct client* client) {
 #ifdef ENABLE_IMAGE
 	if ((ret = image_init())) return ret;
 #endif
-	if ((ret = client_addcommand(client, "qa", command_quit))) return ret;
-	if ((ret = client_addcommand(client, "q", command_close))) return ret;
-	if ((ret = client_addcommand(client, "o", command_open))) return ret;
-	if ((ret = client_addcommand(client, "s", command_search))) return ret;
-	if ((ret = client_addcommand(client, "add", command_add))) return ret;
-	if ((ret = client_addcommand(client, "nt", command_newtab)))
-		return ret;
-	if ((ret = client_addcommand(client, "tabnew", command_newtab)))
-		return ret;
-	if ((ret = client_addcommand(client, "gencert", command_gencert)))
-		return ret;
-	if ((ret = client_addcommand(client, "forget", command_forget)))
-		return ret;
-	if ((ret = client_addcommand(client, "download", command_download)))
-		return ret;
-	if ((ret = client_addcommand(client, "help", command_help)))
-		return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;

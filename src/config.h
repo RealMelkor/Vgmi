@@ -1,3 +1,7 @@
+/*
+ * ISC License
+ * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ */
 #define CONFIG_STRING_LENGTH 1024
 struct config {
 	unsigned int	maximumBodyLength;

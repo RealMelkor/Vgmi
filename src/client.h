@@ -20,12 +20,6 @@ enum {
 
 struct client;
 
-struct command {
-	char name[MAX_CMD_NAME];
-	int (*command)(struct client*, const char*, size_t);
-	struct command *next;
-};
-
 struct client {
 	int count;
 	int mode;
@@ -36,7 +30,6 @@ struct client {
 	char prefix[MAX_PREFIX];
 	int cursor;
 	int error;
-	struct command *commands;
 	int (*motion)(struct client*, int, int);
 	struct tab *tab;
 	/* internal */
@@ -52,5 +45,3 @@ struct rect client_display_rect(struct client*);
 int client_input(struct client*);
 int client_newtab(struct client *client, const char *url);
 int client_closetab(struct client *client);
-int client_addcommand(struct client*, const char*,
-			int (*)(struct client *, const char*, size_t));
