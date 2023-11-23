@@ -83,6 +83,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_RESPONSE_TOO_LARGE:
 		strlcpy(out, "The server response is too large", len);
 		break;
+	case ERROR_XDG:
+		strlcpy(out, "Unable to open the link", len);
+		break;
 	default:
 		snprintf(out, len, "Unknown error (%d)", error);
 		return -1;

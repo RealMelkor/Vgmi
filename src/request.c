@@ -21,6 +21,7 @@ struct request;
 #include "error.h"
 #include "parser.h"
 #include "history.h"
+#include "xdg.h"
 
 int request_process(struct request *request, struct secure *secure,
 			const char *url) {
@@ -38,6 +39,16 @@ int request_process(struct request *request, struct secure *secure,
 	}
 
 	if ((ret = url_parse(request, url))) goto failed;
+#ifndef DISABLE_XDG
+	if (xdg_available() && (
+			request->protocol == PROTOCOL_HTTP ||
+			request->protocol == PROTOCOL_HTTPS ||
+			request->protocol == PROTOCOL_GOPHER)) {
+		if ((ret = xdg_request(url))) goto failed;
+		request->state = STATE_CANCELED;
+		return 0;
+	}
+#endif
 	if (request->protocol != PROTOCOL_GEMINI) {
 		ret = ERROR_UNSUPPORTED_PROTOCOL;
 		goto failed;

@@ -125,6 +125,9 @@ restart:
 	} else if (req->state == STATE_CANCELED) {
 		request_free_ref(request);
 		confirm = 0;
+	} else if (request.state == STATE_CANCELED) {
+		confirm = 0;
+		req->state = STATE_CANCELED;
 	} else if (failure) {
 		{
 			char error[1024];

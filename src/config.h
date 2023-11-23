@@ -15,6 +15,7 @@ struct config {
 	int		enableSandbox;
 	int		enableImage;
 	int		enableHexViewer;
+	int		enableXdg;
 	char		searchEngineURL[CONFIG_STRING_LENGTH];
 };
 extern struct config config;
@@ -37,6 +38,7 @@ static struct field fields[] = {
 	{"image.enabled", VALUE_INT, &config.enableImage, 1},
 	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad, 1},
 	{"sandbox.enabled", VALUE_INT, &config.enableSandbox, 1},
+	{"xdg.enabled", VALUE_INT, &config.enableXdg, 1},
 	{"history.enabled", VALUE_INT, &config.enableHistory, 0},
 	{"certificate.bits", VALUE_INT, &config.certificateBits, 0},
 	{"certificate.expiration", VALUE_INT, &config.certificateLifespan, 0},

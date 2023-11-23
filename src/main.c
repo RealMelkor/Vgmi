@@ -19,6 +19,7 @@
 #include "proc.h"
 #include "storage.h"
 #include "config.h"
+#include "xdg.h"
 
 int main(int argc, char *argv[]) {
 	
@@ -34,6 +35,12 @@ int main(int argc, char *argv[]) {
 			storage_close();
 			image_parser(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
+			return 0;
+		}
+#endif
+#ifndef DISABLE_XDG
+		if (!strcmp(argv[1], "--xdg")) {
+			xdg_proc(STDIN_FILENO, STDOUT_FILENO);
 			return 0;
 		}
 #endif

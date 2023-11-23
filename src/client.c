@@ -29,6 +29,7 @@ struct rect;
 #include "bookmarks.h"
 #include "image.h"
 #include "history.h"
+#include "xdg.h"
 
 int client_destroy(struct client *client) {
 	struct tab *tab;
@@ -131,6 +132,9 @@ int client_init(struct client* client) {
 	if ((ret = parser_page_create())) return ret;
 #ifdef ENABLE_IMAGE
 	if ((ret = image_init())) return ret;
+#endif
+#ifndef XDG_DISABLE
+	if (xdg_available()) if ((ret = xdg_init())) return ret;
 #endif
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;

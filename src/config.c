@@ -28,6 +28,7 @@ void config_default() {
 	config.enableSandbox = 1;
 	config.enableImage = 1;
 	config.enableHistory = 1;
+	config.enableXdg = 1;
 	config.maximumBodyLength = 8388608;
 	config.maximumDisplayLength = 1048576;
 	config.imageParserScratchPad = 10485760;
@@ -88,7 +89,7 @@ int config_load() {
 	if (!(f = storage_fopen(CONFIG_FILE, "r")))
 		return ERROR_STORAGE_ACCESS;
 
-	in_str = i = 0;
+	in_comment = in_str = i = 0;
 	while (1) {
 		int ch = fgetc(f);
 		if (ch == EOF || ch == '\n') {
