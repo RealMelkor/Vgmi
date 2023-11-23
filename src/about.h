@@ -19,8 +19,8 @@
 "* j - Scroll up\n" \
 "* gT - Switch to the previous tab\n" \
 "* gt - Switch to the next tab\n" \
-"* h - Go back in history\n" \
-"* l - Go forward in history\n" \
+"* h - Go back to the previous page\n" \
+"* l - Go forward to the next page\n" \
 "* gg - Go at the top of the page\n" \
 "* G - Go at the bottom of the page\n" \
 "* / - Open search mode\n" \

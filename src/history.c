@@ -33,24 +33,9 @@ int history_load(const char *path) {
 
 	i = part = 0;
 	while (1) {
-		int ch = fgetc(f);
+		uint32_t ch;
 		char *ptr;
-		int len = utf8_char_length(ch);
-		if (len > 1) {
-			char buf[32];
-			int pos = 0;
-			if ((unsigned)len >= sizeof(buf)) break;
-			buf[pos] = ch;
-			for (pos = 1; pos < len; pos++) {
-				ch = fgetc(f);
-				if (ch == EOF) break;
-				buf[pos] = ch;
-			}
-			if (ch == EOF) break;
-			buf[pos] = 0;
-			utf8_char_to_unicode((uint32_t*)&ch, buf);
-		}
-		if (ch == EOF) break;
+		if (utf8_fgetc(f, &ch)) break;
 		if (ch == '\n') {
 			struct history_entry *new;
 			i = 0;

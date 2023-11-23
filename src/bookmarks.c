@@ -21,7 +21,7 @@ int bookmark_load() {
 
 	size_t i, j;
 	FILE *f = storage_fopen(FILENAME, "r");
-	int space;
+	int space, eof;
 
 	if (!f) { /* default bookmarks */
 		bookmark_add("gemini://geminispace.info", "Geminispace");
@@ -30,15 +30,19 @@ int bookmark_load() {
 		bookmark_add("about:about", "Settings");
 		return 0;
 	}
-	while (1) {
-		int ch;
+	eof = 0;
+	while (!eof) {
+		uint32_t ch;
 		void *ptr;
 		struct bookmark bookmark = {0};
 		ch = j = space = 0;
 		for (i = 0; ; i++) {
 			int len;
-			ch = fgetc(f);
-			if (ch == EOF || ch == '\n') break;
+			if (utf8_fgetc(f, &ch)) {
+				eof = 1;
+				break;
+			}
+			if (ch == '\n') break;
 			if (space < 2 && WHITESPACE(ch)) {
 				space = 1;
 				continue;
@@ -76,8 +80,8 @@ int bookmark_load() {
 			bookmarks = ptr;
 			bookmarks[bookmark_length - 1] = bookmark;
 		}
-		if (ch == EOF) break;
-		if (ch != '\n') {
+		if (!eof && ch != '\n') {
+			int ch;
 			while (1) {
 				ch = fgetc(f);
 				if (ch == '\n' || ch == EOF) break;

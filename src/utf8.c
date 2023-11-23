@@ -3,6 +3,7 @@
  * Copyright (c) 2010-2020 nsf <no.smile.face@gmail.com>
  *		 2015-2022 Adam Saponara <as@php.net>
  */
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "wcwidth.h"
@@ -136,5 +137,30 @@ int utf8_cpy(char *dst, const char *src, size_t length) {
 			i++;
 		}
 	}
+	return 0;
+}
+
+int utf8_fgetc(FILE *f, uint32_t *out) {
+
+	int ch, len;
+
+	ch = fgetc(f);
+	len = utf8_char_length(ch);
+	if (ch == EOF) return EOF;
+	if (len > 1) {
+		char buf[32];
+		int pos = 0;
+		if ((unsigned)len >= sizeof(buf)) return -1;
+		buf[pos] = ch;
+		for (pos = 1; pos < len; pos++) {
+			ch = fgetc(f);
+			if (ch == EOF) return EOF;
+			buf[pos] = ch;
+		}
+		buf[pos] = 0;
+		utf8_char_to_unicode((uint32_t*)&ch, buf);
+	}
+	*out = ch;
+
 	return 0;
 }

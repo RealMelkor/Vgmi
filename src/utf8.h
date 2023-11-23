@@ -11,3 +11,4 @@ const char *utf8_next(const char **ptr);
 int utf8_previous(const char *ptr, int i);
 int utf8_width(const char *ptr, size_t length);
 int utf8_cpy(char *dst, const char *src, size_t length);
+int utf8_fgetc(FILE *f, uint32_t *out);

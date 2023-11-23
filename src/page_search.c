@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #define PAGE_INTERNAL

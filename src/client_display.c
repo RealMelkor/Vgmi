@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -124,9 +125,14 @@ void client_draw(struct client* client) {
 	} else {
 		int expired = 0, fg = TB_REVERSE | TB_DEFAULT, bg = TB_DEFAULT;
 		if (req && known_hosts_expired(req->name) > 0) {
+			int i;
 			expired = 1;
 			fg = TB_WHITE;
 			bg = TB_RED;
+			for (i = 0; i < client->width; i++) {
+				tb_set_cell(
+					i, client->height - 2, ' ', fg, bg);
+			}
 		}
 		tb_printf(0, client->height - 2, fg, bg, "%s%s (%s)",
 				expired ? "[Certificate expired] " : "",
