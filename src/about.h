@@ -29,7 +29,7 @@
 "* b - Open about:bookmarks in a new tab\n" \
 "* f - Open about:history in a new tab\n" \
 "* r - Reload the page\n" \
-"* [number]Tab - Scroll up\n" \
+"* [number]Tab - Select link\n" \
 "* Tab - Follow the selected link\n" \
 "* Shift+Tab - Open the selected link in a new tab\n\n" \
 "You can prefix a movement key with a number to repeat it.\n\n" \
@@ -41,8 +41,8 @@
 "* :nt [url] - Open a new tab, the url is optional\n" \
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
 "* :[number] - Scroll to the line number\n" \
-"* :gencert - Generate a certificate for the current capsule\n" \
-"* :forget <host> - Forget the certificate for an host\n" \
+"* :gencert - Generate a client-certificate for the current capsule\n" \
+"* :forget <host> - Forget the certificate for the host\n" \
 "* :download [name] - Download the current page, the name is optional\n" \
 "* :help - Open about:help in a new tab\n"
 #define HEADER "20 text/gemini\r\n"
