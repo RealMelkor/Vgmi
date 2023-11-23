@@ -5,13 +5,13 @@ PREFIX = /usr
 CC = cc
 
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
-LDFLAGS = -s -L./lib -ltls -lcrypto -lm -lpthread -lssl -lanl -ldl -lpthread
+LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -lanl -ldl -lpthread
 # MUSL
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
-#LDFLAGS = -s -static -L./lib -ltls -lcrypto -lm -lpthread -lssl
+#LDFLAGS = -s -static -L./lib -ltls -lssl -lcrypto -lm -lpthread
 # MacOS
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
-#LDFLAGS = -s -L./lib -ltls -lcrypto -lm -lpthread -lssl -ldl
+#LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
 
 FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 
