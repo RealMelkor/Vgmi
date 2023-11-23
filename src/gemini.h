@@ -16,6 +16,7 @@
 #define GMI 9
 #define P_FILE 7
 #define MAX_META 1024
+#define MAX_REDIRECT 5
 #define MAX_RESPONSE 8388608
 
 struct gmi_page {
@@ -66,6 +67,7 @@ struct gmi_tab {
 	struct gmi_page page;
 	int scroll;
 	int selected;
+	int redirects;
 	char selected_url[MAX_URL];
 	char url[MAX_URL];
 	char error[256];

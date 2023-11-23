@@ -209,6 +209,16 @@ void gmi_load(struct gmi_page* page) {
 				return;
 			}
 			memcpy(page->links[page->links_count], url, len+1);
+			for (int i = 0; page->links[page->links_count][i] &&
+					i < len; ) {
+				uint32_t ch;
+				int len;
+				len = tb_utf8_char_to_unicode(&ch,
+					&page->links[page->links_count][i]);
+				if (ch < ' ')
+					page->links[page->links_count][i] = 0;
+				i += len;
+			}
 			page->links_count++;
 			page->data[c] = save;
 		}
@@ -367,8 +377,7 @@ int gmi_render(struct gmi_tab* tab) {
 				tab->page.data[c]!='\0') c++;
 
 				while (
-				(tab->page.data[c]==' ' ||
-				 tab->page.data[c]=='\t') && 
+				tab->page.data[c]<=' ' &&
 				tab->page.data[c]!='\n' &&
 				tab->page.data[c]!='\0') c++;
 
@@ -443,7 +452,10 @@ int gmi_render(struct gmi_tab* tab) {
 			c += tb_utf8_char_to_unicode(&ch,
 						     &tab->page.data[c]) - 1;
 		else if (ch < 32) ch = '?';
-		
+
+		/* ignore utf-8 BOM */
+		if (ch == 0xfeff) continue;
+
 		int wc = mk_wcwidth(ch);
 		if (wc < 0) wc = 0;
 		if (line - 1 >= tab->scroll &&
@@ -1293,13 +1305,9 @@ int gmi_request_header(struct gmi_tab* tab) {
 		return -1;
 	}
 	char* ptr = strchr(buf, ' ');
-	if (!ptr) {
-		snprintf(tab->error, sizeof(tab->error),
-			 "Invalid data from: %s (no metadata)",
-			 tab->request.host);
-		return -1;
-	}
-	strlcpy(tab->request.error, ptr +1, sizeof(tab->request.error));
+	if (ptr && ptr + 1 >= strnstr(buf, "\r\n", sizeof(buf))) ptr = NULL;
+	if (ptr) strlcpy(tab->request.error, ptr + 1,
+			sizeof(tab->request.error));
 
 	int previous_code = tab->page.code;
 	char c = buf[2];
@@ -1308,6 +1316,7 @@ int gmi_request_header(struct gmi_tab* tab) {
 	buf[2] = c;
 
 	if (tab->request.state == STATE_CANCEL) return -1;
+	if (tab->page.code != 30 && tab->page.code != 31) tab->redirects = 0;
 	switch (tab->page.code) {
 	case 10:
 	case 11:
@@ -1322,6 +1331,11 @@ int gmi_request_header(struct gmi_tab* tab) {
 		return 2; // input
 	case 20:
 	{
+		if (!ptr) {
+			strlcpy(tab->request.meta, "text/gemini",
+					sizeof(tab->request.meta));
+			break;
+		}
 #ifdef TERMINAL_IMG_VIEWER
 		tab->page.img.tried = 0;
 #endif
@@ -1367,12 +1381,15 @@ int gmi_request_header(struct gmi_tab* tab) {
 	}
 		break;
 	case 30:
-		snprintf(tab->error, sizeof(tab->error),
-			 "Redirect temporary");
-		break;
 	case 31:
-		snprintf(tab->error, sizeof(tab->error),
-			 "Redirect permanent");
+		tab->redirects++;
+		if (tab->redirects > MAX_REDIRECT) {
+			snprintf(tab->error, sizeof(tab->error),
+				"Too many redirects");
+			return -2;
+		}
+		snprintf(tab->error, sizeof(tab->error), "Redirect %s",
+			tab->page.code == 30 ? "temporary" : "permanent");
 		break;
 	case 40:
 		snprintf(tab->error, sizeof(tab->error),
