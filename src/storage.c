@@ -25,7 +25,7 @@
 #define PATH_MAX 1024
 #endif
 
-#define CONFIG_FOLDER "vgmi2"
+#define CONFIG_FOLDER "vgmi"
 #define DOWNLOAD_PATH "Downloads"
 #define CONFIG_PATH ".config/"CONFIG_FOLDER
 

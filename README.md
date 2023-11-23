@@ -2,7 +2,7 @@
 
 [Gemini][0] client written in C with vim-like keybindings.
 
-![pic0](./img/img1.png)
+![pic0](./img/img4.png)
 
 ## Keybindings
 
@@ -43,20 +43,20 @@ You can prefix a movement key with a number to repeat it.
 ## Sandboxing
 
 ### FreeBSD
-On FreeBSD, Vgmi uses [capsicum][1](4) to limit the filesystem and to enter
-capability mode, it also uses [cap_net][2](3) for networking while in capability
+On FreeBSD, Vgmi uses [capsicum(4)][1] to limit the filesystem and to enter
+capability mode, it also uses [cap_net(3)][2] for networking while in capability
 mode.
 
 ### OpenBSD
-On OpenBSD, Vgmi uses [unveil][3](2) to limit access to the filesystem and
-[pledge][4](2) to restrict the capabilities of the program.
+On OpenBSD, Vgmi uses [unveil(2)][3] to limit access to the filesystem and
+[pledge(2)][4] to restrict the capabilities of the program.
 
 ### Linux
-On Linux, Vgmi uses [seccomp][5](2) to restrict system calls and
-[landlock][6](7) to restrict the filesystem.
+On Linux, Vgmi uses [seccomp(2)][5] to restrict system calls and
+[landlock(7)][6] to restrict the filesystem.
 
 ### Illumos and Solaris
-On Illumos and Solaris, Vgmi uses [privileges][7](7) to isolate the
+On Illumos and Solaris, Vgmi uses [privileges(7)][7] to isolate the
 parser processes.
 
 On top of sandboxing the main process, Vgmi forks itself to parse foreign data
