@@ -79,7 +79,7 @@ void image_parser(int in, int out) {
 	memset(data, 0, config.imageParserScratchPad);
 	image_memory_set(data, config.imageParserScratchPad);
 
-	length = config.imageParserScratchPad;
+	length = config.imageParserScratchPad / 2;
 	data = malloc(length);
 	if (!data) return;
 	memset(data, 0, length);

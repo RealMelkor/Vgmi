@@ -32,7 +32,6 @@ HEADER \
 "=>about:bookmarks\n" \
 "=>about:certificates\n" \
 "=>about:config\n" \
-"=>about:downloads\n" \
 "=>about:help\n" \
 "=>about:history\n" \
 "=>about:known-hosts\n" \

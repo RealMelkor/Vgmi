@@ -30,7 +30,7 @@ void config_default() {
 	config.enableHistory = 1;
 	config.maximumBodyLength = 8388608;
 	config.maximumDisplayLength = 1048576;
-	config.imageParserScratchPad = 16777216;
+	config.imageParserScratchPad = 10485760;
 	config.maximumRedirects = 5;
 	config.maximumCachedPages= 15;
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
