@@ -21,7 +21,7 @@
 
 struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
-	rect.w = client->width;
+	rect.w = client->width - 1;
 	rect.y = MULTIPLE_TABS(client);
 	rect.h = client->height - 1 - rect.y;
 	return rect;
@@ -37,6 +37,23 @@ void client_display(struct client* client) {
 
 #define TAB_WIDTH 32
 #define TB_REV (TB_REVERSE | TB_DEFAULT), TB_DEFAULT
+
+void client_draw_scrollbar(struct client* client, struct request *request) {
+	int y, h, i;
+	struct rect rect;
+	if (!client || !request) return;
+	rect = client_display_rect(client);
+	rect.h -= 2;
+	if ((signed)request->page.length - rect.h <= 0) return;
+	y = rect.h * request->scroll / (request->page.length - rect.h);
+	h = (rect.h - 1) / (request->page.length - rect.h);
+	h = h ? h : 1;
+	if (y + h > rect.h) y = rect.h - h + 1;
+	for (i = 0; i <= rect.h; i++) {
+		tb_set_cell(rect.w, rect.y + i, ' ', TB_DEFAULT,
+				(i >= y && i < y + h) ? TB_WHITE : TB_BLACK);
+	}
+}
 
 void client_draw(struct client* client) {
 
@@ -150,4 +167,5 @@ void client_draw(struct client* client) {
 		tb_printf(x, client->height - 2, TB_WHITE, TB_BLUE,
 				format, link);
 	}
+	client_draw_scrollbar(client, req);
 }

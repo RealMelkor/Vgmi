@@ -133,7 +133,7 @@ int client_init(struct client* client) {
 #ifdef ENABLE_IMAGE
 	if ((ret = image_init())) return ret;
 #endif
-#ifndef XDG_DISABLE
+#ifndef DISABLE_XDG
 	if (xdg_available()) if ((ret = xdg_init())) return ret;
 #endif
 	if ((ret = known_hosts_load())) return ret;

@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#ifndef DISABLE_XDG
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,7 +28,7 @@ int xdg_available() {
 }
 
 int xdg_exec(char *line, size_t len) {
-	char cmd[MAX_URL + 64];
+	char cmd[MAX_URL + 128];
 	size_t i;
 	for (i = 0; i < LENGTH(allowed_protocols); i++) {
 		if (strnstr(line, allowed_protocols[i], len) == line)
@@ -82,3 +83,6 @@ int xdg_init() {
 	}
 	return proc_fork("--xdg", &xdg_in, &xdg_out);
 }
+#else
+typedef int hide_warning;
+#endif
