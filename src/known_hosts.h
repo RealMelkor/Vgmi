@@ -11,11 +11,10 @@ struct known_host {
 	time_t end;
 	struct known_host *next;
 };
-extern struct known_host **known_hosts;
 #define HT_SIZE	4096
+extern struct known_host *known_hosts[HT_SIZE];
 #endif
 
-int known_hosts_init();
 int known_hosts_verify(const char *, const char *, time_t, time_t);
 int known_hosts_load();
 int known_hosts_rewrite();

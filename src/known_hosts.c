@@ -24,32 +24,25 @@
 
 #define HT_MOD	(HT_SIZE - 1)
 
-struct known_host **known_hosts = NULL;
+struct known_host *known_hosts[HT_SIZE] = {NULL};
 
-const uint64_t fnv_prime = 0x100000001b3;
-const uint64_t fnv_offset = 0xcbf29ce484222325;
-int fnv1a(const uint8_t *data, size_t length) {
-	uint64_t hash = fnv_offset;
+const uint32_t fnv_prime = 0x01000193;
+const uint32_t fnv_offset = 0x811C9DC5;
+uint32_t fnv1a(const uint8_t *data, size_t length) {
+	uint32_t hash = fnv_offset;
 	size_t i;
 	for (i = 0; i < length; i++)
 		hash = (hash ^ data[i]) * fnv_prime;
 	return hash;
 }
-#define FNV1A(X) (fnv1a((uint8_t*)X, strlen(X)) & HT_SIZE)
-
-int known_hosts_init() {
-	ASSERT((HT_SIZE & HT_MOD) == 0);
-	known_hosts = calloc(HT_SIZE, sizeof(void*));
-	if (!known_hosts) return ERROR_MEMORY_FAILURE;
-	return 0;
-}
+#define FNV1A(X) (fnv1a((uint8_t*)X, strlen(X)) & HT_MOD)
 
 int known_hosts_add(const char *host, const char *hash,
 			time_t start, time_t end) {
 	struct known_host **ptr;
 	int index = FNV1A(host);
 	for (ptr = &known_hosts[index]; *ptr; ptr = &((*ptr)->next)) ;
-	*ptr = malloc(sizeof(struct known_host));
+	*ptr = calloc(1, sizeof(struct known_host));
 	if (!*ptr) return ERROR_MEMORY_FAILURE;
 
 	STRLCPY((*ptr)->host, host);
@@ -64,6 +57,7 @@ int known_hosts_load() {
 	FILE *f;
 	int ch = !EOF;
 	int ret = 0;
+	ASSERT((HT_SIZE & HT_MOD) == 0);
 
 	f = storage_fopen(FILENAME, "r");
 	if (!f) return 0;
@@ -185,13 +179,10 @@ int known_hosts_forget(const char *host) {
 		prev = ptr;
 	}
 	if (!ptr) return ERROR_INVALID_ARGUMENT;
-	if (prev) {
-		prev = ptr->next;
-	} else {
-		known_hosts[index] = ptr->next;
-	}
+	if (prev) prev = ptr->next;
+	else known_hosts[index] = ptr->next;
 	free(ptr);
-	return 0;
+	return known_hosts_rewrite();
 }
 
 int known_hosts_expired(const char *host) {
@@ -201,5 +192,12 @@ int known_hosts_expired(const char *host) {
 }
 
 void known_hosts_free() {
-	free(known_hosts);
+	int i;
+	for (i = 0; i < HT_SIZE; i++) {
+		struct known_host *ptr = known_hosts[i], *next = NULL;
+		for (ptr = known_hosts[i]; ptr; ptr = next) {
+			next = ptr->next;
+			free(ptr);
+		}
+	}
 }

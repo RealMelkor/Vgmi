@@ -142,7 +142,6 @@ int client_init(struct client* client) {
 #ifndef DISABLE_XDG
 	if (xdg_available()) if ((ret = xdg_init())) return ret;
 #endif
-	if ((ret = known_hosts_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
