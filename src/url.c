@@ -2,16 +2,69 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <stddef.h>
 #include "macro.h"
+#include "utf8.h"
 #include "url.h"
+#include "punycode.h"
 #include "page.h"
 #include "request.h"
 #include "error.h"
 #include "strnstr.h"
 #include "strlcpy.h"
+
+int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
+
+	const char* ptr = domain;
+	uint32_t part[1024] = {0};
+	size_t pos = 0;
+	int n = 0;
+	int unicode = 0;
+	size_t i;
+
+	for (i = 0; i < sizeof(part) && i < dlen; i++) {
+		uint32_t len;
+		if (*ptr && *ptr != '.') {
+			if (*ptr & 128)
+				unicode = 1;
+			ptr += utf8_char_to_unicode(&part[i], ptr);
+			continue;
+		}
+		len = outlen - pos;
+		if (unicode) {
+			int ret;
+			pos += strlcpy(&out[pos], "xn--", sizeof(out) - pos);
+			ret = punycode_encode(i - n, &part[n],
+					NULL, &len, &out[pos]);
+			if (ret != punycode_success)
+				return -1;
+			pos += len;
+		} else {
+			size_t j;
+			for (j = n; j < i; j++) {
+				out[pos] = part[j];
+				pos++;
+			}
+		}
+		unicode = 0;
+		n = i + 1;
+		if (*ptr == '.') {
+			out[pos] = '.';
+			pos++;
+			ptr++;
+		}
+
+		if (!*ptr) {
+			out[pos] = '\0';
+			break;
+		}
+	}
+	return 0;
+}
 
 int servername_from_url(const char *url, char* out, size_t len) {
 
@@ -94,5 +147,33 @@ int url_parse(struct request* request, const char *url) {
 	request->port = port;
 	STRLCPY(request->url, buf);
 
+	return 0;
+}
+
+int url_parse_idn(const char *in, char *out, size_t out_length) {
+	char host[256] = {0}, buf[256] = {0}, *ptr, *end;
+	size_t offset;
+	ptr = out;
+	end = out + out_length;
+	while (*ptr && ptr < end) {
+		if (utf8_char_length(*ptr) != 1) {
+			ptr = NULL;
+			break;
+		}
+		ptr++;
+	}
+	if (ptr) {
+		strlcpy(out, in, out_length);
+		return 0;
+	}
+	servername_from_url(in, V(buf));
+	if (idn_to_ascii(V(buf), V(host)))
+		return ERROR_INVALID_URL;
+	strlcpy(out, in, out_length);
+	ptr = strnstr(out, buf, out_length);
+	if (!ptr) return ERROR_INVALID_URL;
+	offset = (ptr - out) + strnlen(V(buf));
+	ptr += strlcpy(ptr, host, out_length - (ptr - out));
+	strlcpy(ptr, &in[offset], out_length - (ptr - out));
 	return 0;
 }

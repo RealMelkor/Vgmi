@@ -11,6 +11,7 @@
 #include "strlcpy.h"
 #include "strnstr.h"
 #include "utf8.h"
+#include "url.h"
 #include "error.h"
 #include "page.h"
 #include "request.h"
@@ -135,7 +136,9 @@ int parse_links(int in, size_t length, int out) {
 			}
 			link_length++;
 
-			link_length = format_link(link, link_length, V(buf));
+			format_link(link, link_length, V(buf));
+			url_parse_idn(link, V(buf));
+			link_length = strnlen(V(buf));
 			write(out, P(link_length));
 			write(out, buf, link_length);
 		}

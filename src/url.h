@@ -14,3 +14,4 @@ enum {
 struct request;
 int url_parse(struct request*, const char*);
 int protocol_from_url(const char *url);
+int url_parse_idn(const char *in, char *out, size_t out_length);
