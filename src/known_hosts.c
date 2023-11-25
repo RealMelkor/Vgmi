@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
 #include "macro.h"
@@ -21,21 +22,40 @@
 #define TIME_T "%ld"
 #endif
 
-struct known_host *known_hosts = NULL;
-size_t known_hosts_length = 0;
+#define HT_MOD	(HT_SIZE - 1)
+
+struct known_host **known_hosts = NULL;
+
+const uint64_t fnv_prime = 0x100000001b3;
+const uint64_t fnv_offset = 0xcbf29ce484222325;
+int fnv1a(const uint8_t *data, size_t length) {
+	uint64_t hash = fnv_offset;
+	size_t i;
+	for (i = 0; i < length; i++)
+		hash = (hash ^ data[i]) * fnv_prime;
+	return hash;
+}
+#define FNV1A(X) (fnv1a((uint8_t*)X, strlen(X)) & HT_SIZE)
+
+int known_hosts_init() {
+	ASSERT((HT_SIZE & HT_MOD) == 0);
+	known_hosts = calloc(HT_SIZE, sizeof(void*));
+	if (!known_hosts) return ERROR_MEMORY_FAILURE;
+	return 0;
+}
 
 int known_hosts_add(const char *host, const char *hash,
 			time_t start, time_t end) {
-	void *tmp;
-	tmp = realloc(known_hosts,
-			sizeof(struct known_host) * (known_hosts_length + 1));
-	if (!tmp) return ERROR_MEMORY_FAILURE;
-	known_hosts = tmp;
-	STRLCPY(known_hosts[known_hosts_length].host, host);
-	STRLCPY(known_hosts[known_hosts_length].hash, hash);
-	known_hosts[known_hosts_length].start = start;
-	known_hosts[known_hosts_length].end = end;
-	known_hosts_length++;
+	struct known_host **ptr;
+	int index = FNV1A(host);
+	for (ptr = &known_hosts[index]; *ptr; ptr = &((*ptr)->next)) ;
+	*ptr = malloc(sizeof(struct known_host));
+	if (!*ptr) return ERROR_MEMORY_FAILURE;
+
+	STRLCPY((*ptr)->host, host);
+	STRLCPY((*ptr)->hash, hash);
+	(*ptr)->start = start;
+	(*ptr)->end = end;
 	return 0;
 }
 
@@ -54,7 +74,6 @@ int known_hosts_load() {
 		char *host, *hash, *start, *end;
 		size_t i;
 		struct known_host known_host;
-		void *tmp;
 
 		for (i = 0; i < sizeof(line); i++) {
 			ch = getc(f);
@@ -84,18 +103,11 @@ int known_hosts_load() {
 		if (!known_host.start) continue;
 		known_host.end = strtoll(end, NULL, 10);
 		if (!known_host.end) continue;
-		STRLCPY(known_host.host, host);
-		STRLCPY(known_host.hash, hash);
 
-		tmp = realloc(known_hosts,
-				sizeof(known_host) * (known_hosts_length + 1));
-		if (!tmp) {
-			ret = ERROR_MEMORY_FAILURE;
-			break;
+		if ((ret = known_hosts_add(host, hash,
+					known_host.start, known_host.end))) {
+			return ret;
 		}
-		known_hosts = tmp;
-		known_hosts[known_hosts_length] = known_host;
-		known_hosts_length++;
 	}
 
 	fclose(f);
@@ -113,19 +125,30 @@ int known_hosts_write(const char *host, const char *hash,
 }
 
 int known_hosts_rewrite() {
-
 	FILE *f;
-	size_t i;
+	int i;
 
 	f = storage_fopen(FILENAME, "w");
 	if (!f) return ERROR_STORAGE_ACCESS;
-	for (i = 0; i < known_hosts_length; i++) {
-		fprintf(f, "%s %s "TIME_T" "TIME_T"\n",
-			known_hosts[i].host, known_hosts[i].hash,
-			known_hosts[i].start, known_hosts[i].end);
+
+	for (i = 0; i < HT_SIZE; i++) {
+		struct known_host *ptr = known_hosts[i];
+		for (ptr = known_hosts[i]; ptr; ptr = ptr->next) {
+			fprintf(f, "%s %s "TIME_T" "TIME_T"\n",
+				ptr->host, ptr->hash, ptr->start, ptr->end);
+		}
 	}
 	fclose(f);
 	return 0;
+}
+
+struct known_host *known_hosts_get(const char *host) {
+	int index = FNV1A(host);
+	struct known_host *ptr = known_hosts[index];
+	for (; ptr; ptr = ptr->next) {
+		if (!strcmp(ptr->host, host)) break;
+	}
+	return ptr;
 }
 
 int known_hosts_verify(const char *host, const char *hash,
@@ -133,56 +156,48 @@ int known_hosts_verify(const char *host, const char *hash,
 
 	time_t now = time(NULL);
 	int ret;
-	size_t i;
-
-	for (i = 0; i < known_hosts_length; i++) {
-		if (strcmp(known_hosts[i].host, host)) continue;
-		if (known_hosts[i].end < now) {
-			if (start > now)
-				return ERROR_CERTIFICATE_AHEAD;
-			STRLCPY(known_hosts[i].hash, hash);
-			known_hosts[i].start = start;
-			known_hosts[i].end = end;
-			known_hosts_rewrite();
-			return 0;
-		}
-		if (strcmp(known_hosts[i].hash, hash))
-			return ERROR_CERTIFICATE_MISMATCH;
-		if (known_hosts[i].end < now)
-			return ERROR_CERTIFICATE_EXPIRED;
-		return 0;
+	struct known_host *ptr = known_hosts_get(host);
+	if (!ptr) {
+		if ((ret = known_hosts_add(host, hash, start, end)))
+			return ret;
+		return known_hosts_write(host, hash, start, end);
 	}
-	if ((ret = known_hosts_add(host, hash, start, end))) return ret;
-	return known_hosts_write(host, hash, start, end);
-}
-
-int known_hosts_forget_id(int id) {
-	size_t i;
-	if ((size_t)id > known_hosts_length) return ERROR_INVALID_ARGUMENT;
-	known_hosts_length--;
-	for (i = id; i < known_hosts_length; i++) {
-		known_hosts[i] = known_hosts[i + 1];
+	if (ptr->end < now) {
+		if (start > now) return ERROR_CERTIFICATE_AHEAD;
+		/* old certificate expired, accept new certificate */
+		STRLCPY(ptr->hash, hash);
+		ptr->start = start;
+		ptr->end = end;
+		return known_hosts_rewrite();
 	}
+	if (strcmp(ptr->hash, hash))
+		return ERROR_CERTIFICATE_MISMATCH;
+	if (ptr->end < now)
+		return ERROR_CERTIFICATE_EXPIRED;
 	return 0;
 }
 
 int known_hosts_forget(const char *host) {
-	size_t i;
-	for (i = 0; i < known_hosts_length; i++) {
-		if (!STRCMP(known_hosts[i].host, host)) break;
+	struct known_host *ptr, *prev = NULL;
+	int index = FNV1A(host);
+	for (ptr = known_hosts[index]; ptr; ptr = ptr->next) {
+		if (!strcmp(ptr->host, host)) break;
+		prev = ptr;
 	}
-	if (i == known_hosts_length) return ERROR_UNKNOWN_HOST;
-	return known_hosts_forget_id(i);
+	if (!ptr) return ERROR_INVALID_ARGUMENT;
+	if (prev) {
+		prev = ptr->next;
+	} else {
+		known_hosts[index] = ptr->next;
+	}
+	free(ptr);
+	return 0;
 }
 
-/* TODO: make it O(1) */
 int known_hosts_expired(const char *host) {
-	size_t i;
-	for (i = 0; i < known_hosts_length; i++) {
-		if (!STRCMP(known_hosts[i].host, host)) break;
-	}
-	if (i == known_hosts_length) return -1;
-	return time(NULL) > known_hosts[i].end;
+	struct known_host *ptr = known_hosts_get(host);
+	if (!ptr) return -1;
+	return time(NULL) > ptr->end;
 }
 
 void known_hosts_free() {

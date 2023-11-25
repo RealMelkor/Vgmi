@@ -30,6 +30,7 @@ struct rect;
 #include "image.h"
 #include "history.h"
 #include "xdg.h"
+#include "url.h"
 
 int client_destroy(struct client *client) {
 	struct tab *tab;
@@ -68,7 +69,12 @@ int client_closetab(struct client *client) {
 
 int client_newtab(struct client *client, const char *url) {
 	struct tab *tab;
+	int proto;
 	if (!url) url = "about:newtab";
+	proto = protocol_from_url(url);
+	if (proto != PROTOCOL_GEMINI && proto != PROTOCOL_NONE) {
+		return tab_request(client->tab, url);
+	}
 	tab = tab_new();
 	if (!tab) return ERROR_MEMORY_FAILURE;
 	if (client->tab) {
@@ -136,6 +142,7 @@ int client_init(struct client* client) {
 #ifndef DISABLE_XDG
 	if (xdg_available()) if ((ret = xdg_init())) return ret;
 #endif
+	if ((ret = known_hosts_init())) return ret;
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;

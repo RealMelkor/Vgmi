@@ -13,9 +13,11 @@
 #define HISTORY_INTERNAL
 #include "history.h"
 
+#define MAXIMUM_LIST_LENGTH 2000
+
 int about_history(char **out, size_t *length_out) {
 
-	size_t length = 0;
+	size_t length = 0, i = 0;
 	char *data = NULL;
 	struct history_entry *entry;
 	const char title[] = "# History\n\n";
@@ -32,6 +34,7 @@ int about_history(char **out, size_t *length_out) {
 		int len = snprintf(V(buf), "=>%s %s\n",
 				entry->url, entry->title) + 1;
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
+		if (i++ == MAXIMUM_LIST_LENGTH) break;
 	}
 
 	*out = data;

@@ -13,3 +13,4 @@ enum {
 
 struct request;
 int url_parse(struct request*, const char*);
+int protocol_from_url(const char *url);

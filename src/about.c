@@ -84,7 +84,7 @@ void *dyn_strcat(char *dst, size_t *dst_length,
 	return dst;
 }
 
-static int parse_data_(struct request *request,
+static int parse_data_status(struct request *request,
 			char *data, size_t len, int status) {
 	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
 	request->status = status;
@@ -94,11 +94,7 @@ static int parse_data_(struct request *request,
 }
 
 static int parse_data(struct request *request, char *data, size_t len) {
-	if (readonly(data, len, &request->data)) return ERROR_MEMORY_FAILURE;
-	request->status = GMI_SUCCESS;
-	request->length = len;
-	free(data);
-	return parse_request(NULL, request);
+	return parse_data_status(request, data, len, GMI_SUCCESS);
 }
 
 static int static_page(struct request *request, const char *data, size_t len) {
@@ -169,7 +165,7 @@ int about_parse(struct request *request) {
 		}
 		/* reset url on succesful query */
 		if (query) STRLCPY(request->url, "about:config");
-		return parse_data_(request, data, length - 1,
+		return parse_data_status(request, data, length - 1,
 					ptr ? GMI_INPUT : GMI_SUCCESS);
 	}
 	if (!strcmp(request->url, "about:history")) {

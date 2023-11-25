@@ -15,9 +15,8 @@
 #include "about.h"
 
 int about_known_hosts_arg(const char *param) {
-	int id = atoi(param), ret;
-	if (!id && strcmp(param, "0")) return ERROR_INVALID_ARGUMENT;
-	if ((ret = known_hosts_forget_id(id))) return ret;
+	int ret;
+	if ((ret = known_hosts_forget(param))) return ret;
 	if ((ret = known_hosts_rewrite())) return ret;
 	return 0;
 }
@@ -32,25 +31,28 @@ int about_known_hosts(char **out, size_t *length_out) {
 	if (!(data = dyn_strcat(data, &length, V(header)))) goto fail;
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
 
-	for (i = 0; i < known_hosts_length; i++) {
+	for (i = 0; i < HT_SIZE; i++) {
+		struct known_host *ptr = known_hosts[i];
+		for (ptr = known_hosts[i]; ptr; ptr = ptr->next) {
+			char buf[1024], from[64], to[64];
+			int len;
+			struct tm *tm;
 
-		char buf[1024], from[64], to[64];
-		int len;
-		struct tm *tm;
+			tm = localtime(&ptr->start);
+			strftime(V(from), "%Y/%m/%d %H:%M:%S", tm);
 
-		tm = localtime(&known_hosts[i].start);
-		strftime(V(from), "%Y/%m/%d %H:%M:%S", tm);
+			tm = localtime(&ptr->end);
+			strftime(V(to), "%Y/%m/%d %H:%M:%S", tm);
 
-		tm = localtime(&known_hosts[i].end);
-		strftime(V(to), "%Y/%m/%d %H:%M:%S", tm);
-
-		len = snprintf(V(buf),
-			"* %s\n> Hash: %s\n"
-			"> From: %s\n> Expiration: %s\n"
-			"=>/%ld Forget\n\n",
-			known_hosts[i].host, known_hosts[i].hash,
-			from, to, i) + 1;
-		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
+			len = snprintf(V(buf),
+				"* %s\n> Hash: %s\n"
+				"> From: %s\n> Expiration: %s\n"
+				"=>/%ld Forget\n\n",
+				ptr->host, ptr->hash,
+				from, to, i) + 1;
+			if (!(data = dyn_strcat(data, &length, buf, len)))
+				goto fail;
+		}
 	}
 
 	*out = data;
