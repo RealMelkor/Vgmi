@@ -14,6 +14,7 @@
 #include "termbox.h"
 #include "error.h"
 #include "macro.h"
+#include "memory.h"
 
 int page_display(struct page text, int from, struct rect rect, int selected) {
 	int y;
@@ -147,7 +148,7 @@ int page_free(struct page page) {
 	}
 	free(page.lines);
 	for (i = 0; i < page.links_count; i++) {
-		free(page.links[i]);
+		free_readonly(page.links[i], strnlen(page.links[i], MAX_URL));
 	}
 	free(page.links);
 	free(page.img);

@@ -22,6 +22,7 @@
 #include "request.h"
 #include "strlcpy.h"
 #include "strnstr.h"
+#include "memory.h"
 #define PARSER_INTERNAL
 #include "parser.h"
 
@@ -73,12 +74,7 @@ int parse_request(struct parser *parser, struct request *request) {
 		}
 
 		length++;
-		ptr = malloc(length);
-		if (!ptr) {
-			ret = ERROR_MEMORY_FAILURE;
-			break;
-		}
-		strlcpy(ptr, url, length);
+		if ((ret = readonly(url, length, &ptr))) break;
 
 		tmp = realloc(request->page.links,
 			sizeof(char*) * (request->page.links_count + 1));
