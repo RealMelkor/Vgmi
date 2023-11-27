@@ -93,17 +93,18 @@ int request_cancel(struct request *request) {
 
 int request_scroll(struct request* req, int scroll, struct rect rect) {
 
+	const int height = rect.h - 2;
 	if (!req) return -1;
 
-	if (0 >= (ssize_t)req->page.length - rect.h) {
+	if (0 >= (ssize_t)req->page.length - height) {
 		req->scroll = 0;
 		return 0;
 	}
 
 	req->scroll += scroll;
 	if (req->scroll < 0) req->scroll = 0;
-	else if ((size_t)req->scroll > req->page.length - rect.h + rect.y + 2)
-		req->scroll = req->page.length - rect.h + rect.y + 2;
+	else if ((size_t)req->scroll > req->page.length - height)
+		req->scroll = req->page.length - height;
 	return 0;
 }
 

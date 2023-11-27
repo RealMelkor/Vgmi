@@ -45,6 +45,9 @@ int error_string(int error, char *out, size_t len) {
 		ptr = gai_strerror(-((error & 0xFFFF0000) >> 16));
 		strlcpy(out, ptr, len);
 		break;
+	case ERROR_INVALID_DATA:
+		strlcpy(out, "Invalid response", len);
+		break;
 	case ERROR_INVALID_ARGUMENT:
 		strlcpy(out, "Invalid argument", len);
 		break;

@@ -17,6 +17,7 @@
 #include "secure.h"
 #include "tab.h"
 #include "strlcpy.h"
+#include "url.h"
 #include "error.h"
 
 struct request_thread {
@@ -102,7 +103,7 @@ void* tab_request_thread(void *ptr) {
 
 	iterations = 0;
 restart:
-	if (iterations > config.maximumCachedPages) {
+	if (iterations > config.maximumRedirects) {
 		request.error = ERROR_TOO_MANY_REDIRECT;
 		error_string(request.error, V(tab->error));
 		tab->failure = 1;
@@ -163,9 +164,17 @@ restart:
 
 	secure_free(ctx);
 	if (redirect) {
-		request_follow(&request, destination, V(args->url));
-		iterations++;
-		goto restart;
+		int protocol = protocol_from_url(destination);
+		if (protocol != PROTOCOL_NONE && protocol != PROTOCOL_GEMINI) {
+			request.error = ERROR_UNSUPPORTED_PROTOCOL;
+			error_string(request.error, V(tab->error));
+			tab->failure = 1;
+			request.state = STATE_FAILED;
+		} else {
+			request_follow(&request, destination, V(args->url));
+			iterations++;
+			goto restart;
+		}
 	}
 	free(args);
 	tab_clean_requests(tab);
@@ -216,10 +225,9 @@ int tab_follow(struct tab* tab, const char *link) {
 	char url[MAX_URL], buf[MAX_URL];
 	int ret;
 
-	format_link(link, MAX_URL, V(buf));
 	if (!tab) return 0;
-	req = tab_completed(tab);
-	if (!req) return 0;
+	format_link(link, MAX_URL, V(buf));
+	if (!(req = tab_completed(tab))) return 0;
 	if ((ret = request_follow(tab->request, buf, V(url)))) return ret;
 	tab_request(tab, url);
 

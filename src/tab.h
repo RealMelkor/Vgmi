@@ -2,6 +2,7 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
+struct client;
 struct tab {
 	struct request *request;
 	struct request *view;

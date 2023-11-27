@@ -122,7 +122,11 @@ int parse_links(int in, size_t length, int out) {
 		link = 0;
 		header = 0;
 
-		if (i >= length || ch == '\n') continue;
+		if (i >= length) continue;
+		if (ch == '\n') {
+			newline = 1;
+			continue;
+		}
 
 		{
 			char link[MAX_URL] = {0};

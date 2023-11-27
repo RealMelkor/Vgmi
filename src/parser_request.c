@@ -66,11 +66,11 @@ void parser_request(int in, int out) {
 		if (ret) break;
 
 		write(out, P(request.status));
+		if (request.status == GMI_SUCCESS && !request.meta[0]) {
+			STRLCPY(request.meta, "text/gemini");
+		}
 		write(out, V(request.meta));
 		if (request.status == GMI_SUCCESS) {
-			if (!request.meta[0]) {
-				STRLCPY(request.meta, "text/gemini");
-			}
 			request.page.mime = parser_mime(V(request.meta));
 			request.page.offset = bytes;
 		} else {

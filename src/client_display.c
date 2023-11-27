@@ -22,7 +22,7 @@
 
 struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
-	rect.w = client->width - 1;
+	rect.w = client->width - 2;
 	rect.y = MULTIPLE_TABS(client);
 	rect.h = client->height - 1 - rect.y;
 	return rect;

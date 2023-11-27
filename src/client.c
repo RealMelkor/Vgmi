@@ -8,8 +8,6 @@
 #include <stdint.h>
 #include <time.h>
 #include <errno.h>
-struct client;
-struct rect;
 #include "macro.h"
 #include "error.h"
 #include "config.h"

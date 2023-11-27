@@ -74,6 +74,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			if (ret) {
 				client->error = 1;
 				error_string(ret, V(client->cmd));
+				break;
 			}
 			if (ev.key == TB_KEY_BACK_TAB) {
 				client_newtab(client, url);
