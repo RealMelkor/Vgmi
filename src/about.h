@@ -48,6 +48,7 @@
 #define HEADER "20 text/gemini\r\n"
 static const char header[] = HEADER;
 int about_history(char **out, size_t *length_out);
+int about_history_param(const char *param);
 int about_bookmarks(char **out, size_t *length_out);
 int about_bookmarks_param(const char *param);
 int about_known_hosts(char **out, size_t *length_out);

@@ -34,6 +34,7 @@ void config_default() {
 	config.imageParserScratchPad = 10485760;
 	config.maximumRedirects = 5;
 	config.maximumCachedPages= 15;
+	config.maximumHistorySize = 3000;
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
 }
 

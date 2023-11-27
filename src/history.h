@@ -14,3 +14,4 @@ void history_init();
 int history_save();
 int history_add(const char *url, const char *title);
 void history_free();
+int history_clear();

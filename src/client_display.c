@@ -15,6 +15,7 @@
 #include "client.h"
 #include "tab.h"
 #include "utf8.h"
+#include "url.h"
 #include "known_hosts.h"
 
 #define MULTIPLE_TABS(X) (X->tab->next || X->tab->prev)
@@ -141,6 +142,7 @@ void client_draw(struct client* client) {
 		tb_printf(0, client->height - 2, TB_REV, "%s", req_input->url);
 	} else {
 		int expired = 0, fg = TB_REVERSE | TB_DEFAULT, bg = TB_DEFAULT;
+		char url[1024];
 		if (req && known_hosts_expired(req->name) > 0) {
 			int i;
 			expired = 1;
@@ -151,10 +153,11 @@ void client_draw(struct client* client) {
 					i, client->height - 2, ' ', fg, bg);
 			}
 		}
+		if (req) url_hide_query(req->url, V(url));
+		else STRLCPY(url, "about:blank");
 		tb_printf(0, client->height - 2, fg, bg, "%s%s (%s)",
 				expired ? "[Certificate expired] " : "",
-				req ? req->url : "about:blank",
-				req ? req->meta : "");
+				url, req ? req->meta : "");
 	}
 
 	if (req && req->selected &&

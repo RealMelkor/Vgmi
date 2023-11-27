@@ -10,6 +10,7 @@ struct config {
 	int		certificateBits;
 	int		maximumRedirects;
 	int		maximumCachedPages;
+	int		maximumHistorySize;
 	int		imageParserScratchPad;
 	int		enableHistory;
 	int		enableSandbox;
@@ -46,6 +47,7 @@ static struct field fields[] = {
 	{"request.maxdisplay", VALUE_INT, &config.maximumDisplayLength, 0},
 	{"request.maxredirects", VALUE_INT, &config.maximumRedirects, 0},
 	{"request.cachedpages", VALUE_INT, &config.maximumCachedPages, 0},
+	{"history.maxentries", VALUE_INT, &config.maximumHistorySize, 0},
 	{"search.url", VALUE_STRING, &config.searchEngineURL, 0},
 };
 #endif

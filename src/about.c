@@ -169,6 +169,7 @@ int about_parse(struct request *request) {
 					ptr ? GMI_INPUT : GMI_SUCCESS);
 	}
 	if (!strcmp(request->url, "about:history")) {
+		if (ptr && (ret = about_history_param(param))) return ret;
 		if ((ret = about_history(&data, &length))) return ret;
 		return parse_data(request, data, length - 1);
 	}

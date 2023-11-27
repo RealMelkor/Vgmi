@@ -4,6 +4,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "macro.h"
 #include "strlcpy.h"
 #include "error.h"
@@ -15,12 +16,17 @@
 
 #define MAXIMUM_LIST_LENGTH 2000
 
+int about_history_param(const char *param) {
+	if (strcmp(param, "clear")) return ERROR_INVALID_ARGUMENT;
+	return history_clear();
+}
+
 int about_history(char **out, size_t *length_out) {
 
 	size_t length = 0, i = 0;
 	char *data = NULL;
 	struct history_entry *entry;
-	const char title[] = "# History\n\n";
+	const char title[] = "# History\n\n=>clear Clear History\n\n";
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;

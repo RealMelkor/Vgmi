@@ -13,6 +13,7 @@
 #include "error.h"
 #include "config.h"
 #include "utf8.h"
+#include "url.h"
 #include "storage.h"
 #define HISTORY_INTERNAL
 #include "history.h"
@@ -27,12 +28,14 @@ int history_load(const char *path) {
 	struct history_entry entry = {0};
 	struct history_entry *last = NULL;
 	FILE *f;
-	unsigned int i, part;
+	unsigned int i, part, count;
+
+	if (!config.maximumHistorySize) return 0;
 
 	if (!(f = storage_fopen(path, "r"))) return ERROR_STORAGE_ACCESS;
 
-	i = part = 0;
-	while (1) {
+	count = i = part = 0;
+	for (;;) {
 		uint32_t ch;
 		char *ptr;
 		if (utf8_fgetc(f, &ch)) break;
@@ -54,6 +57,9 @@ int history_load(const char *path) {
 			}
 			last = new;
 			memset(&entry, 0, sizeof(entry));
+			count++;
+			if (count >= (unsigned)config.maximumHistorySize)
+				break;
 			continue;
 		}
 		if (!part && ch <= ' ') {
@@ -95,6 +101,12 @@ int history_write(const char *path) {
 	return 0;
 }
 
+int history_clear() {
+	history_free();
+	history = NULL;
+	return history_save();
+}
+
 int history_save() {
 	return history_write(HISTORY);
 }
@@ -106,8 +118,12 @@ int history_add(const char *url, const char *title) {
 	if (!config.enableHistory) return 0;
 	entry = malloc(sizeof(*entry));
 	if (!entry) return ERROR_MEMORY_FAILURE;
-	UTF8CPY(entry->title, title);
-	UTF8CPY(entry->url, url);
+	url_hide_query(title, V(entry->title));
+	if (strstr(url, "gemini://") == url) {
+		url_hide_query(url, V(entry->url));
+	} else {
+		UTF8CPY(entry->title, title);
+	}
 	pthread_mutex_lock(&history_mutex);
 	entry->next = history;
 	history = entry;

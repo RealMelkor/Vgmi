@@ -177,3 +177,24 @@ int url_parse_idn(const char *in, char *out, size_t out_length) {
 	strlcpy(ptr, &in[offset], out_length - (ptr - out));
 	return 0;
 }
+
+int url_hide_query(const char *url, char *out, size_t length) {
+	size_t i, j;
+	int inquery;
+	for (inquery = i = j = 0; i < length; ) {
+		uint32_t ch;
+		i += utf8_char_to_unicode(&ch, &url[i]);
+		if (!ch) break;
+		if (ch == '/' && inquery) inquery = 0;
+		if (inquery) continue;
+		j += utf8_unicode_to_char(&out[j], ch);
+		if (ch == '?') {
+			out[j++] = '<';
+			out[j++] = '*';
+			out[j++] = '>';
+			inquery = 1;
+		}
+	}
+	out[j] = 0;
+	return 0;
+}
