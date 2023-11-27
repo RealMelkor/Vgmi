@@ -52,12 +52,6 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 	return 0;
 }
 
-int parse_title(int in, int out) {
-	/* TODO */
-	if (in) return out;
-	return 0;
-}
-
 void parser_request(int in, int out) {
 	parser_sandbox(out, "vgmi [request]");
 	while (1) { /* TODO: send error code */
