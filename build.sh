@@ -58,8 +58,8 @@ mkdir -p ../lib
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
-	ssl_version="3.8.0"
-	h="12531c1ec808c5c6abeb311899664b0cfed04d4648f456dc959bb93c5f21acac"
+	ssl_version="3.8.2"
+	h="6d4b8d5bbb25a1f8336639e56ec5088052d43a95256697a85c4ce91323c25954"
 	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$ssl_version.tar.gz"
 	tar -zxf libressl-$ssl_version.tar.gz
 	cd libressl-$ssl_version
@@ -81,9 +81,9 @@ then
 fi
 
 # Termbox2 2.0.0
-h="0ebef83bf8acfacea1cfc8ed78886eb46bd28f915e1217c07577bf08801a95b8"
-check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/9627635ca71cd0378b58c2305e3f731faa26132b/termbox.h"
-cp termbox.h ../include/
+h="c11c247467585874d56d7426310e5a56295cd314b82260410615c166474b6f78"
+check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/a8e2644708f3c2045d4f236c89f92880d683a3cc/termbox2.h"
+cp termbox2.h ../include/termbox.h
 
 # stb_image 2.28
 h="38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc"

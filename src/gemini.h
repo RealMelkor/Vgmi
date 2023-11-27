@@ -2,7 +2,7 @@
 #ifndef _GEMINI_H_
 #define _GEMINI_H_
 
-#define LTS 0
+#define LTS 1
 #define MAJOR "1"
 #define MINOR "5"
 #if LTS
