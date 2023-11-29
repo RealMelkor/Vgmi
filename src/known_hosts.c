@@ -126,7 +126,7 @@ int known_hosts_rewrite() {
 	if (!f) return ERROR_STORAGE_ACCESS;
 
 	for (i = 0; i < HT_SIZE; i++) {
-		struct known_host *ptr = known_hosts[i];
+		struct known_host *ptr;
 		for (ptr = known_hosts[i]; ptr; ptr = ptr->next) {
 			fprintf(f, "%s %s "TIME_T" "TIME_T"\n",
 				ptr->host, ptr->hash, ptr->start, ptr->end);
@@ -179,7 +179,7 @@ int known_hosts_forget(const char *host) {
 		prev = ptr;
 	}
 	if (!ptr) return ERROR_INVALID_ARGUMENT;
-	if (prev) prev = ptr->next;
+	if (prev) prev->next = ptr->next;
 	else known_hosts[index] = ptr->next;
 	free(ptr);
 	return known_hosts_rewrite();
@@ -194,7 +194,7 @@ int known_hosts_expired(const char *host) {
 void known_hosts_free() {
 	int i;
 	for (i = 0; i < HT_SIZE; i++) {
-		struct known_host *ptr = known_hosts[i], *next = NULL;
+		struct known_host *ptr, *next = NULL;
 		for (ptr = known_hosts[i]; ptr; ptr = next) {
 			next = ptr->next;
 			free(ptr);

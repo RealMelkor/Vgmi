@@ -81,7 +81,7 @@ int bookmark_load() {
 			bookmarks[bookmark_length - 1] = bookmark;
 		}
 		if (!eof && ch != '\n') {
-			int ch;
+			int ch = 0;
 			while (1) {
 				ch = fgetc(f);
 				if (ch == '\n' || ch == EOF) break;

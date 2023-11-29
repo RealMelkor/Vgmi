@@ -63,7 +63,15 @@ void parser_request(int in, int out) {
 		if (vread(in, &length, sizeof(length))) break;
 		ret = parse_response(in, length, V(request.meta),
 				&request.status, &bytes);
-		if (ret) break;
+		if (request.status == -1) ret = ERROR_INVALID_STATUS;
+		if (ret) {
+			uint8_t byte;
+			request.status = -1;
+			for (; bytes < length; bytes++) read(in, P(byte));
+			write(out, P(request.status));
+			write(out, P(ret));
+			continue;
+		}
 
 		write(out, P(request.status));
 		if (request.status == GMI_SUCCESS && !request.meta[0]) {

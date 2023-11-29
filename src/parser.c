@@ -47,6 +47,12 @@ int parse_request(struct parser *parser, struct request *request) {
 	write(parser->out, request->data, request->length);
 
 	if ((ret = vread(parser->in, P(request->status)))) goto fail;
+	if (request->status == -1) {
+		int error;
+		if ((ret = vread(parser->in, P(error)))) goto fail;
+		ret = error;
+		goto fail;
+	}
 	if ((ret = vread(parser->in, V(request->meta)))) goto fail;
 	if ((ret = vread(parser->in, P(request->page.mime)))) goto fail;
 	if ((ret = vread(parser->in, P(request->page.offset)))) goto fail;

@@ -32,7 +32,7 @@ int about_known_hosts(char **out, size_t *length_out) {
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
 
 	for (i = 0; i < HT_SIZE; i++) {
-		struct known_host *ptr = known_hosts[i];
+		struct known_host *ptr;
 		for (ptr = known_hosts[i]; ptr; ptr = ptr->next) {
 			char buf[1024], from[64], to[64];
 			int len;

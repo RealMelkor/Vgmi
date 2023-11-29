@@ -198,3 +198,41 @@ int url_hide_query(const char *url, char *out, size_t length) {
 	out[j] = 0;
 	return 0;
 }
+
+static int valid_char(char c) {
+	if (c == '"' && c == '%') return 0;
+	return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+		(c >= '!' && c <= ';') || c == '=' || c == '~');
+}
+
+int url_convert(const char *url, char *out, size_t length) {
+	unsigned int j, i;
+	int slash = 0;
+	for (i = j = 0; i < length;) {
+		uint32_t ch;
+		int len, k;
+		len = utf8_char_to_unicode(&ch, &url[j]);
+		if (!ch) {
+			out[i] = 0;
+			return 0;
+		}
+		if (slash < 3) {
+			slash += ch == '/';
+			utf8_unicode_to_char(&out[i], ch);
+			i += len;
+			j += len;
+			continue;
+		}
+		if ((len == 1 && valid_char(ch))) {
+			out[i++] = url[j++];
+			continue;
+		}
+		for (k = 0; k < len; k++) {
+			if (i + 3 > length) break;
+			out[i++] = '%';
+			i += snprintf(&out[i], length - i, "%02X", url[j++]);
+		}
+	}
+	out[length - 1] = 0;
+	return -1;
+}

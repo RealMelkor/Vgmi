@@ -147,7 +147,7 @@ restart:
 		request.state = STATE_FAILED;
 	} else if (gemini_iserror(request.status)) {
 		{
-			char status[1024];
+			char status[1024] = {0};
 			gemini_status_string(request.status, V(status));
 			snprintf(V(tab->error), "%s (%d : %s)", request.meta,
 					request.status, status);

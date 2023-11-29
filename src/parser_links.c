@@ -144,7 +144,8 @@ int parse_links(int in, size_t length, int out) {
 
 			format_link(link, link_length, V(buf));
 			url_parse_idn(buf, V(link));
-			link_length = strnlen(V(link));
+			url_convert(link, V(buf));
+			link_length = strnlen(V(buf));
 			write(out, P(link_length));
 			write(out, buf, link_length);
 		}

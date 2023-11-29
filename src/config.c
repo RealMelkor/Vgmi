@@ -169,7 +169,7 @@ int config_correction() {
 		if (!STRCMP(fields[i].name, "search.url")) {
 			char *value = fields[i].ptr;
 			char *ptr = strnstr(value, "%s", CONFIG_STRING_LENGTH);
-			char *second;
+			char *second = NULL;
 			if (ptr) {
 				second = strnstr(ptr + 1, "%s",
 					CONFIG_STRING_LENGTH - (ptr - value));
