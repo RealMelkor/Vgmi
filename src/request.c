@@ -120,6 +120,24 @@ int request_follow(struct request* req, const char *link,
 		if (ptr) *(ptr + 1) = '\0';
 		return 0;
 	}
+	if (!strncmp(link, "..", length)) {
+		char *start;
+		strlcpy(url, req->url, length);
+
+		start = strnstr(url, "://", length);
+		if (!start) return 0;
+		start += 3;
+		start = strchr(start, '/');
+		if (!start) return 0;
+
+		ptr = strrchr(url, '/');
+		if (ptr && ptr > start) {
+			*ptr = '\0';
+			ptr = strrchr(url, '/');
+		}
+		if (ptr) *(ptr + 1) = '\0';
+		return 0;
+	}
 	if (!memcmp(link, V("about:") - 1)) {
 		/* only allow "about:*" links on "about:*" pages */
 		if (memcmp(req->url, V("about:") - 1))
