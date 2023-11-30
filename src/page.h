@@ -67,6 +67,7 @@ struct termwriter {
 	size_t sent;
 	size_t width;
 	size_t last_reset;
+	size_t last_x;
 	int fd;
 };
 

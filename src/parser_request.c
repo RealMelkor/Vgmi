@@ -67,7 +67,8 @@ void parser_request(int in, int out) {
 		if (ret) {
 			uint8_t byte;
 			request.status = -1;
-			for (; bytes < length; bytes++) read(in, P(byte));
+			for (; bytes < (signed)length; bytes++)
+				read(in, P(byte));
 			write(out, P(request.status));
 			write(out, P(ret));
 			continue;

@@ -17,6 +17,7 @@ static int newline(struct termwriter *termwriter) {
 	struct page_cell cell = {0};
 	cell.special = PAGE_NEWLINE;
 	termwriter->sent++;
+	termwriter->last_x = 0;
 	return write(termwriter->fd, P(cell)) != sizeof(cell);
 }
 
@@ -27,8 +28,11 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 	size_t last_reset; /* bytes since last reset cell */
 
 	/* flush last cells before sending EOF */
-	if (cell.special == PAGE_EOF && termwriter->pos)
-		writenewline(termwriter, pos);
+	if (cell.special == PAGE_EOF) {
+		writenewline(termwriter, termwriter->pos);
+		write(termwriter->fd, P(cell));
+		return 0;
+	}
 
 	last_reset = termwriter->sent - termwriter->last_reset;
 	if (termwriter->sent && last_reset >= PARSER_CHUNK / 2) {
@@ -55,10 +59,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 		return 0;
 	}
 	nextspace = 0;
-	x = 0;
-	if (cell.special != PAGE_NEWLINE) {
-		newline(termwriter);
-	}
+	x = termwriter->last_x;
 	for (i = 0; i < termwriter->pos; i++) {
 		if (i >= nextspace) {
 			size_t j, nextspace_x;
@@ -91,6 +92,8 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 				sizeof(cell))
 			return -1;
 	}
+	if (cell.special == PAGE_NEWLINE) x = 0;
+	termwriter->last_x = x;
 	termwriter->pos = 0;
 	termwriter->sent++;
 	return -(write(termwriter->fd, P(cell)) != sizeof(cell));
