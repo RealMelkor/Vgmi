@@ -114,6 +114,12 @@ int request_follow(struct request* req, const char *link,
 	const char *end = url + length;
 	char *ptr;
 
+	if (!strncmp(link, ".", length)) {
+		strlcpy(url, req->url, length);
+		ptr = strrchr(url, '/');
+		if (ptr) *(ptr + 1) = '\0';
+		return 0;
+	}
 	if (!memcmp(link, V("about:") - 1)) {
 		/* only allow "about:*" links on "about:*" pages */
 		if (memcmp(req->url, V("about:") - 1))
