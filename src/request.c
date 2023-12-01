@@ -41,6 +41,7 @@ int request_process(struct request *request, struct secure *secure,
 	if ((ret = url_parse(request, url))) goto failed;
 #ifndef DISABLE_XDG
 	if (xdg_available() && (
+			request->protocol == PROTOCOL_MAIL ||
 			request->protocol == PROTOCOL_HTTP ||
 			request->protocol == PROTOCOL_HTTPS ||
 			request->protocol == PROTOCOL_GOPHER)) {
@@ -162,7 +163,7 @@ int request_follow(struct request* req, const char *link,
 		i += strlcpy(&url[i], link, length - i);
 		return (size_t)i > length ? ERROR_INVALID_URL : 0;
 	}
-	if (strnstr(link, "://", MAX_URL)) {
+	if (url_is_absolute(link)) {
 		strlcpy(url, link, length);
 		return 0;
 	}

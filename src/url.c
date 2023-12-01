@@ -86,6 +86,7 @@ int servername_from_url(const char *url, char* out, size_t len) {
 }
 
 int protocol_from_url(const char *url) {
+	if (!memcmp(url, V("mailto:") - 1)) return PROTOCOL_MAIL;
 	if (!strnstr(url, "://", MAX_URL)) return PROTOCOL_NONE; /* default */
 	if (!memcmp(url, V("gemini://") - 1)) return PROTOCOL_GEMINI;
 	if (!memcmp(url, V("http://") - 1)) return PROTOCOL_HTTP;
@@ -235,4 +236,8 @@ int url_convert(const char *url, char *out, size_t length) {
 	}
 	out[length - 1] = 0;
 	return -1;
+}
+
+int url_is_absolute(const char *url) {
+	return !strnstr(url, "://", MAX_URL) || memcmp(url, V("mailto:") - 1);
 }

@@ -28,7 +28,7 @@ void tab_display_loading(struct tab *tab, struct rect rect) {
 	int off[][2] = {
 		{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {0, 1}
 	};
-	int x = rect.x + rect.w - 4, y = rect.y + rect.h - 4, i;
+	int x = rect.x + rect.w - 4, y = rect.y + rect.h - 5, i;
 	struct timespec now;
 	tab->loading = (tab->loading + 1) % (sizeof(off) / sizeof(*off));
 

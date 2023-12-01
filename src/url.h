@@ -8,6 +8,7 @@ enum {
 	PROTOCOL_HTTP,
 	PROTOCOL_HTTPS,
 	PROTOCOL_GOPHER,
+	PROTOCOL_MAIL,
 	PROTOCOL_UNKNOWN
 };
 
@@ -17,3 +18,4 @@ int protocol_from_url(const char *url);
 int url_parse_idn(const char *in, char *out, size_t out_length);
 int url_hide_query(const char *url, char *out, size_t length);
 int url_convert(const char *url, char *out, size_t length);
+int url_is_absolute(const char *url);

@@ -18,6 +18,7 @@ const char *allowed_protocols[] = {
 	"http://",
 	"https://",
 	"gopher://",
+	"mailto:",
 };
 
 int has_xdg = -1;
