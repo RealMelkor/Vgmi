@@ -66,6 +66,10 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 			nextspace_x = x;
 			for (j = i + 1; j < termwriter->pos; j++) {
 				nextspace_x += termwriter->cells[j].width;
+				if (termwriter->cells[j].codepoint == '-') {
+					j++;
+					break;
+				}
 				if (WHITESPACE(termwriter->cells[j].codepoint))
 					break;
 			}
@@ -74,7 +78,8 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 				newline(termwriter);
 				x = 0;
 				nextspace = i;
-				continue;
+				if (WHITESPACE(termwriter->cells[j].codepoint))
+					continue;
 			}
 			nextspace = j;
 		}
@@ -83,16 +88,17 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 			termwriter->cells[i].codepoint = ' ';
 		}
 		x += termwriter->cells[i].width;
-		if (x > termwriter->width) {
-			newline(termwriter);
-			x = 0;
-		}
 		termwriter->sent++;
 		if (write(termwriter->fd, P(termwriter->cells[i])) !=
 				sizeof(cell))
 			return -1;
+		if (x >= termwriter->width) {
+			newline(termwriter);
+			x = 0;
+		}
 	}
 	if (cell.special == PAGE_NEWLINE) x = 0;
+	else x += cell.width;
 	termwriter->last_x = x;
 	termwriter->pos = 0;
 	termwriter->sent++;

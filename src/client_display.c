@@ -22,7 +22,7 @@
 
 struct rect client_display_rect(struct client *client) {
 	struct rect rect = {0};
-	rect.w = client->width - 1;
+	rect.w = client->width - 2;
 	rect.y = MULTIPLE_TABS(client);
 	rect.h = client->height - 1 - rect.y;
 	return rect;
@@ -51,7 +51,7 @@ void client_draw_scrollbar(struct client* client, struct request *request) {
 	h = h ? h : 1;
 	if (y + h > rect.h) y = rect.h - h + 1;
 	for (i = 0; i <= rect.h; i++) {
-		tb_set_cell(rect.w, rect.y + i, ' ', TB_DEFAULT,
+		tb_set_cell(client->width - 1, rect.y + i, ' ', TB_DEFAULT,
 				(i >= y && i < y + h) ? TB_WHITE : TB_BLACK);
 	}
 }
