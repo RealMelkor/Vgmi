@@ -239,5 +239,6 @@ int url_convert(const char *url, char *out, size_t length) {
 }
 
 int url_is_absolute(const char *url) {
-	return !strnstr(url, "://", MAX_URL) || memcmp(url, V("mailto:") - 1);
+	return !!strnstr(url, "://", MAX_URL) ||
+		!memcmp(url, V("mailto:") - 1);
 }
