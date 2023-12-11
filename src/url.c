@@ -201,9 +201,9 @@ int url_hide_query(const char *url, char *out, size_t length) {
 }
 
 static int valid_char(char c) {
-	if (c == '"' && c == '%') return 0;
+	if (c == '"' || c == '%') return 0;
 	return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-		(c >= '!' && c <= ';') || c == '=' || c == '~');
+		(c >= '!' && c <= ';') || c == '=' || c == '~' || c == '_');
 }
 
 int url_convert(const char *url, char *out, size_t length) {
