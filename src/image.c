@@ -17,12 +17,6 @@
 #include "macro.h"
 #include "config.h"
 
-#ifndef NO_SANDBOX
-#ifdef __linux__
-#define STATIC_ALLOC
-#endif
-#endif
-
 int image_process = 0;
 
 static int _write(int fd, char *data, int length) {

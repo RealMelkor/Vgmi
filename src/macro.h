@@ -16,3 +16,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
+#ifndef NO_SANDBOX
+#ifdef __linux__
+#define STATIC_ALLOC
+#endif
+#endif
