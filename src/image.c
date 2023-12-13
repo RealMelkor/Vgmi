@@ -17,6 +17,12 @@
 #include "macro.h"
 #include "config.h"
 
+#ifndef NO_SANDBOX
+#ifdef __linux__
+#define STATIC_ALLOC
+#endif
+#endif
+
 int image_process = 0;
 
 static int _write(int fd, char *data, int length) {
@@ -71,8 +77,9 @@ static int empty_pipe(int fd) {
 void image_parser(int in, int out) {
 
 	char *data;
-	size_t length;
 	uint8_t byte;
+#ifdef STATIC_ALLOC
+	size_t length;
 
 	data = malloc(config.imageParserScratchPad);
 	if (!data) return;
@@ -83,6 +90,9 @@ void image_parser(int in, int out) {
 	data = malloc(length);
 	if (!data) return;
 	memset(data, 0, length);
+#else
+	data = NULL;
+#endif
 
 	sandbox_set_name("vgmi [image]");
 	sandbox_isolate();
@@ -99,18 +109,31 @@ void image_parser(int in, int out) {
 		size = y = x = 0;
 
 		if (read(in, P(size)) != sizeof(size)) break;
-		if ((unsigned)size > length || size == 0) goto fail;
+#ifdef STATIC_ALLOC
+		if ((unsigned)size > length) goto fail;
+#else
+		data = malloc(size);
+		if (!data) goto fail;
+#endif
+		if (!size) goto fail;
 		write(out, P(size));
 		if (__read(in, data, size)) goto fail;
 		img = image_load(data, size, &x, &y);
 		if (!img) goto fail;
+#ifndef STATIC_ALLOC
+		free(data);
+#endif
 		write(out, P(x));
 		write(out, P(y));
 		if (_write(out, img, x * y * 3)) break;
+#ifndef STATIC_ALLOC
+		free(img);
+#endif
 		continue;
 fail:
 		size = -1;
 		write(out, P(size));
+		free(data);
 	}
 }
 

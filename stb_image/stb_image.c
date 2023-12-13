@@ -6,7 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef NO_SANDBOX
+#ifdef __linux__
 #define STATIC_ALLOC
+#endif
+#endif
 
 #ifdef STATIC_ALLOC
 size_t img_memory_length;
