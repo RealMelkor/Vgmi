@@ -5,9 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <ctype.h>
 #define PAGE_INTERNAL
 #include "page.h"
 #include "utf8.h"
+
+static int case_insensitive(int a, int b) {
+	return tolower(a) == tolower(b);
+}
 
 void page_search(struct page *page, const char *search) {
 	size_t y, x, length;
@@ -27,7 +32,7 @@ void page_search(struct page *page, const char *search) {
 		size_t i = 0;
 		for (x = 0; x < page->lines[y].length; x++) {
 			struct page_cell *cell = &page->lines[y].cells[x];
-			if (cell->codepoint == field[i]) i++;
+			if (case_insensitive(cell->codepoint, field[i])) i++;
 			else i = 0;
 			cell->selected = 0;
 			if (i == length) {
