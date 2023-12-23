@@ -49,12 +49,12 @@ check_hash () {
 	fi
 }
 
+mkdir -p include
+
 # LibreSSL 3.8.2
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
-
-	mkdir -p include
 	mkdir -p lib
 	mkdir -p build
 	cd build
@@ -84,7 +84,7 @@ fi
 # stb_image 2.28
 h="38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc"
 check_hash $h "https://raw.githubusercontent.com/nothings/stb/5736b15f7ea0ffb08dd38af21067c314d6a3aae9/stb_image.h"
-cp stb_image.h include/
+mv stb_image.h include/
 
 if [ "$(uname)" == SunOS ] ;
 then
