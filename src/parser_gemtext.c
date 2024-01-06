@@ -147,6 +147,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 #define PARSE_LINE_COMPLETED 0
 #define PARSE_LINE_SKIP 1
 #define PARSE_LINE_BROKEN 2
+#define PARSE_LINE_IGNORE 3
 int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 			int *links, int *preformatted,
 			struct termwriter *termwriter, uint32_t *last) {
@@ -169,7 +170,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		}
 		if (preformat == -1) {
 			if (cell.codepoint == '\n') {
-				ret = PARSE_LINE_SKIP;
+				ret = PARSE_LINE_IGNORE;
 				*last = 0;
 				break;
 			}
@@ -297,12 +298,13 @@ int parse_gemtext(int in, size_t length, int width, int out) {
 				&links, &preformatted, &termwriter, &last);
 		if (ret == -1) return -1;
 		if (ret == PARSE_LINE_SKIP) continue;
-		if (ret == PARSE_LINE_COMPLETED) {
+		if (ret == PARSE_LINE_COMPLETED || ret == PARSE_LINE_IGNORE) {
 			color = LINE_TEXT;
 			last = 0;
 		}
 
-		writenewline(&termwriter, pos);
+		if (ret != PARSE_LINE_IGNORE)
+			writenewline(&termwriter, pos);
 	}
 
 	{
