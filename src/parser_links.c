@@ -84,7 +84,7 @@ int parse_links(int in, size_t length, int out) {
 				continue;
 			}
 			if (ch == '\t') ch = ' ';
-			if (ch >= ' ')
+			if (renderable(ch))
 				pos += utf8_unicode_to_char(&title[pos], ch);
 		}
 		if (header == 1 && WHITESPACE(ch)) {

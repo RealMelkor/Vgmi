@@ -168,6 +168,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		} else if (readnext(in, &cell.codepoint, pos)) {
 			return -1;
 		}
+		if (!renderable(cell.codepoint)) continue;
 		if (preformat == -1) {
 			if (cell.codepoint == '\n') {
 				ret = PARSE_LINE_IGNORE;
@@ -179,13 +180,6 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (cell.codepoint == '\n') break;
 		cell.width = mk_wcwidth(cell.codepoint);
 		if (cell.width >= termwriter->width) cell.width = 1;
-		if (!renderable(cell.codepoint)) {
-			struct page_cell cell = {0};
-			cell.special = PAGE_BLANK;
-			writecell(termwriter, cell, *pos);
-			start = 0;
-			continue;
-		}
 
 		if (header) {
 			if (header < 3 && cell.codepoint == '#') {
