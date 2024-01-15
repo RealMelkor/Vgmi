@@ -78,13 +78,13 @@ int page_update(int in, int out, const char *data, size_t length,
 		void *tmp;
 		int len;
 
-		if (!poll(&pfd, 1, 0) &&
-				bytes_sent - bytes_read < PARSER_CHUNK * 2) {
+		if (!poll(&pfd, 1, 0)) {
 			int bytes = PARSER_CHUNK;
 			if (bytes_sent + bytes > length)
 				bytes = length - bytes_sent;
 			write(out, &data[bytes_sent], bytes);
 			bytes_sent += bytes;
+			continue;
 		}
 
 		len = read(in, P(cell));
