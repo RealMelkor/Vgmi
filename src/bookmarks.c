@@ -113,7 +113,7 @@ int bookmark_add(const char *url, const char *name) {
 	if (!ptr) return ERROR_MEMORY_FAILURE;
 	bookmarks = ptr;
 	STRLCPY(bookmarks[bookmark_length].url, url);
-	STRLCPY(bookmarks[bookmark_length].name, name);
+	UTF8CPY(bookmarks[bookmark_length].name, name);
 	bookmark_length++;
 
 	return 0;

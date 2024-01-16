@@ -137,7 +137,7 @@ int utf8_cpy(char *dst, const char *src, size_t length) {
 			i++;
 		}
 	}
-	return 0;
+	return i;
 }
 
 int utf8_fgetc(FILE *f, uint32_t *out) {
@@ -163,4 +163,17 @@ int utf8_fgetc(FILE *f, uint32_t *out) {
 	*out = ch;
 
 	return 0;
+}
+
+int utf8_len(const char *ptr, size_t length) {
+	const char *start = ptr, *end = ptr + length, *last;
+	for (last = NULL; ptr < end && *ptr; ptr += utf8_char_length(*ptr))
+		last = ptr;
+	if (ptr >= end) ptr = last;
+	return ptr ? (ptr - start) : 0;
+}
+
+int utf8_fprintf(FILE *f, const char *buf, size_t length) {
+	int i = utf8_len(buf, length);
+	return fwrite(buf, 1, i, f);
 }

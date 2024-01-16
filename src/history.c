@@ -17,6 +17,8 @@
 #include "storage.h"
 #define HISTORY_INTERNAL
 #include "history.h"
+#define PARSER_INTERNAL
+#include "parser.h"
 
 #define HISTORY "history.txt"
 pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -39,6 +41,7 @@ int history_load(const char *path) {
 		uint32_t ch;
 		char *ptr;
 		if (utf8_fgetc(f, &ch)) break;
+		if (!renderable(ch)) continue;
 		if (ch == '\n') {
 			struct history_entry *new;
 			i = 0;
@@ -94,7 +97,9 @@ int history_write(const char *path) {
 	f = storage_fopen(path, "w");
 	if (!f) return -1;
 	for (entry = history; entry; entry = entry->next) {
-		fprintf(f, "%s %s\n", entry->url, entry->title);
+		fprintf(f, "%s ", entry->url);
+		utf8_fprintf(f, V(entry->title));
+		fprintf(f, "\n");
 	}
 	fclose(f);
 

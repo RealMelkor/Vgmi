@@ -92,7 +92,7 @@ void client_draw(struct client* client) {
 		if (width > TAB_WIDTH) width = TAB_WIDTH;
 		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {
-			char buf[TAB_WIDTH];
+			char buf[TAB_WIDTH] = {0};
 			int fg = TB_REVERSE | TB_DEFAULT, bg = TB_DEFAULT;
 			size_t length;
 			struct request *req = tab_completed(tab);
@@ -100,9 +100,9 @@ void client_draw(struct client* client) {
 				current--;
 				if (client->width < current * 4) continue;
 			}
-			strlcpy(buf, req ? req->page.title : "about:blank",
+			utf8_cpy(buf, req ? req->page.title : "about:blank",
 					width);
-			length = strnlen(V(buf));
+			length = utf8_width(V(buf));
 			if (tab == client->tab) {
 				fg = TB_DEFAULT;
 				bg = TB_DEFAULT;

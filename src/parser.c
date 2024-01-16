@@ -161,11 +161,9 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 int parser_create(struct parser *parser, int type) {
 	switch (type) {
 	case PARSER_GEMTEXT:
-		proc_fork("--page", &parser->in, &parser->out);
-		break;
+		return proc_fork("--page", &parser->in, &parser->out);
 	case PARSER_REQUEST:
-		proc_fork("--request", &parser->in, &parser->out);
-		break;
+		return proc_fork("--request", &parser->in, &parser->out);
 	}
 	return 0;
 }
