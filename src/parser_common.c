@@ -47,11 +47,12 @@ int readnext(int fd, uint32_t *ch, size_t *pos, size_t length) {
 
 int vread(int fd, void *buf, size_t nbytes) {
 	ssize_t len;
+	char *ptr = buf;
 	while (nbytes) {
-		len = read(fd, buf, nbytes);
+		len = read(fd, ptr, nbytes);
 		if (len < 1) return -1;
 		nbytes -= len;
-		buf += len;
+		ptr += len;
 	}
 	return 0;
 }
