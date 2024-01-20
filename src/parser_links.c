@@ -76,7 +76,7 @@ int parse_links(int in, size_t length, int out) {
 
 		uint32_t ch;
 
-		if (readnext(in, &ch, &i)) return -1;
+		if (readnext(in, &ch, &i, length)) return -1;
 		if (header == 2) {
 			if (ch == '\n') {
 				newline = 1;
@@ -111,7 +111,7 @@ int parse_links(int in, size_t length, int out) {
 		}
 
 		while (i < length) {
-			if (readnext(in, &ch, &i)) return -1;
+			if (readnext(in, &ch, &i, length)) return -1;
 			if (!WHITESPACE(ch)) break;
 		}
 
@@ -131,7 +131,7 @@ int parse_links(int in, size_t length, int out) {
 			link_length = utf8_unicode_to_char(link, ch);
 
 			while (i < length && link_length < sizeof(link)) {
-				if (readnext(in, &ch, &i)) return -1;
+				if (readnext(in, &ch, &i, length)) return -1;
 				if (SEPARATOR(ch)) break;
 				link_length += utf8_unicode_to_char(
 						&link[link_length], ch);

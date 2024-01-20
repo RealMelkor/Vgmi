@@ -21,15 +21,25 @@ int renderable(uint32_t codepoint) {
 		 codepoint != '\n' && codepoint != '\t'));
 }
 
-int readnext(int fd, uint32_t *ch, size_t *pos) {
+int readnext(int fd, uint32_t *ch, size_t *pos, size_t length) {
 
-	char buf[64];
-	int len;
+	char buf[64] = {0};
+	size_t len;
 
 	if (read(fd, buf, 1) != 1) return -1;
 	len = utf8_char_length(*buf);
-	if (len > 1 && read(fd, &buf[1], len - 1) != len - 1) return -1;
-	if (len > 0 && pos) *pos += len;
+	if (len >= sizeof(buf)) return -1;
+	if (*pos + len > length) {
+		if (*pos + 1 < length) {
+			size_t bytes = length - *pos - 1;
+			if (vread(fd, buf, bytes)) return -1;
+		}
+		*ch = '\0';
+		*pos = length;
+		return 0;
+	}
+	if (len > 1 && read(fd, &buf[1], len - 1) != (int)len - 1) return -1;
+	if (len > 0) *pos += len;
 	utf8_char_to_unicode(ch, buf);
 
 	return 0;

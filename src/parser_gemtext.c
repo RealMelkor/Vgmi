@@ -70,7 +70,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 
 	/* readnext till finding not a space */ 
 	while (*pos < length) {
-		if (readnext(in, &cell.codepoint, pos))
+		if (readnext(in, &cell.codepoint, pos, length))
 			return -1;
 		if (!WHITESPACE(cell.codepoint)) break;
 	}
@@ -84,7 +84,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 	/* readnext till find a space or newline */ 
 	cells[0] = cell;
 	for (i = 1; i < MAX_URL && *pos < length; i++) {
-		if (readnext(in, &cells[i].codepoint, pos))
+		if (readnext(in, &cells[i].codepoint, pos, length))
 			return -1;
 		if (!renderable(cells[i].codepoint)) {
 			i--;
@@ -97,7 +97,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 		*ch = 0;
 		/* read remaining bytes of the invalid url */
 		while (*ch != '\n' && *pos < length)
-			if (readnext(in, ch, pos)) return -1;
+			if (readnext(in, ch, pos, length)) return -1;
 		return 0;
 	}
 
@@ -106,7 +106,7 @@ int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 
 	*ch = rewrite ? '\n' : 0;
 	for (j = 0; !rewrite && j < MAX_URL && *pos < length; j++) {
-		if (readnext(in, ch, pos)) return -1;
+		if (readnext(in, ch, pos, length)) return -1;
 		if (!WHITESPACE(*ch)) {
 			if (*ch == '\n') rewrite = i;
 			break;
@@ -165,7 +165,7 @@ int gemtext_parse_line(int in, size_t *pos, size_t length, int *_color,
 		if (*last) {
 			cell.codepoint = *last;
 			*last = 0;
-		} else if (readnext(in, &cell.codepoint, pos)) {
+		} else if (readnext(in, &cell.codepoint, pos, length)) {
 			return -1;
 		}
 		if (!renderable(cell.codepoint)) continue;

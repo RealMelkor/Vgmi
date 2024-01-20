@@ -167,8 +167,6 @@ int secure_send(struct secure *secure, const char *data, size_t len) {
 
 int secure_read(struct secure *secure, char **data, size_t *length) {
 
-	const size_t pad = 16; /* pad the end with null-bytes in case the data
-				  ends with an incomplete unicode character */
 	char buf[1024], *ptr;
 	size_t len, allocated;
 	int i;
@@ -179,7 +177,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		if (len + sizeof(buf) > allocated) {
 			char *tmp;
 			allocated += sizeof(buf);
-			tmp = realloc(ptr, allocated + pad);
+			tmp = realloc(ptr, allocated);
 			if (!tmp) {
 				free(ptr);
 				return ERROR_MEMORY_FAILURE;
@@ -201,7 +199,6 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		STRLCPY(error_tls, _tls_error(secure->ctx));
 		return ERROR_TLS_FAILURE;
 	}
-	memset(&ptr[len], 0, pad);
 	*length = len;
 	if (readonly(ptr, *length, data)) return ERROR_ERRNO;
 	free(ptr);
