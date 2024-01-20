@@ -29,7 +29,7 @@ int parse_plain(int in, size_t length, int width, int out) {
 		uint32_t ch;
 		struct page_cell cell = {0};
 
-		readnext(in, &ch, &i, length);
+		if (readnext(in, &ch, &i, length)) return -1;
 		if (!renderable(ch)) continue;
 		if (ch == '\n') {
 			cell.special = PAGE_NEWLINE;

@@ -131,8 +131,7 @@ int url_parse(struct request* request, const char *url) {
 		int i;
 		i = strlcpy(&buf[length], url, sizeof(buf) - length);
 		i += length;
-		buf[i] = '/';
-		buf[i + 1] = '\0';
+		buf[i] = '\0';
 		protocol = PROTOCOL_GEMINI;
 	} else STRLCPY(buf, url);
 

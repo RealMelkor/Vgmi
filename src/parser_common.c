@@ -23,12 +23,12 @@ int renderable(uint32_t codepoint) {
 
 int readnext(int fd, uint32_t *ch, size_t *pos, size_t length) {
 
-	char buf[64] = {0};
-	size_t len;
+	char buf[16] = {0};
+	int len;
 
 	if (read(fd, buf, 1) != 1) return -1;
 	len = utf8_char_length(*buf);
-	if (len >= sizeof(buf)) return -1;
+	if ((size_t)len >= sizeof(buf)) return -1;
 	if (*pos + len > length) {
 		if (*pos + 1 < length) {
 			size_t bytes = length - *pos - 1;
@@ -38,7 +38,7 @@ int readnext(int fd, uint32_t *ch, size_t *pos, size_t length) {
 		*pos = length;
 		return 0;
 	}
-	if (len > 1 && read(fd, &buf[1], len - 1) != (int)len - 1) return -1;
+	if (len > 1 && vread(fd, &buf[1], len - 1)) return -1;
 	if (len > 0) *pos += len;
 	utf8_char_to_unicode(ch, buf);
 
@@ -46,6 +46,12 @@ int readnext(int fd, uint32_t *ch, size_t *pos, size_t length) {
 }
 
 int vread(int fd, void *buf, size_t nbytes) {
-	ssize_t len = read(fd, buf, nbytes);
-	return len != (ssize_t)nbytes;
+	ssize_t len;
+	while (nbytes) {
+		len = read(fd, buf, nbytes);
+		if (len < 1) return -1;
+		nbytes -= len;
+		buf += len;
+	}
+	return 0;
 }
