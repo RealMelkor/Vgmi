@@ -123,9 +123,9 @@ static FILE* _fopen(const char *name, const char *mode, int dir) {
 	int fd;
 	int flags;
 
-	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC | O_CREAT;
-	else if (strchr(mode, 'r')) flags = O_RDONLY;
-	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND | O_CREAT;
+	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC;
+	else if (strchr(mode, 'r')) flags = O_RDONLY | O_CLOEXEC;
+	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC;
 	else return NULL;
 
 	fd = openat(dir, name, flags, 0600);
@@ -185,9 +185,9 @@ int storage_init() {
 	if (storage_download_path(V(download))) return ERROR_STORAGE_ACCESS;
 	if (storage_mkdir(path)) return ERROR_STORAGE_ACCESS;
 	if (storage_mkdir(download)) return ERROR_STORAGE_ACCESS;
-	if ((ret = open(path, O_DIRECTORY)) < 0) return ERROR_STORAGE_ACCESS;
+	if ((ret = open(path, O_DIRECTORY | O_CLOEXEC)) < 0) return ERROR_STORAGE_ACCESS;
 	storage_fd = ret;
-	if ((ret = open(download, O_DIRECTORY)) < 0)
+	if ((ret = open(download, O_DIRECTORY | O_CLOEXEC)) < 0)
 		return ERROR_STORAGE_ACCESS;
 	download_fd = ret;
 	return 0;

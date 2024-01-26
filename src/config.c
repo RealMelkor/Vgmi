@@ -35,6 +35,7 @@ void config_default() {
 	config.maximumRedirects = 5;
 	config.maximumCachedPages= 15;
 	config.maximumHistorySize = 3000;
+	config.maximumHistoryCache = 200;
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
 }
 

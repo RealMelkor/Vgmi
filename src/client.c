@@ -93,7 +93,15 @@ int client_input(struct client *client) {
 
 	if (!client->tab || !client->tab->request ||
 			client->tab->request->state != STATE_ONGOING) {
+#ifdef FUZZING_MODE
+		ret = tb_peek_event(&ev, 50);
+		if (ret == TB_ERR_NO_EVENT) {
+			ret = TB_OK;
+			ev.ch = 'r';
+		}
+#else
 		ret = tb_poll_event(&ev);
+#endif
 	} else {
 		ret = tb_peek_event(&ev, 100);
 	}

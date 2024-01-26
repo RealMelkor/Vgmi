@@ -43,7 +43,11 @@ int error_string(int error, char *out, size_t len) {
 		break;
 	case ERROR_GETADDRINFO:
 		ptr = gai_strerror(-((error & 0xFFFF0000) >> 16));
-		strlcpy(out, ptr, len);
+		if (!errno) {
+			snprintf(out, len, "DNS: %s", ptr);
+			break;
+		}
+		snprintf(out, len, "DNS: %s (%s)", ptr, strerror(errno));
 		break;
 	case ERROR_INVALID_DATA:
 		strlcpy(out, "Invalid response", len);

@@ -20,10 +20,13 @@
 #define PARSER_INTERNAL
 #include "parser.h"
 
+#define HISTORY_DISABLED (!config.enableHistory || !config.maximumHistorySize)
 #define HISTORY "history.txt"
+#define HISTORY_RELOAD 400 /* reload history after [x] requests */
 pthread_mutex_t history_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct history_entry *history = NULL;
+int history_length = 0;
 
 int history_load(const char *path) {
 
@@ -31,8 +34,6 @@ int history_load(const char *path) {
 	struct history_entry *last = NULL;
 	FILE *f;
 	unsigned int i, part, count;
-
-	if (!config.maximumHistorySize) return 0;
 
 	if (!(f = storage_fopen(path, "r"))) return ERROR_STORAGE_ACCESS;
 
@@ -81,11 +82,12 @@ int history_load(const char *path) {
 		i += utf8_unicode_to_char(&ptr[i], ch);
 	}
 	fclose(f);
+	history_length = count;
 	return 0;
 }
 
 void history_init() {
-	if (!config.enableHistory) return;
+	if (HISTORY_DISABLED) return;
 	history_load(HISTORY);
 }
 
@@ -93,10 +95,13 @@ int history_write(const char *path) {
 
 	FILE *f;
 	struct history_entry *entry;
+	int count;
 
+	if (HISTORY_DISABLED) return 0;
 	f = storage_fopen(path, "w");
 	if (!f) return -1;
 	for (entry = history; entry; entry = entry->next) {
+		if (count++ >= config.maximumHistorySize) break;
 		fprintf(f, "%s ", entry->url);
 		utf8_fprintf(f, V(entry->title));
 		fprintf(f, "\n");
@@ -109,6 +114,7 @@ int history_write(const char *path) {
 int history_clear() {
 	history_free();
 	history = NULL;
+	history_length = 0;
 	return history_save();
 }
 
@@ -119,8 +125,17 @@ int history_save() {
 int history_add(const char *url, const char *title) {
 
 	struct history_entry *entry;
+	int limit;
 
-	if (!config.enableHistory) return 0;
+	if (HISTORY_DISABLED) return 0;
+	limit = config.maximumHistorySize + config.maximumHistoryCache;
+	if (history_length > limit) {
+		/* reload history to prevents overloading memory */
+		history_save();
+		history_free();
+		history_load(HISTORY);
+	}
+	history_length++;
 	entry = malloc(sizeof(*entry));
 	if (!entry) return ERROR_MEMORY_FAILURE;
 	url_hide_query(title, V(entry->title));

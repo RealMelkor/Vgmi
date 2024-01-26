@@ -36,6 +36,7 @@
 struct secure {
 	struct tls *ctx;
 	struct tls_config *config;
+	int socket;
 };
 
 int secure_initialized = 0;
@@ -153,6 +154,7 @@ int secure_connect(struct secure *secure, struct request request) {
 		if (ret) goto error;
 	}
 
+	secure->socket = sockfd;
 	return 0;
 error:
 	close(sockfd);
@@ -206,6 +208,10 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 }
 
 int secure_free(struct secure *secure) {
+	if (secure->ctx) {
+		close(secure->socket);
+		tls_close(secure->ctx);
+	}
 	tls_config_free(secure->config);
 	tls_free(secure->ctx);
 	free(secure);

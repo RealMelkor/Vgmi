@@ -28,7 +28,7 @@ struct known_host *known_hosts[HT_SIZE] = {NULL};
 
 const uint32_t fnv_prime = 0x01000193;
 const uint32_t fnv_offset = 0x811C9DC5;
-uint32_t fnv1a(const uint8_t *data, size_t length) {
+static uint32_t fnv1a(const uint8_t *data, size_t length) {
 	uint32_t hash = fnv_offset;
 	size_t i;
 	for (i = 0; i < length; i++)

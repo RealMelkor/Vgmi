@@ -78,10 +78,12 @@ int parse_links(int in, size_t length, int out) {
 
 		if (readnext(in, &ch, &i, length)) return -1;
 		if (header == 2) {
-			if (ch == '\n') {
-				newline = 1;
+			if (pos + utf8_unicode_length(ch) >= sizeof(title)) {
 				header = 0;
 				continue;
+			}
+			if (ch == '\n') {
+				newline = 1;
 			}
 			if (ch == '\t') ch = ' ';
 			if (renderable(ch))
@@ -118,7 +120,7 @@ int parse_links(int in, size_t length, int out) {
 		link = 0;
 		header = 0;
 
-		if (i >= length) continue;
+		if (i >= length) break;
 		if (ch == '\n') {
 			newline = 1;
 			continue;
