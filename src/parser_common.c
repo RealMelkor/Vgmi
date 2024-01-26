@@ -16,7 +16,7 @@
 #include "parser.h"
 
 int renderable(uint32_t codepoint) {
-	return !(codepoint == 0xFEFF ||
+	return !(codepoint == 0xFEFF || codepoint == 127 ||
 		((mk_wcwidth(codepoint) < 1 || codepoint < ' ') &&
 		 codepoint != '\n' && codepoint != '\t'));
 }

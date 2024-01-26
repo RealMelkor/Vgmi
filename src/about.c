@@ -44,7 +44,7 @@ HEADER \
 char license_page[] =
 HEADER \
 "# Vgmi license\n\n" \
-"Copyright (c) 2023 RMF <rawmonk@firemail.cc>\n\n" \
+"Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>\n\n" \
 "Permission to use, copy, modify, and distribute this software for any\n" \
 "purpose with or without fee is hereby granted, provided that the above\n" \
 "copyright notice and this permission notice appear in all copies.\n\n" \
