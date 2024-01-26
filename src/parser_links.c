@@ -83,7 +83,9 @@ int parse_links(int in, size_t length, int out) {
 				continue;
 			}
 			if (ch == '\n') {
+				header = 0;
 				newline = 1;
+				continue;
 			}
 			if (ch == '\t') ch = ' ';
 			if (renderable(ch))
