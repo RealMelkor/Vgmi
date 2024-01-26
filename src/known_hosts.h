@@ -16,8 +16,8 @@ extern struct known_host *known_hosts[HT_SIZE];
 #endif
 
 int known_hosts_verify(const char *, const char *, time_t, time_t);
-int known_hosts_load();
-int known_hosts_rewrite();
+int known_hosts_load(void);
+int known_hosts_rewrite(void);
 int known_hosts_expired(const char *host);
 int known_hosts_forget(const char *host);
-void known_hosts_free();
+void known_hosts_free(void);

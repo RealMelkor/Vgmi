@@ -51,7 +51,7 @@ int page_update(int in, int out, const char *data, size_t length,
 			struct page *page) {
 
 	int ret;
-	size_t i, bytes_sent, cells_read;
+	size_t i, bytes_sent;
 	struct page_line line = {0};
 	struct pollfd pfd;
 
@@ -68,7 +68,7 @@ int page_update(int in, int out, const char *data, size_t length,
 		malloc((page->width + 1) * sizeof(struct page_cell));
 	if (!line.cells) return ERROR_MEMORY_FAILURE;
 
-	cells_read = bytes_sent = ret = 0;
+	bytes_sent = ret = 0;
 	pfd.fd = in;
 	pfd.events = POLLIN;
 
@@ -92,7 +92,6 @@ int page_update(int in, int out, const char *data, size_t length,
 			ret = -1;
 			break;
 		}
-		cells_read++;
 
 		switch (cell.special) {
 		case PAGE_EOF: break;

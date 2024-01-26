@@ -2,6 +2,7 @@
  * MIT License
  * Copyright (c) 2010-2020 nsf <no.smile.face@gmail.com>
  *		 2015-2022 Adam Saponara <as@php.net>
+ *		 2023-2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stddef.h>

@@ -111,7 +111,7 @@ struct sock_filter filter[] = {
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
-int enable_seccomp() {
+int enable_seccomp(void) {
 	struct sock_fprog prog;
 	prog.len = (unsigned short)(sizeof(filter) / sizeof (filter[0]));
 	prog.filter = filter;
@@ -159,7 +159,7 @@ int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
 	return landlock_unveil(landlock_fd, fd, perms);
 }
 
-int landlock_init() {
+int landlock_init(void) {
 	struct landlock_ruleset_attr attr = {0};
 	attr.handled_access_fs =	LANDLOCK_ACCESS_FS_READ_FILE |
 					LANDLOCK_ACCESS_FS_READ_DIR |
@@ -178,7 +178,7 @@ int landlock_apply(int fd)
 }
 #endif
 
-int sandbox_init() {
+int sandbox_init(void) {
 
 	char path[2048], download_path[2048];
 #ifdef HAS_LANDLOCK
@@ -228,7 +228,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_isolate() {
+int sandbox_isolate(void) {
 	if (!config.enableSandbox) return 0;
 	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT))
 		return ERROR_SANDBOX_FAILURE;

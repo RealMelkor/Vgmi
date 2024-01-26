@@ -15,7 +15,7 @@
 
 int parse_plain(int in, size_t length, int width, int out) {
 
-	size_t i, cells;
+	size_t i;
 	struct termwriter termwriter = {0};
 
 	if (width < 10) width = 10;
@@ -23,7 +23,6 @@ int parse_plain(int in, size_t length, int width, int out) {
 	termwriter.width = width - OFFSETX;
 	termwriter.fd = out;
 	termwriter.pos = 0;
-	cells = 0;
 
 	for (i = 0; i < length;) {
 		uint32_t ch;
@@ -38,7 +37,6 @@ int parse_plain(int in, size_t length, int width, int out) {
 			cell.width = mk_wcwidth(ch);
 			cell.color = TB_DEFAULT;
 		}
-		cells++;
 		writecell(&termwriter, cell, i);
 	}
 

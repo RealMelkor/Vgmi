@@ -25,14 +25,14 @@ int init_privs(const char **privs) {
 	return 0;
 }
 
-int sandbox_init() {
+int sandbox_init(void) {
 	const char* privs[] = {PRIV_NET_ACCESS, PRIV_FILE_READ,
 				PRIV_FILE_WRITE, NULL};
 	if (init_privs(privs)) return ERROR_SANDBOX_FAILURE;
 	return 0;
 }
 
-int sandbox_isolate() {
+int sandbox_isolate(void) {
 	const char* privs[] = {NULL};
 	if (init_privs(privs)) return ERROR_SANDBOX_FAILURE;
 	return 0;

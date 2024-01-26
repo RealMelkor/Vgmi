@@ -10,8 +10,8 @@ struct history_entry {
 };
 extern struct history_entry *history;
 #endif
-void history_init();
-int history_save();
+void history_init(void);
+int history_save(void);
 int history_add(const char *url, const char *title);
-void history_free();
-int history_clear();
+void history_free(void);
+int history_clear(void);

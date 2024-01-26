@@ -20,7 +20,7 @@
 
 struct config config = {0};
 
-void config_default() {
+void config_default(void) {
 	memset(&config, 0, sizeof(config));
 	config.certificateLifespan = 3600 * 24 * 365 * 2; /* 2 years */
 	config.certificateBits = 2048;
@@ -82,7 +82,7 @@ int config_set_field(int id, const char *value) {
 	return 0;
 }
 
-int config_load() {
+int config_load(void) {
 	FILE *f;
 	struct field field;
 	char buf[1024];
@@ -137,7 +137,7 @@ int config_load() {
 	return 0;
 }
 
-int config_save() {
+int config_save(void) {
 
 	FILE *f;
 	unsigned int i;
@@ -160,7 +160,7 @@ int config_save() {
 	return 0;
 }
 
-int config_correction() {
+int config_correction(void) {
 	size_t i;
 	for (i = 0; i < LENGTH(fields); i++) {
 		if (!STRCMP(fields[i].name, "request.maxdisplay")) {

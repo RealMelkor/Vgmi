@@ -2,8 +2,8 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
  */
-int bookmark_load();
-int bookmark_rewrite();
+int bookmark_load(void);
+int bookmark_rewrite(void);
 int bookmark_add(const char *url, const char *name);
 int bookmark_remove(size_t id);
 

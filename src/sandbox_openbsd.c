@@ -11,7 +11,7 @@
 #include "storage.h"
 #include "error.h"
 
-int sandbox_init() {
+int sandbox_init(void) {
 
 	char path[2048], download_path[2048];
 	int ret;
@@ -30,7 +30,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_isolate() {
+int sandbox_isolate(void) {
 	if (unveil(NULL, NULL)) return ERROR_SANDBOX_FAILURE;
 	if (pledge("stdio", "")) return ERROR_SANDBOX_FAILURE;
 	return 0;

@@ -52,7 +52,7 @@ int known_hosts_add(const char *host, const char *hash,
 	return 0;
 }
 
-int known_hosts_load() {
+int known_hosts_load(void) {
 
 	FILE *f;
 	int ch = !EOF;
@@ -118,7 +118,7 @@ int known_hosts_write(const char *host, const char *hash,
 	return 0;
 }
 
-int known_hosts_rewrite() {
+int known_hosts_rewrite(void) {
 	FILE *f;
 	int i;
 
@@ -191,7 +191,7 @@ int known_hosts_expired(const char *host) {
 	return time(NULL) > ptr->end;
 }
 
-void known_hosts_free() {
+void known_hosts_free(void) {
 	int i;
 	for (i = 0; i < HT_SIZE; i++) {
 		struct known_host *ptr, *next = NULL;

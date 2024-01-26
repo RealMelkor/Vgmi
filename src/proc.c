@@ -66,7 +66,7 @@ fail:
 	return 0;
 }
 
-void proc_exit() {
+void proc_exit(void) {
 #ifdef __linux__
 	syscall(SYS_exit, EXIT_SUCCESS);
 #else

@@ -2829,7 +2829,7 @@ static int bytebuf_free(struct bytebuf_t *b) {
 	return TB_OK;
 }
 
-int tb_refresh() {
+int tb_refresh(void) {
 
 	uint32_t i32 = 0;
 

@@ -22,7 +22,7 @@ const char *allowed_protocols[] = {
 };
 
 int has_xdg = -1;
-int xdg_available() {
+int xdg_available(void) {
 	if (has_xdg == -1)
 		has_xdg = !system("xdg-open --help >/dev/null 2>&1");
 	return has_xdg;
@@ -77,7 +77,7 @@ int xdg_request(const char *request) {
 	return 0;
 }
 
-int xdg_init() {
+int xdg_init(void) {
 	if (!config.enableXdg) {
 		has_xdg = 0;
 		return 0;

@@ -86,7 +86,7 @@ int history_load(const char *path) {
 	return 0;
 }
 
-void history_init() {
+void history_init(void) {
 	if (HISTORY_DISABLED) return;
 	history_load(HISTORY);
 }
@@ -95,7 +95,7 @@ int history_write(const char *path) {
 
 	FILE *f;
 	struct history_entry *entry;
-	int count;
+	int count = 0;
 
 	if (HISTORY_DISABLED) return 0;
 	f = storage_fopen(path, "w");
@@ -111,14 +111,14 @@ int history_write(const char *path) {
 	return 0;
 }
 
-int history_clear() {
+int history_clear(void) {
 	history_free();
 	history = NULL;
 	history_length = 0;
 	return history_save();
 }
 
-int history_save() {
+int history_save(void) {
 	return history_write(HISTORY);
 }
 
@@ -151,7 +151,7 @@ int history_add(const char *url, const char *title) {
 	return 0;
 }
 
-void history_free() {
+void history_free(void) {
 	struct history_entry *next;
 	while (history) {
 		next = history->next;

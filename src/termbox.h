@@ -552,6 +552,6 @@ struct tb_cell *tb_cell_buffer(void);
 int tb_has_truecolor(void);
 int tb_has_egc(void);
 const char *tb_version(void);
-int tb_refresh();
+int tb_refresh(void);
 
 #endif /* __TERMBOX_H */

@@ -56,7 +56,7 @@ static struct field fields[] = {
 };
 #endif
 
-int config_load();
-int config_save();
+int config_load(void);
+int config_save(void);
 int config_set_field(int id, const char *value);
-int config_correction();
+int config_correction(void);

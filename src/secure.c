@@ -102,7 +102,7 @@ int secure_init(struct secure *secure, const char *hostname) {
 	return 0;
 }
 
-struct secure *secure_new() {
+struct secure *secure_new(void) {
 	struct secure *secure = calloc(1, sizeof(struct secure));
 	return secure;
 }

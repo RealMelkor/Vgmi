@@ -27,7 +27,7 @@ struct request_thread {
 	char url[MAX_URL];
 };
 
-struct tab *tab_new() {
+struct tab *tab_new(void) {
 	struct tab *tab = calloc(1, sizeof(struct tab));
 	if (!tab) return NULL;
 	tab->mutex = malloc(sizeof(pthread_mutex_t));

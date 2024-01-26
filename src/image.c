@@ -158,7 +158,7 @@ void *image_parse(void *data, int len, int *x, int *y) {
 	return img;
 }
 
-int image_init() {
+int image_init(void) {
 	int ret;
 	if (!config.enableImage) return 0;
 	ret = proc_fork("--image", &image_fd_in, &image_fd_out);

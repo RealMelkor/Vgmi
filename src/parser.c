@@ -168,11 +168,11 @@ int parser_create(struct parser *parser, int type) {
 	return 0;
 }
 
-int parser_request_create() {
+int parser_request_create(void) {
 	return parser_create(&request_parser, PARSER_REQUEST);
 }
 
-int parser_page_create() {
+int parser_page_create(void) {
 	return parser_create(&page_parser, PARSER_GEMTEXT);
 }
 

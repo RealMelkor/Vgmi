@@ -85,6 +85,6 @@ int sandbox_connect(int s, void *name, int namelen);
 
 #endif
 
-int sandbox_init();
-int sandbox_isolate();
+int sandbox_init(void);
+int sandbox_isolate(void);
 int sandbox_set_name(const char*);

@@ -5,11 +5,11 @@
 #include "sandbox.h"
 
 #ifdef NO_SANDBOX
-int sandbox_init() {
+int sandbox_init(void) {
 	return 0;
 }
 
-int sandbox_isolate() {
+int sandbox_isolate(void) {
 	return 0;
 }
 

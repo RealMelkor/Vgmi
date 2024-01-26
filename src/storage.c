@@ -176,7 +176,7 @@ int storage_read(const char *name, char *out, size_t length,
 	return 0;
 }
 
-int storage_init() {
+int storage_init(void) {
 
 	char path[PATH_MAX], download[PATH_MAX];
 	int ret;
@@ -193,7 +193,7 @@ int storage_init() {
 	return 0;
 }
 
-int storage_close() {
+int storage_close(void) {
 	close(storage_fd);
 	close(download_fd);
 	return 0;

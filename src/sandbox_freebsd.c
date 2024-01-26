@@ -34,7 +34,7 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 
 #include <sys/types.h>
 #include <signal.h>
-int sandbox_init() {
+int sandbox_init(void) {
 
 	int families[] = {AF_INET, AF_INET6};
 	cap_net_limit_t* limit;
@@ -70,7 +70,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_isolate() {
+int sandbox_isolate(void) {
 	if (cap_enter()) return ERROR_SANDBOX_FAILURE;
 	return 0;
 }

@@ -17,7 +17,7 @@ struct tab {
 	int loading;
 };
 
-struct tab *tab_new();
+struct tab *tab_new(void);
 void tab_display(struct tab*, struct client*);
 int tab_request(struct tab*, const char *url);
 int tab_follow(struct tab* tab, const char *link);

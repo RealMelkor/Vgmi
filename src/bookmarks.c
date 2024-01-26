@@ -17,9 +17,9 @@
 struct bookmark *bookmarks = NULL;
 size_t bookmark_length = 0;
 
-int bookmark_load() {
+int bookmark_load(void) {
 
-	size_t i, j;
+	size_t j;
 	FILE *f = storage_fopen(FILENAME, "r");
 	int space, eof;
 
@@ -36,7 +36,7 @@ int bookmark_load() {
 		void *ptr;
 		struct bookmark bookmark = {0};
 		ch = j = space = 0;
-		for (i = 0; ; i++) {
+		for (;;) {
 			int len;
 			if (utf8_fgetc(f, &ch)) {
 				eof = 1;
@@ -93,7 +93,7 @@ int bookmark_load() {
 	return 0;
 }
 
-int bookmark_rewrite() {
+int bookmark_rewrite(void) {
 
 	size_t i;
 	FILE *f = storage_fopen(FILENAME, "w");

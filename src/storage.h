@@ -10,6 +10,6 @@ int storage_path(char *out, size_t length);
 int storage_download_path(char *out, size_t length);
 int storage_open(const char *name, int flags, int mode);
 int storage_read(const char*, char*, size_t, size_t*);
-int storage_init();
-int storage_close();
+int storage_init(void);
+int storage_close(void);
 extern int storage_fd;
