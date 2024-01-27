@@ -64,19 +64,36 @@ int format_link(const char *link, size_t length,
 
 int parse_links(int in, size_t length, int out) {
 
-	int newline, link, header;
+	int newline, link, header, ignore, ignore_mode;
 	size_t i, pos;
 	char title[1024] = {0};
 
-	header = 0;
+	pos = link = header = ignore_mode = ignore = 0;
 	newline = 1;
 	link = 0;
-	pos = 0;
 	for (i = 0; i < length; ) {
 
 		uint32_t ch;
 
 		if (readnext(in, &ch, &i, length)) return -1;
+		if (newline && ch == '`') {
+			ignore = 1;
+			newline = 0;
+			continue;
+		}
+		if (ignore) {
+			if (ch == '`') {
+				if (++ignore < 2) continue;
+				ignore_mode = !ignore_mode;
+				ignore = 0;
+				continue;
+			}
+			ignore = 0;
+		}
+		if (ignore_mode) {
+			if (ch == '\n') newline = 1;
+			continue;
+		}
 		if (header == 2) {
 			if (pos + utf8_unicode_length(ch) >= sizeof(title)) {
 				header = 0;
@@ -134,13 +151,24 @@ int parse_links(int in, size_t length, int out) {
 			size_t link_length;
 			link_length = utf8_unicode_to_char(link, ch);
 
-			while (i < length && link_length < sizeof(link)) {
+			while (i < length) {
+				size_t next;
 				if (readnext(in, &ch, &i, length)) return -1;
 				if (SEPARATOR(ch)) break;
-				link_length += utf8_unicode_to_char(
-						&link[link_length], ch);
+				next = link_length + utf8_unicode_length(ch);
+				if (next >= sizeof(link)) {
+					link_length = next;
+					break;
+				}
+				utf8_unicode_to_char(&link[link_length], ch);
+				link_length = next;
 			}
 			link_length++;
+			/* ignore links above the length limit */
+			if (link_length > sizeof(link)) {
+				newline = ch == '\n';
+				continue;
+			}
 
 			format_link(link, link_length, V(buf));
 			url_parse_idn(buf, V(link));
