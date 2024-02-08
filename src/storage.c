@@ -81,6 +81,11 @@ int storage_path(char *out, size_t length) {
 	if (length > PATH_MAX) length = PATH_MAX;
 
 	path = getenv("XDG_CONFIG_HOME");
+
+	if (path[strlen(path) - 1] != '/') {
+		path = strcat(path, "/");
+	}
+
 	if (path) {
 		int i = strlcpy(out, path, length);
 		strlcpy(&out[i], CONFIG_FOLDER, length - i);
