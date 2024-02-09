@@ -83,7 +83,7 @@ int parse_links(int in, size_t length, int out) {
 		}
 		if (ignore) {
 			if (ch == '`') {
-				if (++ignore < 2) continue;
+				if (ignore++ < 2) continue;
 				ignore_mode = !ignore_mode;
 				ignore = 0;
 				continue;
@@ -91,7 +91,7 @@ int parse_links(int in, size_t length, int out) {
 			ignore = 0;
 		}
 		if (ignore_mode) {
-			if (ch == '\n') newline = 1;
+			newline = ch == '\n';
 			continue;
 		}
 		if (header == 2) {
