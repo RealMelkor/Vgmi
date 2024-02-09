@@ -78,16 +78,21 @@ int storage_path(char *out, size_t length) {
 
 	const char *path;
 
-	if (length > PATH_MAX) length = PATH_MAX;
+        if (length > PATH_MAX) length = PATH_MAX;
 
-	path = getenv("XDG_CONFIG_HOME");
-	if (path) {
-		int i = strlcpy(out, path, length);
-		strlcpy(&out[i], CONFIG_FOLDER, length - i);
-		return 0;
-	}
+        path = getenv("XDG_CONFIG_HOME");
+        if (path && *path) {
+                unsigned int i = strlcpy(out, path, length);
+                if (i + 1 >= length) return -1; /* path too long */
+                if (out[i - 1] != '/') { /* check if path ends with a slash */
+                        out[i++] = '/';
+                        out[i] = '\0';
+                }
+                strlcpy(&out[i], CONFIG_FOLDER, length - i);
+                return 0;
+        }
 
-	return storage_from_home(out, length, CONFIG_PATH);
+        return storage_from_home(out, length, CONFIG_PATH);
 }
 
 int storage_download_path(char *out, size_t length) {
