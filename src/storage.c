@@ -123,28 +123,31 @@ int storage_download_path(char *out, size_t length) {
 	return storage_from_home(out, length, DOWNLOAD_PATH);
 }
 
-static FILE* _fopen(const char *name, const char *mode, int dir) {
+static FILE* _fopen(const char *name, const char *mode, int dir, int secure) {
 
 	int fd;
 	int flags;
 
-	if (strchr(mode, 'w')) flags = O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC;
-	else if (strchr(mode, 'r')) flags = O_RDONLY | O_CLOEXEC;
-	else if (strchr(mode, 'a')) flags = O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC;
+	if (strchr(mode, 'w'))
+		flags = O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC;
+	else if (strchr(mode, 'r'))
+		flags = O_RDONLY | O_CLOEXEC;
+	else if (strchr(mode, 'a'))
+		flags = O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC;
 	else return NULL;
 
-	fd = openat(dir, name, flags, 0600);
+	fd = openat(dir, name, flags, secure ? 0600 : 0644);
 	if (fd < 0) return NULL;
 
 	return fdopen(fd, mode);
 }
 
 FILE* storage_fopen(const char *name, const char *mode) {
-	return _fopen(name, mode, storage_fd);
+	return _fopen(name, mode, storage_fd, 1);
 }
 
 FILE* storage_download_fopen(const char *name, const char *mode) {
-	return _fopen(name, mode, download_fd);
+	return _fopen(name, mode, download_fd, 0);
 }
 
 int storage_open(const char *name, int flags, int mode) {
@@ -190,7 +193,8 @@ int storage_init(void) {
 	if (storage_download_path(V(download))) return ERROR_STORAGE_ACCESS;
 	if (storage_mkdir(path)) return ERROR_STORAGE_ACCESS;
 	if (storage_mkdir(download)) return ERROR_STORAGE_ACCESS;
-	if ((ret = open(path, O_DIRECTORY | O_CLOEXEC)) < 0) return ERROR_STORAGE_ACCESS;
+	if ((ret = open(path, O_DIRECTORY | O_CLOEXEC)) < 0)
+		return ERROR_STORAGE_ACCESS;
 	storage_fd = ret;
 	if ((ret = open(download, O_DIRECTORY | O_CLOEXEC)) < 0)
 		return ERROR_STORAGE_ACCESS;

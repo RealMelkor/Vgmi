@@ -93,6 +93,12 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_XDG:
 		strlcpy(out, "Unable to open the link", len);
 		break;
+	case ERROR_SOCKET_CONNECTION:
+		strlcpy(out, "Failed to connect to remote server", len);
+		break;
+	case ERROR_SOCKET_CREATION:
+		strlcpy(out, "Failed to create socket", len);
+		break;
 	default:
 		snprintf(out, len, "Unknown error (%d)", error);
 		return -1;
