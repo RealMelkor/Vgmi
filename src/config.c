@@ -26,6 +26,9 @@ void config_default(void) {
 	config.certificateBits = 2048;
 	config.enableHexViewer = 1;
 	config.enableSandbox = 1;
+#ifdef __linux__
+	config.enableLandlock = 1;
+#endif
 	config.enableImage = 1;
 	config.enableHistory = 1;
 	config.enableXdg = 1;
