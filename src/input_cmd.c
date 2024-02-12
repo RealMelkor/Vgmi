@@ -22,6 +22,10 @@
 static void insert_unicode(char *buf, size_t length, int *pos, uint32_t ch) {
 	char cpy[MAX_CMDLINE];
 	int end = !buf[*pos], len;
+	{
+		len = utf8_len(buf, length);
+		if (len < *pos) *pos = len;
+	}
 	if (!end) STRLCPY(cpy, &buf[*pos]);
 	len = utf8_unicode_to_char(&buf[*pos], ch);
 	*pos += len;
@@ -48,6 +52,7 @@ void client_enter_mode_cmdline(struct client *client) {
 	memset(client->cmd, 0, sizeof(client->cmd));
 	client->mode = MODE_CMDLINE;
 	client->cursor = STRLCPY(client->cmd, ":");
+	if (client->tab) client->tab->input[0] = 0;
 }
 
 static void refresh_search(struct client *client) {
@@ -71,6 +76,8 @@ int handle_cmd(struct client *client) {
 	ASSERT(sizeof(cmd) > sizeof(name))
 
 	STRLCPY(cmd, &client->cmd[1]);
+
+	if (!*cmd) return 0;
 
 	number = atoi(cmd);
 	if (number || !STRCMP(cmd, "0")) {
@@ -158,10 +165,12 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			refresh_search(client);
 			return 0;
 		}
+		client->cursor -= prefix;
 		delete_unicode(V(client->tab->input), &client->cursor);
+		client->cursor += prefix;
 		goto rewrite;
 	case TB_KEY_ARROW_LEFT:
-		if (!client->cursor) break;
+		if (client->cursor <= prefix) break;
 		client->cursor = utf8_previous(client->cmd, client->cursor);
 		break;
 	case TB_KEY_ARROW_RIGHT:
@@ -182,7 +191,9 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		return 0;
 	}
 
+	client->cursor -= prefix;
 	insert_unicode(V(client->tab->input), &client->cursor, ev.ch);
+	client->cursor += prefix;
 rewrite:
 	if (req->status == GMI_INPUT) {
 		strlcpy(&client->cmd[prefix], client->tab->input,
