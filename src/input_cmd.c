@@ -19,6 +19,29 @@
 #include "error.h"
 #include "parser.h"
 
+static void insert_unicode(char *buf, size_t length, int *pos, uint32_t ch) {
+	char cpy[MAX_CMDLINE];
+	int end = !buf[*pos], len;
+	if (!end) STRLCPY(cpy, &buf[*pos]);
+	len = utf8_unicode_to_char(&buf[*pos], ch);
+	*pos += len;
+	if (end) buf[*pos] = '\0';
+	else strlcpy(&buf[*pos], cpy, length - *pos);
+}
+
+static void delete_unicode(char *buf, size_t length, int *pos) {
+	int end = !buf[*pos];
+	int next = *pos;
+	*pos = utf8_previous(buf, *pos);
+	if (end) {
+		buf[*pos] = 0;
+	} else {
+		char cpy[MAX_CMDLINE];
+		STRLCPY(cpy, &buf[next]);
+		strlcpy(&buf[*pos], cpy, length - *pos);
+	}
+}
+
 void client_enter_mode_cmdline(struct client *client) {
 	client->count = 0;
 	client->error = 0;
@@ -124,20 +147,28 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	case TB_KEY_BACKSPACE:
 	case TB_KEY_BACKSPACE2:
 		if (client->cursor <= prefix) {
+			if (!req && client->cmd[client->cursor]) return 0;
+			if (req && client->tab->input[client->cursor])
+				return 0;
 			if (!req) client->mode = MODE_NORMAL;
 			return 0;
 		}
 		if (!req) {
-			client->cursor = utf8_previous(client->cmd,
-						client->cursor);
-			client->cmd[client->cursor] = 0;
+			delete_unicode(V(client->cmd), &client->cursor);
 			refresh_search(client);
 			return 0;
 		}
-		client->cursor = utf8_previous(client->tab->input,
-					client->cursor - prefix) + prefix;
-		client->tab->input[client->cursor - prefix] = 0;
+		delete_unicode(V(client->tab->input), &client->cursor);
 		goto rewrite;
+	case TB_KEY_ARROW_LEFT:
+		if (!client->cursor) break;
+		client->cursor = utf8_previous(client->cmd, client->cursor);
+		break;
+	case TB_KEY_ARROW_RIGHT:
+		if (!client->cmd[client->cursor]) break;
+		client->cursor +=
+			utf8_char_length(client->cmd[client->cursor]);
+		break;
 	}
 
 	if (!ev.ch) return 0;
@@ -146,18 +177,12 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;
 
 	if (!req) {
-		len = utf8_unicode_to_char(
-				&client->cmd[client->cursor], ev.ch);
-		client->cursor += len;
-		client->cmd[client->cursor] = '\0';
+		insert_unicode(V(client->cmd), &client->cursor, ev.ch);
 		refresh_search(client);
 		return 0;
 	}
 
-	len = utf8_unicode_to_char(
-			&client->tab->input[client->cursor - prefix], ev.ch);
-	client->cursor += len;
-	client->tab->input[client->cursor - prefix] = '\0';
+	insert_unicode(V(client->tab->input), &client->cursor, ev.ch);
 rewrite:
 	if (req->status == GMI_INPUT) {
 		strlcpy(&client->cmd[prefix], client->tab->input,

@@ -26,12 +26,15 @@ void page_search(struct page *page, const char *search) {
 		search += utf8_char_to_unicode(&field[length], search);
 		if (!field[length]) break;
 	}
-	if (!length) return;
 	occurrences = 0;
 	for (y = 0; y < page->length; y++) {
 		size_t i = 0;
 		for (x = 0; x < page->lines[y].length; x++) {
 			struct page_cell *cell = &page->lines[y].cells[x];
+			if (!length) {
+				cell->selected = 0;
+				continue;
+			}
 			if (case_insensitive(cell->codepoint, field[i])) i++;
 			else i = 0;
 			cell->selected = 0;

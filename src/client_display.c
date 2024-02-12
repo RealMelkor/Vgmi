@@ -128,7 +128,7 @@ void client_draw(struct client* client) {
 	if (client->mode == MODE_CMDLINE) {
 		tb_print(0, client->height - 1, TB_DEFAULT, TB_DEFAULT,
 				client->cmd);
-		tb_set_cursor(utf8_width(client->cmd, sizeof(client->cmd)),
+		tb_set_cursor(utf8_width(client->cmd, client->cursor),
 				client->height - 1);
 	}
 
