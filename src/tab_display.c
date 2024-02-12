@@ -98,8 +98,12 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 
 void tab_display_error(struct tab *tab) {
 	if (!tab) return;
-	tab->request->state = STATE_ENDED;
-	tb_refresh();
+	if (!tab_completed(tab)) {
+		tb_print(2, 2, TB_RED, TB_DEFAULT, tab->error);
+	} else {
+		tab->request->state = STATE_ENDED;
+		tb_refresh();
+	}
 	tab_clean_requests(tab);
 }
 
