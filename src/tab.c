@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <string.h>
 #include "termbox.h"
 #include "macro.h"
 #include "config.h"
@@ -256,10 +257,11 @@ struct request *tab_completed(struct tab *tab) {
 	if (!tab) return NULL;
 	if (tab->view) return tab->view;
 	for (req = tab->request; req; req = req->next) {
-		if (req->state == STATE_COMPLETED &&
-				req->status == GMI_SUCCESS) {
-			return req;
+		if (req->state != STATE_COMPLETED) continue;
+		if (req->next && !STRCMP(req->url, req->next->url)) {
+			req->next->state = STATE_CANCELED;
 		}
+		if (req->status == GMI_SUCCESS) return req;
 	}
 	return NULL;
 }
