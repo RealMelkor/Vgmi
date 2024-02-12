@@ -135,11 +135,11 @@ int parse_links(int in, size_t length, int out) {
 			if (readnext(in, &ch, &i, length)) return -1;
 			if (!WHITESPACE(ch)) break;
 		}
+		if (i >= length) break;
 
 		link = 0;
 		header = 0;
 
-		if (i >= length) break;
 		if (ch == '\n') {
 			newline = 1;
 			continue;
@@ -174,6 +174,9 @@ int parse_links(int in, size_t length, int out) {
 			url_parse_idn(buf, V(link));
 			url_convert(link, V(buf));
 			link_length = strnlen(V(buf));
+			if (link_length < 1) {
+				link_length = STRLCPY(buf, ".");
+			}
 			write(out, P(link_length));
 			write(out, buf, link_length);
 		}

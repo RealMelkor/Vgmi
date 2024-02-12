@@ -42,6 +42,9 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 				client_display_rect(client));
 		client_reset(client);
 		break;
+	case TB_KEY_ENTER:
+		ev.ch = 'j';
+		break;
 	case TB_KEY_BACK_TAB:
 	case TB_KEY_TAB:
 		{
