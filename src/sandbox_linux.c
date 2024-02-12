@@ -104,9 +104,13 @@ struct sock_filter filter[] = {
 #ifdef __NR_pselect6
 	SC_ALLOW(pselect6),
 #endif
+#ifdef __NR_getdents
 	SC_ALLOW(getdents),
+#endif
 	SC_ALLOW(getdents64),
+#ifdef __NR_unlink
 	SC_ALLOW(unlink),
+#endif
 	SC_ALLOW(unlinkat),
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
@@ -138,8 +142,7 @@ static int landlock_restrict_self(int ruleset_fd, __u32 flags) {
 	return syscall(SYS_landlock_restrict_self, ruleset_fd, flags);
 }
 
-int landlock_unveil(int landlock_fd, int fd, int perms)
-{
+int landlock_unveil(int landlock_fd, int fd, int perms) {
 	int ret, err;
 	struct landlock_path_beneath_attr attr = {0};
 	attr.allowed_access = perms;
@@ -201,24 +204,26 @@ int sandbox_init(void) {
 	if ((ret = storage_download_path(V(download_path)))) return ret;
 
 #ifdef HAS_LANDLOCK
-	/* restrict filesystem access */
-	fd = landlock_init();
-	if (fd < 0) return ERROR_SANDBOX_FAILURE;
-	ret = landlock_unveil_path(fd, path,
-					LANDLOCK_ACCESS_FS_READ_FILE |
-					LANDLOCK_ACCESS_FS_WRITE_FILE |
-					LANDLOCK_ACCESS_FS_MAKE_REG);
-	ret |= landlock_unveil_path(fd, download_path,
-					LANDLOCK_ACCESS_FS_WRITE_FILE |
-					LANDLOCK_ACCESS_FS_MAKE_REG);
-	ret |= landlock_unveil_path(fd, "/etc/hosts",
-					LANDLOCK_ACCESS_FS_READ_FILE);
-	ret |= landlock_unveil_path(fd, "/etc/resolv.conf",
-					LANDLOCK_ACCESS_FS_READ_FILE);
+	if (config.enableLandlock) {
+		/* restrict filesystem access */
+		fd = landlock_init();
+		if (fd < 0) return ERROR_LANDLOCK_FAILURE;
+		ret = landlock_unveil_path(fd, path,
+						LANDLOCK_ACCESS_FS_READ_FILE |
+						LANDLOCK_ACCESS_FS_WRITE_FILE |
+						LANDLOCK_ACCESS_FS_MAKE_REG);
+		ret |= landlock_unveil_path(fd, download_path,
+						LANDLOCK_ACCESS_FS_WRITE_FILE |
+						LANDLOCK_ACCESS_FS_MAKE_REG);
+		ret |= landlock_unveil_path(fd, "/etc/hosts",
+						LANDLOCK_ACCESS_FS_READ_FILE);
+		ret |= landlock_unveil_path(fd, "/etc/resolv.conf",
+						LANDLOCK_ACCESS_FS_READ_FILE);
 
-	if (ret) return ERROR_SANDBOX_FAILURE;
+		if (ret) return ERROR_LANDLOCK_FAILURE;
 
-	if (landlock_apply(fd)) return ERROR_SANDBOX_FAILURE;
+		if (landlock_apply(fd)) return ERROR_LANDLOCK_FAILURE;
+	}
 #endif
 
 #ifdef ENABLE_SECCOMP_FILTER

@@ -29,6 +29,7 @@
 #include "history.h"
 #include "xdg.h"
 #include "url.h"
+#include "proc.h"
 
 int client_destroy(struct client *client) {
 	struct tab *tab;
@@ -156,6 +157,17 @@ int client_init(struct client* client) {
 #endif
 	if ((ret = sandbox_init())) {
 		tb_shutdown();
+#ifdef __linux
+		if (ret == ERROR_LANDLOCK_FAILURE) {
+			printf("Unable to initialize landlock: %s\n",
+					strerror(errno));
+			config.enableLandlock = 0;
+			config_save();
+			printf("Disabling landlock\n");
+			proc_fork(NULL, NULL, NULL);
+			exit(0);
+		}
+#endif
 		return ret;
 	}
 	history_init();

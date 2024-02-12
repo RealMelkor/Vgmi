@@ -59,11 +59,11 @@ HEADER \
 char sandbox_page[] =
 HEADER \
 "# Sandbox information\n\n" \
-""SANDBOX_INFO"\n" \
-"Filesystem access\t: "SANDBOX_FILESYSTEM"\n" \
-"IPC access\t\t\t: "SANDBOX_IPC"\n" \
-"Devices access\t\t: "SANDBOX_DEVICE"\n" \
-"Parser isolation\t: "SANDBOX_PARSER"\n";
+"%s\n" \
+"Filesystem access\t: %s\n" \
+"IPC access\t\t\t: %s\n" \
+"Devices access\t\t: %s\n" \
+"Parser isolation\t: %s\n";
 
 char sandbox_disabled_page[] =
 HEADER \
@@ -188,10 +188,24 @@ int about_parse(struct request *request) {
 		return parse_data(request, data, length - 1);
 	}
 	if (!strcmp(request->url, "about:sandbox")) {
+		char buf[4096];
+		size_t len;
 		if (!config.enableSandbox) {
 			return static_page(request, V(sandbox_disabled_page));
 		}
-		return static_page(request, V(sandbox_page));
+		len = snprintf(V(buf), sandbox_page,
+				SANDBOX_INFO,
+				SANDBOX_IPC,
+				SANDBOX_DEVICE,
+#ifdef __linux__
+				config.enableLandlock ?
+					SANDBOX_FILESYSTEM : "Unrestricted",
+#else
+				SANDBOX_FILESYSTEM,
+#endif
+				SANDBOX_PARSER
+			);
+		return static_page(request, buf, len);
 	}
 	return ERROR_INVALID_URL;
 }

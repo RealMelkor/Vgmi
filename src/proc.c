@@ -61,8 +61,8 @@ fail:
 	byte = -1;
 	read(in[0], &byte, 1);
 	if (byte) return ERROR_SANDBOX_FAILURE;
-	*fd_out = out[1];
-	*fd_in = in[0];
+	if (fd_out) *fd_out = out[1];
+	if (fd_in) *fd_in = in[0];
 	return 0;
 }
 
