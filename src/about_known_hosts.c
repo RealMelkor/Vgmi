@@ -47,9 +47,9 @@ int about_known_hosts(char **out, size_t *length_out) {
 			len = snprintf(V(buf),
 				"* %s\n> Hash: %s\n"
 				"> From: %s\n> Expiration: %s\n"
-				"=>/%ld Forget\n\n",
+				"=>/%s Forget\n\n",
 				ptr->host, ptr->hash,
-				from, to, i) + 1;
+				from, to, ptr->host) + 1;
 			if (!(data = dyn_strcat(data, &length, buf, len)))
 				goto fail;
 		}
