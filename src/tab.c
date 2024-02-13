@@ -259,7 +259,7 @@ struct request *tab_completed(struct tab *tab) {
 	for (req = tab->request; req; req = req->next) {
 		if (req->state != STATE_COMPLETED) continue;
 		if (req->next && !STRCMP(req->url, req->next->url)) {
-			req->next->state = STATE_CANCELED;
+			req->next->state = STATE_FAILED;
 		}
 		if (req->status == GMI_SUCCESS) return req;
 	}
