@@ -195,14 +195,14 @@ int about_parse(struct request *request) {
 		}
 		len = snprintf(V(buf), sandbox_page,
 				SANDBOX_INFO,
-				SANDBOX_IPC,
-				SANDBOX_DEVICE,
 #ifdef __linux__
 				config.enableLandlock ?
 					SANDBOX_FILESYSTEM : "Unrestricted",
 #else
 				SANDBOX_FILESYSTEM,
 #endif
+				SANDBOX_IPC,
+				SANDBOX_DEVICE,
 				SANDBOX_PARSER
 			);
 		return static_page(request, buf, len);
