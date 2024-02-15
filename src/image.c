@@ -102,7 +102,7 @@ void image_parser(int in, int out) {
 		img = NULL;
 		size = y = x = 0;
 
-		if (read(in, P(size)) != sizeof(size)) break;
+		if (__read(in, P(size))) break;
 #ifdef STATIC_ALLOC
 		if ((unsigned)size > length) goto fail;
 #else
@@ -127,7 +127,9 @@ void image_parser(int in, int out) {
 fail:
 		size = -1;
 		write(out, P(size));
+#ifndef STATIC_ALLOC
 		free(data);
+#endif
 	}
 }
 
