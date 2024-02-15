@@ -89,7 +89,7 @@ mv stb_image.h include/
 if [ "$(uname)" == SunOS ] ;
 then
 	sed -i -e "/CC/s/^#//" Makefile
-	sed -i -e "/LIBS/s/^#//" Makefile
+	sed -i -e "/LDFLAGS/s/^#//" Makefile
 	sed -i -e "/CFLAGS/s/^#//" Makefile
 fi
 if [ "$(uname)" == Darwin ] ;

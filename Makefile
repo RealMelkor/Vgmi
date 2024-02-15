@@ -7,8 +7,8 @@ CFLAGS=-I./include -I/usr/local/include -ansi -Wall -Wextra -std=c89 \
 LDFLAGS=-s -L/usr/local/lib -lm -ltls -lcrypto -lssl -lpthread
 
 # uncomment to build on Illumos
-#CFLAGS=-Wall -Wextra -pedantic -O2 -Wformat-truncation=0
-#LDFLAGS=-s -L/usr/local/lib -lm -ltls -lcrypto -lssl -lpthread -lsocket
+#CFLAGS=-I./include -Wall -Wextra -pedantic -O2 -Wformat-truncation=0
+#LDFLAGS=-s -L./lib -L/usr/local/lib -lm -ltls -lssl -lcrypto -lpthread -lsocket
 #CC=gcc
 
 build: src/*
