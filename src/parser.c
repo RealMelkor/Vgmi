@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <poll.h>
 #include "macro.h"
 #include "error.h"
 #include "sandbox.h"
@@ -39,12 +40,15 @@ void parser_request(int in, int out);
 int parse_request(struct parser *parser, struct request *request) {
 
 	int ret, gemtext;
+	size_t sent;
 	if (!parser) parser = &request_parser;
 
 	pthread_mutex_lock(&parser->mutex);
 
 	write(parser->out, P(request->length));
-	write(parser->out, request->data, request->length);
+	sent = request->length > sizeof(request->meta) ?
+		sizeof(request->meta) : request->length;
+	write(parser->out, request->data, sent);
 
 	if ((ret = vread(parser->in, P(request->status)))) goto fail;
 	if (request->status == -1) {
@@ -62,12 +66,36 @@ int parse_request(struct parser *parser, struct request *request) {
 	request->page.links_count = 0;
 	request->page.links = NULL;
 	ret = 0;
+	if (!gemtext && sent < request->length)
+		write(parser->out, request->data, request->length - sent);
 	while (gemtext) {
 
 		size_t length = 0;
 		char url[MAX_URL] = {0};
 		void *tmp;
 		char *ptr;
+		int fds;
+		struct pollfd pfd;
+
+		pfd.fd = parser->in;
+		pfd.events = POLLIN;
+		fds = poll(&pfd, 1, 0);
+		if (fds == -1) return ERROR_ERRNO;
+		if (!fds) {
+			int bytes;
+			pfd.fd = parser->out;
+			pfd.events = POLLOUT;
+			fds = poll(&pfd, 1, 0);
+			if (fds == -1) return ERROR_ERRNO;
+			if (!fds) continue;
+			bytes = PARSER_CHUNK;
+			if (sent + bytes > request->length)
+				bytes = request->length - sent;
+			if (bytes < 1) continue;
+			write(parser->out, &request->data[sent], bytes);
+			sent += bytes;
+			continue;
+		}
 
 		if (vread(parser->in, P(length))) {
 			ret = -1;

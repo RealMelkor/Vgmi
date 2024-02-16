@@ -69,19 +69,29 @@ int page_update(int in, int out, const char *data, size_t length,
 	if (!line.cells) return ERROR_MEMORY_FAILURE;
 
 	bytes_sent = ret = 0;
-	pfd.fd = in;
-	pfd.events = POLLIN;
 
 	while (!ret) {
 
 		struct page_cell cell;
 		void *tmp;
 		int len;
+		int fds;
 
-		if (!poll(&pfd, 1, 0)) {
-			int bytes = PARSER_CHUNK;
+		pfd.fd = in;
+		pfd.events = POLLIN;
+		fds = poll(&pfd, 1, 0);
+		if (fds == -1) return ERROR_ERRNO;
+		if (!fds) {
+			int bytes;
+			pfd.fd = out;
+			pfd.events = POLLOUT;
+			fds = poll(&pfd, 1, 0);
+			if (fds == -1) return ERROR_ERRNO;
+			if (!fds) continue;
+			bytes = PARSER_CHUNK;
 			if (bytes_sent + bytes > length)
 				bytes = length - bytes_sent;
+			if (bytes < 1) continue;
 			write(out, &data[bytes_sent], bytes);
 			bytes_sent += bytes;
 			continue;
