@@ -42,9 +42,6 @@ int about_certificates(char **out, size_t *length_out) {
 	const char title[] = "# Client certificates\n\n";
 	DIR *dir;
 	struct dirent *entry;
-	char host[1024] = {0};
-
-	ASSERT(sizeof(host) > sizeof(entry->d_name))
 
 	if (!(dir = fdopendir(dup(storage_fd)))) return ERROR_ERRNO;
 	rewinddir(dir);
@@ -53,17 +50,18 @@ int about_certificates(char **out, size_t *length_out) {
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
 
 	while ((entry = readdir(dir))) {
-		char *end = entry->d_name + strnlen(V(entry->d_name)) - 4;
-		char buf[sizeof(host) * 2];
+
 		int len;
-		if (strstr(entry->d_name, ".crt") != end) {
-			if (strstr(entry->d_name, ".key") == end) {
-				strlcpy(host, entry->d_name,
-						end - entry->d_name + 1);
-			}
-			continue;
-		}
-		if (memcmp(host, entry->d_name, end - entry->d_name)) continue;
+		FILE *f;
+		char buf[2048], host[1024];
+		char *end = host + STRLCPY(host, entry->d_name) - 4;
+
+		if (end <= host || !memcmp(end, V(".crt"))) continue;
+		memcpy(end, V(".key"));
+		f = storage_fopen(host, "r");
+		if (!f) continue;
+		fclose(f);
+		*end = '\0';
 		len = snprintf(V(buf), "* %s\n=>%s Delete\n\n", host, host);
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
         }

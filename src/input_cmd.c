@@ -136,14 +136,22 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	case TB_KEY_ENTER:
 		if (search_mode) ;
 		else if (req) {
-			char url[2048];
-			int error;
+			char buf[2048];
+			char url[1024];
+			int error, i;
 			req->state = STATE_ENDED;
-			len = snprintf(V(url), "%s?%s", req->url,
+			i = STRLCPY(url, req->url);
+			for (; i > 0 && url[i] != '/'; i--) {
+				if (url[i] == '?') {
+					url[i] = '\0';
+					break;
+				}
+			}
+			len = snprintf(V(buf), "%s?%s", url,
 					client->tab->input);
 			error = len >= MAX_URL ?
 				ERROR_URL_TOO_LONG :
-				tab_request(client->tab, url);
+				tab_request(client->tab, buf);
 			if (error) {
 				client->tab->failure = 1;
 				error_string(error, V(client->tab->error));
