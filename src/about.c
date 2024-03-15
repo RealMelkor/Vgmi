@@ -29,17 +29,17 @@ HELP_INFO;
 char about_page[] =
 HEADER \
 "# List of \"about\" pages\n\n" \
-"=>about:about\n" \
-"=>about:blank\n" \
-"=>about:bookmarks\n" \
-"=>about:certificates\n" \
-"=>about:config\n" \
-"=>about:help\n" \
-"=>about:history\n" \
-"=>about:known-hosts\n" \
-"=>about:license\n" \
-"=>about:newtab\n" \
-"=>about:sandbox\n";
+"=>about:about List of \"about\" pages\n" \
+"=>about:blank Blank page\n" \
+"=>about:bookmarks Bookmarks\n" \
+"=>about:certificates Certificates\n" \
+"=>about:config Configuration\n" \
+"=>about:help Help\n" \
+"=>about:history History\n" \
+"=>about:known-hosts Known hosts\n" \
+"=>about:license License\n" \
+"=>about:newtab New tab page\n" \
+"=>about:sandbox Sandbox information\n";
 
 char license_page[] =
 HEADER \
