@@ -25,8 +25,6 @@ int bookmark_load(void) {
 
 	if (!f) { /* default bookmarks */
 		bookmark_add("gemini://geminispace.info", "Geminispace");
-		bookmark_add("gemini://gmi.rmf-dev.com/repo/Vaati/Vgmi/readme",
-				"Vgmi");
 		bookmark_add("about:about", "Settings");
 		return 0;
 	}

@@ -51,15 +51,15 @@ check_hash () {
 
 mkdir -p include
 
-# LibreSSL 3.8.2
+# LibreSSL 3.9.1
 # OpenBSD already has libressl
 if [ "$(uname)" != OpenBSD ] ;
 then
 	mkdir -p lib
 	mkdir -p build
 	cd build
-	h="6d4b8d5bbb25a1f8336639e56ec5088052d43a95256697a85c4ce91323c25954"
-	ssl_version="3.8.2"
+	h="6da0b954695f7ee62b03f64200a8a4f02af93717b60cce04ab6c8df262c07a51"
+	ssl_version="3.9.1"
 	remote_dir="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/"
 	check_hash $h "$remote_dir/libressl-$ssl_version.tar.gz"
 	tar -zxf libressl-$ssl_version.tar.gz
