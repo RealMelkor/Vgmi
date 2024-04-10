@@ -165,7 +165,7 @@ int about_parse(struct request *request) {
 		return parse_data(request, data, length);
 	}
 	if (!strcmp(request->url, "about:config")) {
-		int query = ptr ? (strchr(param, '?') != NULL) : 0;
+		int query = ptr && strchr(param, '?');
 		ret = ptr ? about_config_arg(param, &data, &length) :
 				about_config(&data, &length);
 		if (ret) return ret;

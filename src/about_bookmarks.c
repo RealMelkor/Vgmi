@@ -22,13 +22,13 @@ int about_bookmarks_param(const char *param) {
 
 int about_bookmarks(char **out, size_t *length_out) {
 
-	char *data = NULL;
+	char *data = NULL, *tmp = NULL;
 	size_t length = 0;
 	size_t i;
 	const char title[] = "# Bookmarks\n\n";
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
-	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
+	if (!(tmp = dyn_strcat(data, &length, V(title)))) goto fail;
 
 	for (i = 0; i < bookmark_length; i++) {
 
@@ -37,13 +37,15 @@ int about_bookmarks(char **out, size_t *length_out) {
 
 		len = snprintf(V(buf), "=>%s %s\n=>/%ld Delete\n\n",
 				bookmarks[i].url, bookmarks[i].name, i) + 1;
-		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
+		if (!(tmp = dyn_strcat(data, &length, buf, len))) goto fail;
+		data = tmp;
 	}
 
 	*out = data;
 	*length_out = length;
 	return 0;
 fail:
+	if (tmp) data = tmp;
 	free(data);
 	return ERROR_MEMORY_FAILURE;
 }
