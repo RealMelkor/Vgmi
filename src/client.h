@@ -36,6 +36,7 @@ struct client {
 	struct tab *tab;
 	/* internal */
 	int g;
+	int exit;
 	void *last_request;
 };
 

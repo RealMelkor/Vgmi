@@ -31,6 +31,10 @@ struct rect client_display_rect(struct client *client) {
 void client_display(struct client* client) {
 	if (!client) return;
 	tb_clear();
+	if (client->exit) {
+		tb_printf(0, client->height - 1, TB_DEFAULT, TB_DEFAULT,
+				"Press 'y' to exit.");
+	}
 	tab_display(client->tab, client);
 	client_draw(client);
 	tb_present();

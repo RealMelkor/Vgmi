@@ -19,10 +19,9 @@
 
 void client_reset(struct client *client) {
 	if (!client) return;
-	client->g = client->count = 0;
+	client->exit = client->g = client->count = 0;
 }
 
-#include <stdlib.h>
 int client_input_normal(struct client *client, struct tb_event ev) {
 	switch (ev.key) {
 	case TB_KEY_ESC:
@@ -50,6 +49,12 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 				client_display_rect(client));
 		client_reset(client);
 		break;
+	case TB_KEY_CTRL_Q:
+		if (!HAS_TABS(client)) return 1;
+		client->exit = 1;
+		break;
+	case TB_KEY_CTRL_W:
+		return client_closetab(client);
 	case TB_KEY_ENTER:
 		ev.ch = 'j';
 		break;
@@ -232,6 +237,9 @@ prev:
 		break;
 	case 'f':
 		client_newtab(client, "about:history");
+		break;
+	case 'y':
+		if (client->exit) return 1;
 		break;
 	}
 	return 0;
