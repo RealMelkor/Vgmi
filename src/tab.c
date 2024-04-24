@@ -278,3 +278,19 @@ void tab_free(struct tab *tab) {
 	free(tab->mutex);
 	free(tab);
 }
+
+struct tab *tab_close(struct tab *tab) {
+	struct tab *next, *prev, *ret;
+	if (!tab) return NULL;
+	next = tab->next;
+	prev = tab->prev;
+	if (next) next->prev = prev;
+	if (prev) prev->next = next;
+	if (next) {
+		ret = next;
+	} else if (prev) {
+		ret = prev;
+	} else ret = NULL;
+	tab_free(tab);
+	return ret;
+}

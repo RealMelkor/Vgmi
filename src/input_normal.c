@@ -48,6 +48,9 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case TB_KEY_ENTER:
 		ev.ch = 'j';
 		break;
+	case TB_KEY_BACKSPACE:
+	case TB_KEY_BACKSPACE2:
+		goto prev;
 	case TB_KEY_BACK_TAB:
 	case TB_KEY_TAB:
 		{
@@ -185,6 +188,7 @@ up:
 		client_reset(client);
 		break;
 	case 'h':
+prev:
 		if (!client || !client->tab || !client->tab->request) break;
 		{
 			struct request *req = client->tab->view ?

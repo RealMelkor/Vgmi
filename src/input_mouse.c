@@ -12,8 +12,8 @@
 #include "tab.h"
 #include "error.h"
 
-void click_tab(struct client *client, struct tb_event ev) {
-	struct tab *start, *tab;
+int click_tab(struct client *client, struct tb_event ev, int close) {
+	struct tab *start, *tab, *ret;
 	int count, x, width;
 
 	for (tab = client->tab; tab->prev; tab = tab->prev) ;
@@ -28,7 +28,14 @@ void click_tab(struct client *client, struct tb_event ev) {
 		if (x <= ev.x && x + width + 1 >= ev.x) break;
 		x += width + 2;
 	}
-	if (tab) client->tab = tab;
+	if (!tab) return 0;
+	if (!close) {
+		client->tab = tab;
+		return 0;
+	}
+	ret = tab_close(tab);
+	if (tab == client->tab) client->tab = ret;
+	return ret == NULL;
 }
 
 void click_link(struct client *client, struct tb_event ev, int newtab) {
@@ -57,12 +64,11 @@ int client_input_mouse(struct client *client, struct tb_event ev) {
 	switch (ev.key) {
 	case TB_KEY_MOUSE_LEFT:
 	case TB_KEY_MOUSE_RIGHT:
-		if (ev.y == 0 && HAS_TABS(client)) {
-			click_tab(client, ev);
-			break;
-		}
-		/* fallthrough */
 	case TB_KEY_MOUSE_MIDDLE:
+		if (ev.y == 0 && HAS_TABS(client)) {
+			return click_tab(client, ev,
+					ev.key == TB_KEY_MOUSE_MIDDLE);
+		}
 		click_link(client, ev, ev.key == TB_KEY_MOUSE_MIDDLE);
 		break;
 	}

@@ -24,4 +24,5 @@ int tab_follow(struct tab* tab, const char *link);
 int tab_scroll(struct tab*, int, struct rect);
 struct request *tab_completed(struct tab *tab);
 struct request *tab_input(struct tab *tab);
+struct tab *tab_close(struct tab *tab);
 void tab_free(struct tab*);

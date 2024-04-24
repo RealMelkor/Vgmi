@@ -50,20 +50,9 @@ int client_destroy(struct client *client) {
 }
 
 int client_closetab(struct client *client) {
-	struct tab *tab, *next, *prev;
 	if (!client->tab) return 1;
-	tab = client->tab;
-	next = tab->next;
-	prev = tab->prev;
-	if (next) next->prev = prev;
-	if (prev) prev->next = next;
-	if (next) {
-		client->tab = next;
-	} else if (prev) {
-		client->tab = prev;
-	} else client->tab = NULL;
-	tab_free(tab);
-	return 0;
+	client->tab = tab_close(client->tab);
+	return client->tab == NULL;
 }
 
 int client_newtab(struct client *client, const char *url) {
