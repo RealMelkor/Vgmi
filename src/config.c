@@ -25,6 +25,7 @@ void config_default(void) {
 	config.certificateLifespan = 3600 * 24 * 365 * 2; /* 2 years */
 	config.certificateBits = 2048;
 	config.enableHexViewer = 1;
+	config.enableMouse = 1;
 	config.enableSandbox = 1;
 #ifdef __linux__
 	config.enableLandlock = 1;

@@ -117,7 +117,7 @@ int client_input(struct client *client) {
 		client->cursor = snprintf(V(client->cmd), "%s: ", req->meta);
 	}
 
-	if (client_input_mouse(client, ev)) return -1;
+	if (config.enableMouse && client_input_mouse(client, ev)) return -1;
 	switch (client->mode) {
 	case MODE_NORMAL:
 		return client_input_normal(client, ev);

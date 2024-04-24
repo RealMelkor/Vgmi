@@ -14,6 +14,7 @@
 #include "client.h"
 #include "tab.h"
 #include "input.h"
+#include "config.h"
 #include "error.h"
 
 void client_reset(struct client *client) {
@@ -27,11 +28,15 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case TB_KEY_ESC:
 		client->count = 0;
 		break;
-	case TB_KEY_ARROW_DOWN:
 	case TB_KEY_MOUSE_WHEEL_DOWN:
+		if (!config.enableMouse) break;
+		/* fallthrough */
+	case TB_KEY_ARROW_DOWN:
 		goto down;
-	case TB_KEY_ARROW_UP:
 	case TB_KEY_MOUSE_WHEEL_UP:
+		if (!config.enableMouse) break;
+		/* fallthrough */
+	case TB_KEY_ARROW_UP:
 		goto up;
 	case TB_KEY_PGUP:
 		client->count = AZ(client->count);
