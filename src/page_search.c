@@ -63,10 +63,12 @@ int page_selection_line(struct page page) {
 	return 0;
 }
 
-int page_link_line(struct page page, int y) {
+int page_link_line(struct page page, int y, int x) {
 	unsigned int i, link;
 	if (y < 0 || (unsigned)y >= page.length) return 0;
-	for (i = 0; i < page.lines[y].length; i++) {
+	x -= 2;
+	if (x < 0 || x >= page.lines[y].length) return 0;
+	for (i = x; i < page.lines[y].length; i++) {
 		if ((link = page.lines[y].cells[i].link)) return link;
 	}
 	return 0;

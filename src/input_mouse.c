@@ -39,7 +39,7 @@ void click_link(struct client *client, struct tb_event ev, int newtab) {
 	req = client->tab->view;
 	if (!req) req = client->tab->request;
 	ret = page_link_line(req->page,
-			req->scroll + ev.y - 1 - HAS_TABS(client));
+			req->scroll + ev.y - 1 - HAS_TABS(client), ev.x);
 	if (!ret) return;
 	ret--;
 	link = req->page.links[ret];
