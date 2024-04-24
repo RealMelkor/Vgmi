@@ -46,5 +46,5 @@ void client_draw(struct client*);
 void client_display(struct client*);
 struct rect client_display_rect(struct client*);
 int client_input(struct client*);
-int client_newtab(struct client *client, const char *url);
+int client_newtab(struct client *client, const char *url, int follow);
 int client_closetab(struct client *client);
