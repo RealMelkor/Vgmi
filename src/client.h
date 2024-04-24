@@ -8,6 +8,8 @@
 #define MAX_CMD_NAME 64
 
 #define ERROR_INFO 0xAA
+#define HAS_TABS(X) (X->tab && (X->tab->prev || X->tab->next))
+#define TAB_WIDTH 32
 
 #ifndef size_t
 #define size_t unsigned long

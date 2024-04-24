@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,7 +71,10 @@ int client_newtab(struct client *client, const char *url) {
 	int proto;
 	if (!url) url = "about:newtab";
 	proto = protocol_from_url(url);
-	if (proto != PROTOCOL_GEMINI && proto != PROTOCOL_NONE) {
+	switch (proto) {
+	case PROTOCOL_GEMINI: case PROTOCOL_INTERNAL: case PROTOCOL_NONE:
+		break;
+	default:
 		return tab_request(client->tab, url);
 	}
 	tab = tab_new();
@@ -81,6 +84,12 @@ int client_newtab(struct client *client, const char *url) {
 		if (tab->next) tab->next->prev = tab;
 		tab->prev = client->tab;
 		client->tab->next = tab;
+		if (client->tab->request && proto == PROTOCOL_NONE) {
+			struct request req = {0};
+			STRLCPY(req.url, client->tab->request->url);
+			request_follow(&req, url, V(req.url));
+			url = req.url;
+		}
 	}
 	client->tab = tab;
 	return tab_request(client->tab, url);
@@ -119,6 +128,7 @@ int client_input(struct client *client) {
 		client->cursor = snprintf(V(client->cmd), "%s: ", req->meta);
 	}
 
+	if (client_input_mouse(client, ev)) return -1;
 	switch (client->mode) {
 	case MODE_NORMAL:
 		return client_input_normal(client, ev);
@@ -152,6 +162,8 @@ int client_init(struct client* client) {
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
+	if (tb_set_input_mode(TB_INPUT_ESC | TB_INPUT_MOUSE))
+		return ERROR_TERMBOX_FAILURE;
 #ifdef ENABLE_IMAGE
 	if (tb_set_output_mode(TB_OUTPUT_256)) return ERROR_TERMBOX_FAILURE;
 #endif

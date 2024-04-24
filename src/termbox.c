@@ -72,6 +72,8 @@ SOFTWARE.
 #define PATH_MAX 1024
 #endif
 
+#define index_fail	(size_t)-1
+
 void cfmakeraw(struct termios *t) {
 	t->c_iflag &= ~(IMAXBEL|IGNBRK|BRKINT|PARMRK|
 			ISTRIP|INLCR|IGNCR|ICRNL|IXON);
@@ -80,8 +82,6 @@ void cfmakeraw(struct termios *t) {
 	t->c_cflag &= ~(CSIZE|PARENB);
 	t->c_cflag |= CS8;
 }
-
-#define index_fail ((size_t)-1)
 
 #define if_err_return(rv, expr)                                               \
 	if (((rv) = (expr)) != TB_OK)                                         \
@@ -871,8 +871,8 @@ static int read_terminfo_path(const char *path);
 static int parse_terminfo_caps(void);
 static int load_builtin_caps(void);
 static const char *get_terminfo_string(int16_t str_offsets_pos,
-			int16_t str_table_pos, int16_t str_table_len,
-			int16_t str_index);
+			int16_t str_offsets_len, int16_t str_table_pos,
+			int16_t str_table_len, int16_t str_index);
 static int wait_event(struct tb_event *event, int timeout);
 static int extract_event(struct tb_event *event);
 static int extract_esc(struct tb_event *event);
@@ -1444,8 +1444,8 @@ static int init_cap_trie(void) {
 
 	/* Add caps from terminfo or built-in */
 	for (i = 0; i < TB_CAP__COUNT_KEYS; i++) {
-		if_err_return(rv,
-				cap_trie_add(global.caps[i], tb_key_i(i), 0));
+		rv = cap_trie_add(global.caps[i], tb_key_i(i), 0);
+		if (rv != TB_OK && rv != TB_ERR_CAP_COLLISION) return rv;
 	}
 
 	/* Add built-in mod caps */
@@ -1453,11 +1453,6 @@ static int init_cap_trie(void) {
 		rv = cap_trie_add(builtin_mod_caps[i].cap,
 					builtin_mod_caps[i].key,
 					builtin_mod_caps[i].mod);
-		/* 
-		 * Collisions are OK. This can happen if global.caps collides
-		 * with builtin_mod_caps. It is desirable to give precedence to
-		 * global.caps here.
-		 */
 		if (rv != TB_OK && rv != TB_ERR_CAP_COLLISION) {
 			return rv;
 		}
@@ -1469,6 +1464,9 @@ static int init_cap_trie(void) {
 static int cap_trie_add(const char *cap, uint16_t key, uint8_t mod) {
 	struct cap_trie_t *next, *node = &global.cap_trie;
 	size_t i, j;
+
+	if (!cap || strlen(cap) <= 0) return TB_OK;
+
 	for (i = 0; cap[i] != '\0'; i++) {
 		char c = cap[i];
 		next = NULL;
@@ -1897,9 +1895,9 @@ static int parse_terminfo_caps(void) {
 
 	/* Load caps */
 	for (i = 0; i < TB_CAP__COUNT; i++) {
-		const char *cap = get_terminfo_string(pos_str_offsets,
-					pos_str_table, header[5],
-					terminfo_cap_indexes[i]);
+		const char *cap = get_terminfo_string(
+			pos_str_offsets, header[4],
+			pos_str_table, header[5], terminfo_cap_indexes[i]);
 		if (!cap) {
 			/* Something is not right */
 			return TB_ERR;
@@ -1945,26 +1943,27 @@ static int load_builtin_caps(void) {
 }
 
 static const char *get_terminfo_string(int16_t str_offsets_pos,
-		int16_t str_table_pos, int16_t str_table_len,
-		int16_t str_index) {
-	const int16_t *str_offset =
-		(int16_t *)(global.terminfo + (int)str_offsets_pos +
-				((int)str_index * (int)sizeof(int16_t)));
-	if (*str_offset < 0) {
-		/* A negative indicates the cap is absent from this terminal */
+		int16_t str_offsets_len, int16_t str_table_pos,
+		int16_t str_table_len, int16_t str_index) {
+
+	const int16_t *str_offset;
+	const int str_byte_index = (int)str_index * (int)sizeof(int16_t);
+
+	if (str_byte_index >= (int)str_offsets_len * (int)sizeof(int16_t)) {
 		return "";
 	}
-	if (*str_offset >= str_table_len) {
-		/* Invalid string offset */
+	str_offset = (int16_t *)(global.terminfo +
+			(int)str_offsets_pos + str_byte_index);
+	if ((char *)str_offset >= global.terminfo + global.nterminfo) {
 		return NULL;
 	}
+	if (*str_offset < 0 || *str_offset >= str_table_len) return "";
 	if (((size_t)((int)str_table_pos + (int)*str_offset)) >=
 			global.nterminfo) {
-		/* Truncated/corrupt terminfo? */
 		return NULL;
 	}
-	return (const char *)(global.terminfo + (int)str_table_pos +
-				(int)*str_offset);
+	return (const char *)(global.terminfo +
+			(int)str_table_pos + (int)*str_offset);
 }
 
 static int wait_event(struct tb_event *event, int timeout) {
@@ -2143,6 +2142,7 @@ static int extract_esc_cap(struct tb_event *event) {
 }
 
 static int extract_esc_mouse(struct tb_event *event) {
+
 	struct bytebuf_t *in = &global.in;
 
 	enum type { TYPE_VT200 = 0, TYPE_1006, TYPE_1015, TYPE_MAX };
@@ -2150,22 +2150,15 @@ static int extract_esc_mouse(struct tb_event *event) {
 	char *cmp[TYPE_MAX];
 
 	enum type type = 0;
-	int ret = TB_ERR;
+	int ret = TB_ERR, b, fail;
 	size_t buf_shift = 0;
 
-	/* X10 mouse encoding, the simplest one */
-	/* \x1b [ M Cb Cx Cy */
 	cmp[TYPE_VT200] = "\x1b[M";
-	/* xterm 1006 extended mode or urxvt 1015 extended mode */
-	/* xterm: \x1b [ < Cb ; Cx ; Cy (M or m) */
 	cmp[TYPE_1006] = "\x1b[<";
-	/* urxvt: \x1b [ Cb ; Cx ; Cy M */
 	cmp[TYPE_1015] = "\x1b[";
 
-	/* Unrolled at compile-time (probably) */
 	for (; type < TYPE_MAX; type++) {
-		size_t size = strlen(cmp[type]);
-
+		const size_t size = strlen(cmp[type]);
 		if (in->len >= size &&
 				(strncmp(cmp[type], in->buf, size)) == 0) {
 			break;
@@ -2173,40 +2166,35 @@ static int extract_esc_mouse(struct tb_event *event) {
 	}
 
 	if (type == TYPE_MAX) {
-		ret = TB_ERR; /* No match */
+		ret = TB_ERR;
 		return ret;
 	}
 
 	switch (type) {
 	case TYPE_VT200:
-	{
-		int b, fail;
 		if (in->len < 6) break;
-
 		b = in->buf[3] - 0x20;
 		fail = 0;
 
 		switch (b & 3) {
-			case 0:
-				event->key = ((b & 64) != 0) ?
-					TB_KEY_MOUSE_WHEEL_UP :
-					TB_KEY_MOUSE_LEFT;
-				break;
-			case 1:
-				event->key = ((b & 64) != 0) ?
-					TB_KEY_MOUSE_WHEEL_DOWN :
-					TB_KEY_MOUSE_MIDDLE;
-				break;
-			case 2:
-				event->key = TB_KEY_MOUSE_RIGHT;
-				break;
-			case 3:
-				event->key = TB_KEY_MOUSE_RELEASE;
-				break;
-			default:
-				ret = TB_ERR;
-				fail = 1;
-				break;
+		case 0:
+			event->key = ((b & 64) != 0) ? TB_KEY_MOUSE_WHEEL_UP
+				: TB_KEY_MOUSE_LEFT;
+			break;
+		case 1:
+			event->key = ((b & 64) != 0) ? TB_KEY_MOUSE_WHEEL_DOWN
+				: TB_KEY_MOUSE_MIDDLE;
+			break;
+		case 2:
+			event->key = TB_KEY_MOUSE_RIGHT;
+			break;
+		case 3:
+			event->key = TB_KEY_MOUSE_RELEASE;
+			break;
+		default:
+			ret = TB_ERR;
+			fail = 1;
+			break;
 		}
 
 		if (!fail) {
@@ -2214,7 +2202,6 @@ static int extract_esc_mouse(struct tb_event *event) {
 				event->mod |= TB_MOD_MOTION;
 			}
 
-			/* the coord is 1,1 for upper left */
 			event->x = ((uint8_t)in->buf[4]) - 0x21;
 			event->y = ((uint8_t)in->buf[5]) - 0x21;
 
@@ -2222,14 +2209,10 @@ static int extract_esc_mouse(struct tb_event *event) {
 		}
 
 		buf_shift = 6;
-	}
 		break;
-	case TYPE_1006:
-		/* fallthrough */
+	case TYPE_1006: /* fallthrough */
 	case TYPE_1015:
 	{
-		size_t i = 0;
-
 		enum {
 			FIRST_M = 0,
 			FIRST_SEMICOLON,
@@ -2237,15 +2220,14 @@ static int extract_esc_mouse(struct tb_event *event) {
 			FIRST_LAST_MAX
 		};
 
-		size_t indices[FIRST_LAST_MAX] = {
-			index_fail,
-			index_fail,
-			index_fail
-		};
-		int m_is_capital = 0;
+		size_t indices[FIRST_LAST_MAX] =
+			{index_fail, index_fail, index_fail};
+		int m_is_capital = 0, start, fail;
+		size_t i;
+		unsigned n1, n2, n3;
 
 		for (i = 0; i < in->len; i++) {
-			if (in->buf[i] != ';') {
+			if (in->buf[i] == ';') {
 				if (indices[FIRST_SEMICOLON] == index_fail) {
 					indices[FIRST_SEMICOLON] = i;
 				} else {
@@ -2263,64 +2245,51 @@ static int extract_esc_mouse(struct tb_event *event) {
 				indices[FIRST_SEMICOLON] == index_fail ||
 				indices[LAST_SEMICOLON] == index_fail) {
 			ret = TB_ERR;
-		} else {
-			int start = (type == TYPE_1015 ? 2 : 3);
-			int fail = 0;
+			break;
+		}
+		start = (type == TYPE_1015 ? 2 : 3);
 
-			unsigned n1 = strtoul(&in->buf[start], NULL, 10);
-			unsigned n2 = strtoul(
-					&in->buf[indices[FIRST_SEMICOLON] + 1],
-					NULL, 10);
-			unsigned n3 = strtoul(
-					&in->buf[indices[LAST_SEMICOLON] + 1],
-					NULL, 10);
+		n1 = strtoul(&in->buf[start], NULL, 10);
+		n2 = strtoul(&in->buf[indices[FIRST_SEMICOLON] + 1], NULL, 10);
+		n3 = strtoul(&in->buf[indices[LAST_SEMICOLON] + 1], NULL, 10);
 
-			if (type == TYPE_1015) {
-				n1 -= 0x20;
+		if (type == TYPE_1015) n1 -= 0x20;
+
+		fail = 0;
+		switch (n1 & 3) {
+		case 0:
+			event->key = ((n1 & 64) != 0) ? TB_KEY_MOUSE_WHEEL_UP
+					: TB_KEY_MOUSE_LEFT;
+			break;
+		case 1:
+			event->key = ((n1 & 64) != 0) ? TB_KEY_MOUSE_WHEEL_DOWN
+					: TB_KEY_MOUSE_MIDDLE;
+			break;
+		case 2:
+			event->key = TB_KEY_MOUSE_RIGHT;
+			break;
+		case 3:
+			event->key = TB_KEY_MOUSE_RELEASE;
+			break;
+		default:
+			ret = TB_ERR;
+			fail = 1;
+			break;
+		}
+
+		buf_shift = in->len;
+
+		if (!fail) {
+			if (!m_is_capital) event->key = TB_KEY_MOUSE_RELEASE;
+
+			if ((n1 & 32) != 0) {
+				event->mod |= TB_MOD_MOTION;
 			}
 
+			event->x = ((uint8_t)n2) - 1;
+			event->y = ((uint8_t)n3) - 1;
 
-			switch (n1 & 3) {
-				case 0:
-					event->key = ((n1 & 64) != 0)
-						? TB_KEY_MOUSE_WHEEL_UP
-						: TB_KEY_MOUSE_LEFT;
-					break;
-				case 1:
-					event->key = ((n1 & 64) != 0)
-						? TB_KEY_MOUSE_WHEEL_DOWN
-						: TB_KEY_MOUSE_MIDDLE;
-					break;
-				case 2:
-					event->key = TB_KEY_MOUSE_RIGHT;
-					break;
-				case 3:
-					event->key = TB_KEY_MOUSE_RELEASE;
-					break;
-				default:
-					ret = TB_ERR;
-					fail = 1;
-					break;
-			}
-
-			buf_shift = in->len;
-
-			if (!fail) {
-				if (!m_is_capital) {
-					/* on xterm mouse release is signaled
-					 * by lowercase m */
-					event->key = TB_KEY_MOUSE_RELEASE;
-				}
-
-				if ((n1 & 32) != 0) {
-					event->mod |= TB_MOD_MOTION;
-				}
-
-				event->x = ((uint8_t)n2) - 1;
-				event->y = ((uint8_t)n3) - 1;
-
-				ret = TB_OK;
-			}
+			ret = TB_OK;
 		}
 	}
 		break;
@@ -2328,13 +2297,8 @@ static int extract_esc_mouse(struct tb_event *event) {
 		ret = TB_ERR;
 	}
 
-	if (buf_shift > 0) {
-		bytebuf_shift(in, buf_shift);
-	}
-
-	if (ret == TB_OK) {
-		event->type = TB_EVENT_MOUSE;
-	}
+	if (buf_shift > 0) bytebuf_shift(in, buf_shift);
+	if (ret == TB_OK) event->type = TB_EVENT_MOUSE;
 
 	return ret;
 }
@@ -2759,6 +2723,7 @@ static int cellbuf_resize(struct cellbuf_t *c, int w, int h) {
 }
 
 static int bytebuf_puts(struct bytebuf_t *b, const char *str) {
+	if (!str || strlen(str) <= 0) return TB_OK;
 	return bytebuf_nputs(b, str, (size_t)strlen(str));
 }
 

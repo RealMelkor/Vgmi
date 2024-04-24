@@ -36,7 +36,6 @@ void client_display(struct client* client) {
 	tb_present();
 }
 
-#define TAB_WIDTH 32
 #define TB_REV (TB_REVERSE | TB_DEFAULT), TB_DEFAULT
 
 void client_draw_scrollbar(struct client* client, struct request *request) {

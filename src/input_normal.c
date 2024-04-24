@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <string.h>
@@ -21,14 +21,17 @@ void client_reset(struct client *client) {
 	client->g = client->count = 0;
 }
 
+#include <stdlib.h>
 int client_input_normal(struct client *client, struct tb_event ev) {
 	switch (ev.key) {
 	case TB_KEY_ESC:
 		client->count = 0;
 		break;
 	case TB_KEY_ARROW_DOWN:
+	case TB_KEY_MOUSE_WHEEL_DOWN:
 		goto down;
 	case TB_KEY_ARROW_UP:
+	case TB_KEY_MOUSE_WHEEL_UP:
 		goto up;
 	case TB_KEY_PGUP:
 		client->count = AZ(client->count);

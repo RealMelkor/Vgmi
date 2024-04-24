@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,6 +87,7 @@ int servername_from_url(const char *url, char* out, size_t len) {
 
 int protocol_from_url(const char *url) {
 	if (!memcmp(url, V("mailto:") - 1)) return PROTOCOL_MAIL;
+	if (!memcmp(url, V("about:") - 1)) return PROTOCOL_INTERNAL;
 	if (!strnstr(url, "://", MAX_URL)) return PROTOCOL_NONE; /* default */
 	if (!memcmp(url, V("gemini://") - 1)) return PROTOCOL_GEMINI;
 	if (!memcmp(url, V("http://") - 1)) return PROTOCOL_HTTP;
