@@ -20,6 +20,7 @@
 #include "storage.h"
 #include "config.h"
 #include "xdg.h"
+#include "mouse.h"
 
 int main(int argc, char *argv[]) {
 	
@@ -58,6 +59,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	proc_argv(argv);
+
+	mouse_init();
 
 	if ((ret = client_init(&client))) {
 		char error[1024];

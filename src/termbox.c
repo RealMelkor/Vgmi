@@ -63,6 +63,7 @@ SOFTWARE.
 #include "termbox.h"
 #include "wcwidth.h"
 #include "utf8.h"
+#include "mouse.h"
 
 #ifndef IMAXBEL
 #define IMAXBEL 0
@@ -1983,10 +1984,18 @@ static int wait_event(struct tb_event *event, int timeout) {
 		FD_ZERO(&fds);
 		FD_SET(global.rfd, &fds);
 		FD_SET(global.resize_pipefd[0], &fds);
+#ifdef HAS_GPM
+		if (mouse_gpm_fd > -1) {
+			FD_SET(mouse_gpm_fd, &fds);
+		}
+#endif
 
 		maxfd = global.resize_pipefd[0] > global.rfd
 			? global.resize_pipefd[0]
 			: global.rfd;
+#ifdef HAS_GPM
+		if (maxfd < mouse_gpm_fd) maxfd = mouse_gpm_fd;
+#endif
 
 		select_rv = select(maxfd + 1, &fds, NULL, NULL,
 					(timeout < 0) ? NULL : &tv);
@@ -2001,6 +2010,13 @@ static int wait_event(struct tb_event *event, int timeout) {
 
 		tty_has_events = (FD_ISSET(global.rfd, &fds));
 		resize_has_events = (FD_ISSET(global.resize_pipefd[0], &fds));
+
+#ifdef HAS_GPM
+		if (mouse_gpm_fd > -1 && FD_ISSET(mouse_gpm_fd, &fds)) {
+			mouse_event(event);
+			return TB_OK;
+		}
+#endif
 
 		if (tty_has_events) {
 			ssize_t read_rv = read(global.rfd, buf, sizeof(buf));

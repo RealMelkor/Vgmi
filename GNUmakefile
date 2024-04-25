@@ -12,6 +12,10 @@ LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
 
 FLAGS = -DENABLE_SECCOMP_FILTER
 
+# Uncomment for GPM support on Linux
+#LDFLAGS+=-lgpm
+#FLAGS+=-DENABLE_GPM
+
 SRC = $(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}
 OBJS = $(subst src,obj,$(OBJ))
