@@ -58,6 +58,20 @@ int command_newtab(struct client *client, const char* ptr, size_t len) {
 	return 0;
 }
 
+int command_tabnext(struct client *client, const char* ptr, size_t len) {
+	if (no_argument(client, ptr, len)) return 0;
+	if (client->tab->next) client->tab = client->tab->next;
+	else while (client->tab->prev) client->tab = client->tab->prev;
+	return 0;
+}
+
+int command_tabprev(struct client *client, const char* ptr, size_t len) {
+	if (no_argument(client, ptr, len)) return 0;
+	if (client->tab->prev) client->tab = client->tab->prev;
+	else while (client->tab->next) client->tab = client->tab->next;
+	return 0;
+}
+
 int command_search(struct client *client, const char* ptr, size_t len) {
 
 	int ret;
