@@ -36,9 +36,11 @@
 "## Commands\n\n" \
 "* :q - Close the current tab\n" \
 "* :qa - Close all tabs, exit the program\n" \
-"* :o [url] - Open an url\n" \
+"* :open [url] - Open an url (alias: ':o')\n" \
 "* :s [search] - Search the Geminispace using geminispace.info\n" \
-"* :nt [url] - Open a new tab, the url is optional\n" \
+"* :tabnew [url] - Open a new tab, the url is optional (alias: ':nt')\n" \
+"* :tabprev - Go to the previous tab\n" \
+"* :tabnext - Go to the next tab\n" \
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
 "* :[number] - Scroll to the line number\n" \
 "* :gencert - Generate a client-certificate for the current capsule\n" \
