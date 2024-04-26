@@ -1,4 +1,3 @@
-struct tb_event;
 #include "mouse.h"
 #ifdef HAS_GPM
 #include <gpm.h>
@@ -46,6 +45,11 @@ int mouse_event(struct tb_event *ev) {
 	ev->x = event.x - 1;
 	ev->y = event.y - 1;
 	ev->mod = 0;
+	ev->key = 0;
+	if (event.type & GPM_UP) {
+		ev->key = TB_KEY_MOUSE_RELEASE;
+		return 0;
+	}
 	switch (event.buttons) {
 	case GPM_B_LEFT:
 		ev->key = TB_KEY_MOUSE_LEFT;
