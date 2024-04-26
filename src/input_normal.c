@@ -19,7 +19,7 @@
 
 void client_reset(struct client *client) {
 	if (!client) return;
-	client->exit = client->g = client->count = 0;
+	client->tabcompletion = client->exit = client->g = client->count = 0;
 }
 
 int client_input_normal(struct client *client, struct tb_event ev) {

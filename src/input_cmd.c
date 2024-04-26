@@ -20,6 +20,29 @@
 #include "parser.h"
 #include "input.h"
 
+static void tabcompletion(struct client *client, char *in)  {
+	size_t i, j, len;
+	ASSERT(LENGTH(commands) < LENGTH(client->matches));
+	client->tabcompletion = 0;
+	client->tabcompletion_selected = client->matches[0] = -1;
+	len = strlen(in);
+	for (j = i = 0; i < LENGTH(commands); i++) {
+		if (strncmp(in, commands[i].name, len)) continue;
+		client->matches[j++] = i;
+	}
+	if (j) {
+		client->tabcompletion = 1;
+		client->matches[j] = -1;
+	}
+}
+
+static void tabcomplete(struct client *client)  {
+	const char *cmd = commands[client->matches[
+		client->tabcompletion_selected]].name;
+	strlcpy(&client->cmd[1], cmd, sizeof(client->cmd) - 1);
+	client->cursor = strnlen(V(client->cmd));
+}
+
 static void insert_unicode(char *buf, size_t length, int *pos, uint32_t ch) {
 	char cpy[MAX_CMDLINE];
 	int end = !buf[*pos], len;
@@ -136,6 +159,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		if (req) req->state = STATE_ENDED;
 		return 0;
 	case TB_KEY_ENTER:
+		client->tabcompletion = 0;
 		if (search_mode) ;
 		else if (req) {
 			char buf[2048];
@@ -188,9 +212,34 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		client->cursor +=
 			utf8_char_length(client->cmd[client->cursor]);
 		break;
+	case TB_KEY_TAB:
+		if (!client->tabcompletion) {
+			tabcompletion(client, &client->cmd[1]);
+		} else {
+			size_t i = client->tabcompletion_selected;
+			i = (i >= LENGTH(client->matches) ||
+				client->matches[i + 1] < 0) ? 0 : i + 1;
+			client->tabcompletion_selected = i;
+			tabcomplete(client);
+		}
+		break;
+	case TB_KEY_BACK_TAB:
+		if (!client->tabcompletion) break;
+		client->tabcompletion_selected--;
+		if (client->tabcompletion_selected < 0) {
+			size_t i;
+			for (i = 0; i < LENGTH(client->matches); i++) {
+				if (client->matches[i + 1] < 0) break;
+			}
+			client->tabcompletion_selected = i;
+		}
+		tabcomplete(client);
+		break;
 	}
 
 	if (!ev.ch) return 0;
+
+	client->tabcompletion = 0;
 
 	len = utf8_unicode_length(ev.ch);
 	if ((size_t)(client->cursor + len) >= sizeof(client->cmd)) return 0;

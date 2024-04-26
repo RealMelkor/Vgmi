@@ -34,6 +34,10 @@ struct client {
 	int error;
 	int (*motion)(struct client*, int, int);
 	struct tab *tab;
+	/* tab completion */
+	int matches[32];
+	int tabcompletion;
+	int tabcompletion_selected;
 	/* internal */
 	int g;
 	int exit;

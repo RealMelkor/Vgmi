@@ -17,6 +17,7 @@
 #include "utf8.h"
 #include "url.h"
 #include "known_hosts.h"
+#include "commands.h"
 
 #define MULTIPLE_TABS(X) (X->tab->next || X->tab->prev)
 
@@ -140,6 +141,18 @@ void client_draw(struct client* client) {
 	req_input = tab_input(client->tab);
 	if (req_input) {
 		tb_printf(0, client->height - 2, TB_REV, "%s", req_input->url);
+	} else if (client->mode == MODE_CMDLINE && client->tabcompletion) {
+		int i, x, y;
+		x = 0;
+		y = client->height - 2;
+		for (i = 0; i < (signed)LENGTH(client->matches); i++) {
+			int id = client->matches[i], bg;
+			if (id < 0 || id >= (signed)LENGTH(commands)) break;
+			bg = client->tabcompletion_selected == i ?
+				TB_YELLOW : TB_DEFAULT | TB_REVERSE;
+			tb_printf(x, y, TB_DEFAULT, bg, commands[id].name);
+			x += strnlen(V(commands[id].name)) + 2;
+		}
 	} else {
 		int expired = 0, fg = TB_REVERSE | TB_DEFAULT, bg = TB_DEFAULT;
 		char url[1024];
