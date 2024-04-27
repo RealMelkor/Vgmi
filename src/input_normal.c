@@ -37,13 +37,19 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		/* fallthrough */
 	case TB_KEY_ARROW_UP:
 		goto up;
+	case TB_KEY_HOME:
+		goto top;
+	case TB_KEY_END:
+		goto bottom;
 	case TB_KEY_PGUP:
+		if (ev.mod & TB_MOD_CTRL) goto tabprev;
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, -client->count * client->height,
 				client_display_rect(client));
 		client_reset(client);
 		break;
 	case TB_KEY_PGDN:
+		if (ev.mod & TB_MOD_CTRL) goto tabnext;
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, client->count * client->height,
 				client_display_rect(client));
@@ -171,6 +177,7 @@ up:
 		break;
 	case 't':
 		if (!client->g) break;
+tabnext:
 		if (client->tab->next)
 			client->tab = client->tab->next;
 		else while (client->tab->prev)
@@ -179,6 +186,7 @@ up:
 		break;
 	case 'T':
 		if (!client->g) break;
+tabprev:
 		if (client->tab->prev)
 			client->tab = client->tab->prev;
 		else while (client->tab->next)
@@ -190,11 +198,13 @@ up:
 			client->g = 1;
 			break;
 		}
+top:
 		tab_scroll(client->tab, -0x0FFFFFFF,
 				client_display_rect(client));
 		client_reset(client);
 		break;
 	case 'G':
+bottom:
 		client->count = 0;
 		tab_scroll(client->tab, 0x0FFFFFFF,
 				client_display_rect(client));
