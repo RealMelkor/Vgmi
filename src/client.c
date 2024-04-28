@@ -140,6 +140,14 @@ int client_init(struct client* client) {
 	memset(client, 0, sizeof(*client));
 	if ((ret = storage_init())) return ret;
 	config_load();
+	if ((ret = storage_init_download())) {
+		char error[1024];
+		error_string(ret, V(error));
+		printf("Reseting downloads path: %s\n", error);
+		*config.downloadsPath = '\0';
+		config_save();
+		if ((ret = storage_init_download())) return ret;
+	}
 	if ((ret = parser_request_create())) return ret;
 	if ((ret = parser_page_create())) return ret;
 #ifdef ENABLE_IMAGE

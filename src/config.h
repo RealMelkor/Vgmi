@@ -23,6 +23,7 @@ struct config {
 	int		enableHexViewer;
 	int		enableXdg;
 	char		searchEngineURL[CONFIG_STRING_LENGTH];
+	char		downloadsPath[CONFIG_STRING_LENGTH];
 };
 extern struct config config;
 
@@ -61,6 +62,7 @@ static struct field fields[] = {
 	{"history.maxentries", VALUE_INT, &config.maximumHistorySize, 0},
 	{"history.maxcache", VALUE_INT, &config.maximumHistoryCache, 0},
 	{"search.url", VALUE_STRING, &config.searchEngineURL, 0},
+	{"downloads.path", VALUE_STRING, &config.downloadsPath, 1},
 };
 #endif
 

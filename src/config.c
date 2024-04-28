@@ -41,6 +41,7 @@ void config_default(void) {
 	config.maximumHistorySize = 3000;
 	config.maximumHistoryCache = 200;
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
+	STRLCPY(config.downloadsPath, "");
 }
 
 static int set_field(struct field field, int v, char *str) {

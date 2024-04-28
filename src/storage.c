@@ -20,6 +20,7 @@
 #include "storage.h"
 #include "error.h"
 #include "utf8.h"
+#include "config.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024
@@ -71,7 +72,7 @@ static int storage_from_home(char *out, size_t length, const char *dir) {
 		return 0;
 	}
 
-	return -1;
+	return ERROR_STORAGE_ACCESS;
 }
 
 int storage_path(char *out, size_t length) {
@@ -100,6 +101,11 @@ int storage_download_path(char *out, size_t length) {
 	FILE *f;
 
 	if (length > PATH_MAX) length = PATH_MAX;
+
+	if (*config.downloadsPath == '/') {
+		strlcpy(out, config.downloadsPath, length);
+		return 0;
+	} else *config.downloadsPath = '\0';
 
 	f = popen("xdg-user-dir DOWNLOAD 2>&1", "r");
 	if (f) {
@@ -184,22 +190,22 @@ int storage_read(const char *name, char *out, size_t length,
 	return 0;
 }
 
-int storage_init(void) {
-
-	char path[PATH_MAX], download[PATH_MAX];
+int storage_init_path(int *fd, int download) {
+	char path[PATH_MAX];
 	int ret;
-
-	if (storage_path(V(path))) return ERROR_STORAGE_ACCESS;
-	if (storage_download_path(V(download))) return ERROR_STORAGE_ACCESS;
-	if (storage_mkdir(path)) return ERROR_STORAGE_ACCESS;
-	if (storage_mkdir(download)) return ERROR_STORAGE_ACCESS;
-	if ((ret = open(path, O_DIRECTORY | O_CLOEXEC)) < 0)
+	ret = download ? storage_path(V(path)) : storage_download_path(V(path));
+	if ((ret = storage_mkdir(path))) return ret;
+	if ((*fd = open(path, O_DIRECTORY | O_CLOEXEC)) < 0)
 		return ERROR_STORAGE_ACCESS;
-	storage_fd = ret;
-	if ((ret = open(download, O_DIRECTORY | O_CLOEXEC)) < 0)
-		return ERROR_STORAGE_ACCESS;
-	download_fd = ret;
 	return 0;
+}
+
+int storage_init(void) {
+	return storage_init_path(&storage_fd, 1);
+}
+
+int storage_init_download(void) {
+	return storage_init_path(&download_fd, 0);
 }
 
 int storage_close(void) {
