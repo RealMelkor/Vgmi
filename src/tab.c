@@ -165,8 +165,12 @@ restart:
 
 	secure_free(ctx);
 	if (redirect) {
-		int protocol = protocol_from_url(destination);
-		if (protocol != PROTOCOL_NONE && protocol != PROTOCOL_GEMINI) {
+		int protocol, proxy;
+		protocol = protocol_from_url(destination);
+		proxy = *config.proxyHttp && (protocol == PROTOCOL_HTTPS ||
+				protocol == PROTOCOL_HTTP);
+		if (protocol != PROTOCOL_NONE && !proxy &&
+					protocol != PROTOCOL_GEMINI) {
 			request.error = ERROR_UNSUPPORTED_PROTOCOL;
 			error_string(request.error, V(tab->error));
 			tab->failure = 1;

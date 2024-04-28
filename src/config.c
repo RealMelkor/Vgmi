@@ -42,6 +42,7 @@ void config_default(void) {
 	config.maximumHistoryCache = 200;
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
 	STRLCPY(config.downloadsPath, "");
+	STRLCPY(config.proxyHttp, "");
 }
 
 static int set_field(struct field field, int v, char *str) {

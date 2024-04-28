@@ -242,3 +242,16 @@ int url_is_absolute(const char *url) {
 	return !!strnstr(url, "://", MAX_URL) ||
 		!memcmp(url, V("mailto:") - 1);
 }
+
+int url_domain_port(const char *in, char *domain, int *port) {
+	char *ptr = strrchr(in, ':');
+	if (!ptr) {
+		strlcpy(domain, in, MAX_HOST);
+		*port = 1965;
+		return 0;
+	}
+	*port = atoi(ptr + 1);
+	if (!*port) *port = 1965;
+	strlcpy(domain, in, ptr - in + 1);
+	return 0;
+}

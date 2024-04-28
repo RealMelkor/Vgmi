@@ -20,3 +20,4 @@ int url_parse_idn(const char *in, char *out, size_t out_length);
 int url_hide_query(const char *url, char *out, size_t length);
 int url_convert(const char *url, char *out, size_t length);
 int url_is_absolute(const char *url);
+int url_domain_port(const char *in, char *domain, int *port);
