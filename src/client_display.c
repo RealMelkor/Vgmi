@@ -122,8 +122,9 @@ void client_draw(struct client* client) {
 
 	if (client->error || client->exit) {
 		int color = client->error == ERROR_INFO ? TB_GREEN : TB_RED;
-		if (client->exit) color = TB_DEFAULT;
-		tb_print(0, client->height - 1, TB_WHITE, color, client->cmd);
+		int bg = TB_WHITE;
+		if (client->exit) color = bg = TB_DEFAULT;
+		tb_print(0, client->height - 1, bg, color, client->cmd);
 	}
 
 	if (client->mode == MODE_CMDLINE) {
