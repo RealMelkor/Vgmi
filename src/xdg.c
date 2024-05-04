@@ -45,11 +45,12 @@ static int open_download(const char *input) {
 	if ((ret = storage_download_path(V(download_dir)))) return ret;
 
 	ptr = input + sizeof(download_prefix) - 1;
-	for (i = 0; i < sizeof(buf) && *ptr; i++) {
+	for (i = 0; i < sizeof(buf) - 1 && *ptr; i++) {
 		buf[i] = *(ptr++);
 		if (buf[i] == '/' || buf[i] == '\\')
 			return ERROR_INVALID_ARGUMENT;
 	}
+	buf[i] = '\0';
 	if (!STRCMP(buf, "..") || !STRCMP(buf, "."))
 		return ERROR_INVALID_ARGUMENT;
 
@@ -67,7 +68,7 @@ int xdg_exec(char *line, size_t len) {
 			break;
 	}
 	if (i >= LENGTH(allowed_protocols)) return -1;
-	if (!strcmp(allowed_protocols[i], "download://")) {
+	if (!strcmp(allowed_protocols[i], download_prefix)) {
 		return open_download(line);
 	}
 	snprintf(V(cmd), "\"%s\" %s >/dev/null 2>&1", config.launcher, line);
