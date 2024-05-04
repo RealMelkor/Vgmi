@@ -13,4 +13,5 @@ int storage_read(const char*, char*, size_t, size_t*);
 int storage_init(void);
 int storage_init_download(void);
 int storage_close(void);
+int storage_find(const char*, char *, size_t);
 extern int storage_fd;

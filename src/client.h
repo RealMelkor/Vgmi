@@ -45,6 +45,7 @@ struct client {
 };
 
 int client_init(struct client*);
+int client_init_termbox(void);
 int client_destroy(struct client*);
 void client_draw(struct client*);
 void client_display(struct client*);

@@ -128,7 +128,7 @@ int request_follow(struct request* req, const char *link,
 	if (!strncmp(link, ".", length)) {
 		strlcpy(url, req->url, length);
 		ptr = strrchr(url, '/');
-		if (ptr) *(ptr + 1) = '\0';
+		if (ptr) *ptr = '\0';
 		return 0;
 	}
 	if (!strncmp(link, "..", length)) {

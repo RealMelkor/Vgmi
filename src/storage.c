@@ -213,3 +213,26 @@ int storage_close(void) {
 	close(download_fd);
 	return 0;
 }
+
+int storage_find(const char* executable, char *path, size_t length) {
+	struct stat st;
+	const char *ptr;
+	if (*executable == '/' && stat(executable, &st) == 0) {
+		strlcpy(path, executable, length);
+		return 0;
+	}
+	for (ptr = getenv("PATH"); ptr && *ptr; ptr = strchr(ptr, ':')) {
+		char buf[PATH_MAX], *buf_ptr;
+		if (*ptr == ':') ptr++;
+		STRLCPY(buf, ptr);
+		buf_ptr = strchr(buf, ':');
+		if (!buf_ptr) buf_ptr = buf + strnlen(V(buf));
+		*(buf_ptr++) = '/';
+		strlcpy(buf_ptr, executable, sizeof(buf) - (buf_ptr - buf));
+		if (stat(buf, &st) == 0) {
+			strlcpy(path, buf, length);
+			return 0;
+		}
+	}
+	return -1;
+}

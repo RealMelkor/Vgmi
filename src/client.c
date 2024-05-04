@@ -31,6 +31,16 @@
 #include "url.h"
 #include "proc.h"
 
+int client_init_termbox() {
+	if (tb_init()) return ERROR_TERMBOX_FAILURE;
+	if (tb_set_input_mode(TB_INPUT_ESC | TB_INPUT_MOUSE))
+		return ERROR_TERMBOX_FAILURE;
+#ifdef ENABLE_IMAGE
+	if (tb_set_output_mode(TB_OUTPUT_256)) return ERROR_TERMBOX_FAILURE;
+#endif
+	return 0;
+}
+
 int client_destroy(struct client *client) {
 	struct tab *tab;
 	if (!client) return ERROR_NULL_ARGUMENT;
@@ -158,12 +168,7 @@ int client_init(struct client* client) {
 #endif
 	if ((ret = known_hosts_load())) return ret;
 	if ((ret = bookmark_load())) return ret;
-	if (tb_init()) return ERROR_TERMBOX_FAILURE;
-	if (tb_set_input_mode(TB_INPUT_ESC | TB_INPUT_MOUSE))
-		return ERROR_TERMBOX_FAILURE;
-#ifdef ENABLE_IMAGE
-	if (tb_set_output_mode(TB_OUTPUT_256)) return ERROR_TERMBOX_FAILURE;
-#endif
+	if ((ret = client_init_termbox())) return ret;
 	if ((ret = sandbox_init())) {
 		tb_shutdown();
 #ifdef __linux

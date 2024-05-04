@@ -12,6 +12,7 @@ int command_newtab(struct client *client, const char* ptr, size_t len);
 int command_tabnext(struct client *client, const char* ptr, size_t len);
 int command_tabprev(struct client *client, const char* ptr, size_t len);
 int command_download(struct client *client, const char* ptr, size_t len);
+int command_exec(struct client *client, const char* args, size_t len);
 int command_add(struct client *client, const char* args, size_t len);
 int command_help(struct client *client, const char* args, size_t len);
 
@@ -34,5 +35,6 @@ static struct command commands[] = {
 	{"gencert",	command_gencert},
 	{"forget",	command_forget},
 	{"download",	command_download},
+	{"exec",	command_exec},
 	{"help",	command_help},
 };

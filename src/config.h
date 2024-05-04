@@ -22,9 +22,11 @@ struct config {
 	int		enableImage;
 	int		enableHexViewer;
 	int		enableXdg;
+	int		launcherTerminal;
 	char		searchEngineURL[CONFIG_STRING_LENGTH];
 	char		downloadsPath[CONFIG_STRING_LENGTH];
 	char		proxyHttp[CONFIG_STRING_LENGTH];
+	char		launcher[CONFIG_STRING_LENGTH];
 };
 extern struct config config;
 
@@ -65,6 +67,8 @@ static struct field fields[] = {
 	{"search.url", VALUE_STRING, &config.searchEngineURL, 0},
 	{"downloads.path", VALUE_STRING, &config.downloadsPath, 1},
 	{"proxy.http", VALUE_STRING, &config.proxyHttp, 0},
+	{"launcher.executable", VALUE_STRING, &config.launcher, 0},
+	{"launcher.terminal", VALUE_INT, &config.launcherTerminal, 0},
 };
 #endif
 

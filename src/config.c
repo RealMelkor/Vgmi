@@ -43,6 +43,7 @@ void config_default(void) {
 	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
 	STRLCPY(config.downloadsPath, "");
 	STRLCPY(config.proxyHttp, "");
+	STRLCPY(config.launcher, "xdg-open");
 }
 
 static int set_field(struct field field, int v, char *str) {

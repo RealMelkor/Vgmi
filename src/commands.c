@@ -16,6 +16,7 @@
 #include "certificate.h"
 #include "error.h"
 #include "parser.h"
+#include "xdg.h"
 
 static int need_argument(struct client * client,
 			const char *field, size_t len, char *error) {
@@ -124,6 +125,9 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	return 0;
 }
 
+#include <stdint.h>
+#include "termbox.h"
+
 int command_gencert(struct client *client, const char* args, size_t len) {
 
 	struct request *req;
@@ -179,6 +183,7 @@ int command_forget(struct client *client, const char* ptr, size_t len) {
 }
 
 #include "storage.h"
+static char last_download[MAX_URL] = {0};
 int command_download(struct client *client, const char* args, size_t len) {
 
 	struct request *req;
@@ -236,10 +241,38 @@ int command_download(struct client *client, const char* args, size_t len) {
 	fwrite(&req->data[req->page.offset], 1,
 			req->length - req->page.offset, f);
 	fclose(f);
+	STRLCPY(last_download, name);
 
 	client->error = ERROR_INFO;
 	snprintf(V(client->cmd), "File downloaded : %s", name);
 
+	return 0;
+}
+
+int command_exec(struct client *client, const char* args, size_t len) {
+	char buf[PATH_MAX], download_dir[PATH_MAX];
+	int err;
+	if (no_argument(client, args, len)) return 0;
+	if (!*last_download) {
+		client->error = 1;
+		snprintf(V(client->cmd), "No file downloaded yet");
+		return 0;
+	}
+	if (config.enableSandbox || !config.launcherTerminal) {
+		snprintf(V(buf), "download://%s", last_download);
+		xdg_request(buf);
+		return 0;
+	}
+	if ((err = storage_download_path(V(download_dir)))) {
+		client->error = 1;
+		error_string(err, V(client->cmd));
+		return 0;
+	}
+	snprintf(V(buf), "\"%s\" %s/\"%s\"",
+			config.launcher, download_dir, last_download);
+	tb_shutdown();
+	system(buf);
+	client_init_termbox();
 	return 0;
 }
 

@@ -46,6 +46,7 @@
 "* :gencert - Generate a client-certificate for the current capsule\n" \
 "* :forget <host> - Forget the certificate for the host\n" \
 "* :download [name] - Download the current page, the name is optional\n" \
+"* :exec - Open the last downloaded file\n" \
 "* :help - Open about:help in a new tab\n"
 #define HEADER "20 text/gemini\r\n"
 static const char header[] = HEADER;

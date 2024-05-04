@@ -17,6 +17,7 @@
 #include "sandbox.h"
 #include "storage.h"
 #include "error.h"
+#include "dns.h"
 #include "config.h"
 
 #ifdef ENABLE_SECCOMP_FILTER
@@ -117,7 +118,7 @@ struct sock_filter filter[] = {
 
 int enable_seccomp(void) {
 	struct sock_fprog prog;
-	prog.len = (unsigned short)(sizeof(filter) / sizeof (filter[0]));
+	prog.len = (unsigned short)LENGTH(filter);
 	prog.filter = filter;
 	return prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog, 0);
 }
@@ -219,7 +220,6 @@ int sandbox_init(void) {
 						LANDLOCK_ACCESS_FS_READ_FILE);
 		ret |= landlock_unveil_path(fd, "/etc/resolv.conf",
 						LANDLOCK_ACCESS_FS_READ_FILE);
-
 		if (ret) return ERROR_LANDLOCK_FAILURE;
 
 		if (landlock_apply(fd)) return ERROR_LANDLOCK_FAILURE;
@@ -227,6 +227,12 @@ int sandbox_init(void) {
 #endif
 
 #ifdef ENABLE_SECCOMP_FILTER
+	if (!config.enableLandlock) {
+		/* if landlock is not enabled and getaddrinfo is not called
+		 * before enabling seccomp, getaddrinfo will not resolve */
+		void *ptr;
+		dns_getip("geminispace.info", &ptr);
+	}
 	if (enable_seccomp()) return ERROR_SANDBOX_FAILURE;
 #endif
 
