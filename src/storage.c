@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <fcntl.h>
+#include <dirent.h>
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
@@ -235,4 +236,20 @@ int storage_find(const char* executable, char *path, size_t length) {
 		}
 	}
 	return -1;
+}
+
+int storage_clear_tmp(void) {
+	DIR *dir;
+	int ret;
+	struct dirent *entry;
+
+	if (download_fd < 0 && ((ret = storage_init_path(&download_fd, 1))))
+		return ret;
+	if (!(dir = fdopendir(dup(download_fd)))) return ERROR_ERRNO;
+	rewinddir(dir);
+	while ((entry = readdir(dir))) {
+		if (!memcmp(entry->d_name, V(".tmp_vgmi_exec_") - 1))
+			unlinkat(download_fd, entry->d_name, 0);
+	}
+	return 0;
 }

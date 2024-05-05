@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include "macro.h"
 #include "strlcpy.h"
 #include "strnstr.h"
@@ -94,6 +95,7 @@ int config_load(void) {
 	struct field field;
 	char buf[1024];
 	int i, in_str, in_comment;
+	srand(time(NULL));
 	config_default();
 	if (!(f = storage_fopen(CONFIG_FILE, "r")))
 		return ERROR_STORAGE_ACCESS;

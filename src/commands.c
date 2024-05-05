@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "strlcpy.h"
 #include "macro.h"
 #include "strnstr.h"
@@ -183,7 +184,6 @@ int command_forget(struct client *client, const char* ptr, size_t len) {
 }
 
 #include "storage.h"
-static char last_download[MAX_URL] = {0};
 int command_download(struct client *client, const char* args, size_t len) {
 
 	struct request *req;
@@ -241,7 +241,6 @@ int command_download(struct client *client, const char* args, size_t len) {
 	fwrite(&req->data[req->page.offset], 1,
 			req->length - req->page.offset, f);
 	fclose(f);
-	STRLCPY(last_download, name);
 
 	client->error = ERROR_INFO;
 	snprintf(V(client->cmd), "File downloaded : %s", name);
@@ -250,16 +249,16 @@ int command_download(struct client *client, const char* args, size_t len) {
 }
 
 int command_exec(struct client *client, const char* args, size_t len) {
-	char buf[PATH_MAX], download_dir[PATH_MAX];
+	char buf[PATH_MAX], download_dir[PATH_MAX], name[256];
 	int err;
 	if (no_argument(client, args, len)) return 0;
-	if (!*last_download) {
-		client->error = 1;
-		snprintf(V(client->cmd), "No file downloaded yet");
-		return 0;
-	}
+	client->error = 0;
+	snprintf(V(name), ".tmp_vgmi_exec_%ld%d", time(NULL), rand());
+	if (command_download(client, name, 1)) return -1;
+	if (client->error != ERROR_INFO) return 0;
+	client->error = 0;
 	if (config.enableSandbox || !config.launcherTerminal) {
-		snprintf(V(buf), "download://%s", last_download);
+		snprintf(V(buf), "download://%s", name);
 		xdg_request(buf);
 		return 0;
 	}
@@ -269,9 +268,10 @@ int command_exec(struct client *client, const char* args, size_t len) {
 		return 0;
 	}
 	snprintf(V(buf), "\"%s\" %s/\"%s\"",
-			config.launcher, download_dir, last_download);
+			config.launcher, download_dir, name);
 	tb_shutdown();
 	system(buf);
+	unlinkat(download_fd, name, 0);
 	client_init_termbox();
 	return 0;
 }

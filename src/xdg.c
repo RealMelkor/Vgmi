@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include "macro.h"
 #include "strnstr.h"
 #include "proc.h"
@@ -83,6 +84,7 @@ int xdg_proc(int in, int out) {
 	unsigned char byte;
 
 	if (storage_init()) return -1;
+	if (storage_init_download()) return -1;
 	if (config_load()) return -1;
 
 	sandbox_set_name("vgmi [xdg]");

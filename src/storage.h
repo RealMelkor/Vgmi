@@ -14,4 +14,6 @@ int storage_init(void);
 int storage_init_download(void);
 int storage_close(void);
 int storage_find(const char*, char *, size_t);
+int storage_clear_tmp(void);
 extern int storage_fd;
+extern int download_fd;

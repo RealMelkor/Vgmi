@@ -54,6 +54,7 @@ int client_destroy(struct client *client) {
 	history_save();
 	history_free();
 	config_save();
+	storage_clear_tmp();
 	free(bookmarks);
 	if (tb_shutdown()) return ERROR_TERMBOX_FAILURE;
 	return 0;
