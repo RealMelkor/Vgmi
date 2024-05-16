@@ -22,6 +22,35 @@ void client_reset(struct client *client) {
 	client->tabcompletion = client->exit = client->g = client->count = 0;
 }
 
+static void move_tab_left(struct client *client) {
+	struct tab *current, *prev;
+	if (!client->tab || !HAS_TABS(client) || !client->tab->prev) return;
+
+	current = client->tab;
+	prev = client->tab->prev;
+
+	current->prev = prev->prev;
+	if (current->next) current->next->prev = prev;
+	prev->next = current->next;
+	current->next = prev;
+	prev->prev = current;
+	if (current->prev) current->prev->next = current;
+}
+
+static void move_tab_right(struct client *client) {
+	struct tab *current, *next;
+	if (!client->tab || !HAS_TABS(client) || !client->tab->next) return;
+
+	current = client->tab;
+	next = client->tab->next;
+
+	current->next = next->next;
+	if (current->prev) current->prev->next = next;
+	next->prev = current->prev;
+	current->prev = next;
+	next->next = current;
+}
+
 int client_input_normal(struct client *client, struct tb_event ev) {
 	switch (ev.key) {
 	case TB_KEY_ESC:
@@ -42,14 +71,26 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case TB_KEY_END:
 		goto bottom;
 	case TB_KEY_PGUP:
-		if (ev.mod & TB_MOD_CTRL) goto tabprev;
+		if (ev.mod & TB_MOD_CTRL) {
+			if (ev.mod & TB_MOD_SHIFT) {
+				move_tab_left(client);
+				break;
+			}
+			goto tabprev;
+		}
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, -client->count * client->height,
 				client_display_rect(client));
 		client_reset(client);
 		break;
 	case TB_KEY_PGDN:
-		if (ev.mod & TB_MOD_CTRL) goto tabnext;
+		if (ev.mod & TB_MOD_CTRL) {
+			if (ev.mod & TB_MOD_SHIFT) {
+				move_tab_right(client);
+				break;
+			}
+			goto tabnext;
+		}
 		client->count = AZ(client->count);
 		tab_scroll(client->tab, client->count * client->height,
 				client_display_rect(client));
