@@ -66,10 +66,6 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 			nextspace_x = x;
 			for (j = i + 1; j < termwriter->pos; j++) {
 				nextspace_x += termwriter->cells[j].width;
-				if (termwriter->cells[j].codepoint == '-') {
-					j++;
-					break;
-				}
 				if (WHITESPACE(termwriter->cells[j].codepoint))
 					break;
 			}

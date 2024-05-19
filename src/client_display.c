@@ -121,10 +121,10 @@ void client_draw(struct client* client) {
 		tb_set_cell(i, client->height - 2, ' ', TB_REV);
 
 	if (client->error || client->exit) {
-		int color = client->error == ERROR_INFO ? TB_GREEN : TB_RED;
-		int bg = TB_WHITE;
-		if (client->exit) color = bg = TB_DEFAULT;
-		tb_print(0, client->height - 1, bg, color, client->cmd);
+		int bg = client->error == ERROR_INFO ? TB_GREEN : TB_RED;
+		int fg = TB_WHITE;
+		if (client->exit) fg = bg= TB_DEFAULT;
+		tb_print(0, client->height - 1, fg, bg, client->cmd);
 	}
 
 	if (client->mode == MODE_CMDLINE) {

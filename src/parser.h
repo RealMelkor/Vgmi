@@ -18,7 +18,6 @@ int renderable(uint32_t codepoint);
 
 #define WHITESPACE(X) ((X) <= ' ' && (X) != '\n')
 #define SEPARATOR(X) ((X) <= ' ')
-#define LINEBREAK(X) (WHITESPACE(X) || X == '-')
 
 enum {
 	MIME_GEMTEXT,
