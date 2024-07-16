@@ -16,7 +16,7 @@
 #define CONFIG_INTERNAL
 #include "config.h"
 
-#define DEFAULT_SEARCH_URL "gemini://geminispace.info/search?%s"
+#define DEFAULT_SEARCH_URL "gemini://tlgs.one/search?%s"
 #define CONFIG_FILE "config.conf"
 
 struct config config = {0};

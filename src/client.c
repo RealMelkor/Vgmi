@@ -69,6 +69,7 @@ int client_closetab(struct client *client) {
 int client_newtab(struct client *client, const char *url, int follow) {
 	struct tab *tab;
 	int proto;
+	char url_buf[MAX_URL];
 	if (!url) url = "about:newtab";
 	proto = protocol_from_url(url);
 	switch (proto) {
@@ -88,7 +89,8 @@ int client_newtab(struct client *client, const char *url, int follow) {
 			struct request req = {0};
 			STRLCPY(req.url, client->tab->request->url);
 			request_follow(&req, url, V(req.url));
-			url = req.url;
+			STRLCPY(url_buf, req.url);
+			url = url_buf;
 		}
 	}
 	client->tab = tab;

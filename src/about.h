@@ -37,7 +37,7 @@
 "* :q - Close the current tab\n" \
 "* :qa - Close all tabs, exit the program\n" \
 "* :open [url] - Open an url (alias: ':o')\n" \
-"* :s [search] - Search the Geminispace using geminispace.info\n" \
+"* :s [search] - Search the Geminispace using a search engine\n" \
 "* :tabnew [url] - Open a new tab, the url is optional (alias: ':nt')\n" \
 "* :tabprev - Go to the previous tab\n" \
 "* :tabnext - Go to the next tab\n" \

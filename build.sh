@@ -58,8 +58,8 @@ then
 	mkdir -p lib
 	mkdir -p build
 	cd build
-	h="6da0b954695f7ee62b03f64200a8a4f02af93717b60cce04ab6c8df262c07a51"
-	ssl_version="3.9.1"
+	h="7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97"
+	ssl_version="3.9.2"
 	remote_dir="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/"
 	check_hash $h "$remote_dir/libressl-$ssl_version.tar.gz"
 	tar -zxf libressl-$ssl_version.tar.gz
@@ -81,9 +81,9 @@ then
 	cd ../../
 fi
 
-# stb_image 2.28
-h="38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc"
-check_hash $h "https://raw.githubusercontent.com/nothings/stb/5736b15f7ea0ffb08dd38af21067c314d6a3aae9/stb_image.h"
+# stb_image 2.30
+h="594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3"
+check_hash $h "https://raw.githubusercontent.com/nothings/stb/013ac3beddff3dbffafd5177e7972067cd2b5083/stb_image.h"
 mv stb_image.h include/
 
 if [ "$(uname)" == SunOS ] ;

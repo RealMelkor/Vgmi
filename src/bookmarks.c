@@ -24,7 +24,8 @@ int bookmark_load(void) {
 	int space, eof;
 
 	if (!f) { /* default bookmarks */
-		bookmark_add("gemini://geminispace.info", "Geminispace");
+		bookmark_add("gemini://tlgs.one",
+				"TLGS - \"Totally Legit\" Gemini Search");
 		bookmark_add("about:about", "Settings");
 		return 0;
 	}

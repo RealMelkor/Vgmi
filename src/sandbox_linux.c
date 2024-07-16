@@ -231,7 +231,7 @@ int sandbox_init(void) {
 		/* if landlock is not enabled and getaddrinfo is not called
 		 * before enabling seccomp, getaddrinfo will not resolve */
 		void *ptr;
-		dns_getip("geminispace.info", &ptr);
+		dns_getip("geminiprotocol.net", &ptr);
 	}
 	if (enable_seccomp()) return ERROR_SANDBOX_FAILURE;
 #endif
