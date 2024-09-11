@@ -74,7 +74,7 @@ in completely isolated and sandboxed processes.
 
 Executing the build.sh script will download all dependencies and build Vgmi.
 
-[0]: https://gemini.circumlunar.space/
+[0]: https://geminiprotocol.net/
 [1]: https://www.freebsd.org/cgi/man.cgi?query=capsicum
 [2]: https://www.freebsd.org/cgi/man.cgi?query=cap_net
 [3]: https://man.openbsd.org/unveil
