@@ -36,6 +36,10 @@ int xdg_available(void) {
 	return has_xdg;
 }
 
+static const char *redirect() {
+	return config.launcherTerminal ? "" : ">/dev/null 2>&1";
+}
+
 static int open_download(const char *input) {
 
 	char buf[PATH_MAX], cmd[PATH_MAX + 128], download_dir[PATH_MAX];
@@ -55,8 +59,8 @@ static int open_download(const char *input) {
 	if (!STRCMP(buf, "..") || !STRCMP(buf, "."))
 		return ERROR_INVALID_ARGUMENT;
 
-	snprintf(V(cmd), "\"%s\" %s/\"%s\" >/dev/null 2>&1",
-			config.launcher, download_dir, buf);
+	snprintf(V(cmd), "\"%s\" %s/\"%s\" %s",
+			config.launcher, download_dir, buf, redirect());
 	system(cmd);
 	return 0;
 }
@@ -72,7 +76,7 @@ int xdg_exec(char *line, size_t len) {
 	if (!strcmp(allowed_protocols[i], download_prefix)) {
 		return open_download(line);
 	}
-	snprintf(V(cmd), "\"%s\" %s >/dev/null 2>&1", config.launcher, line);
+	snprintf(V(cmd), "\"%s\" %s %s", config.launcher, line, redirect());
 	system(cmd);
 	return 0;
 }
