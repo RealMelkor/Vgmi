@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,9 +76,9 @@ HEADER \
 
 void *dyn_utf8_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
+	size_t start;
 	const size_t sum = (dst ? *dst_length : 0) + src_len + 2;
 	void *ptr = realloc(dst, sum + 1);
-	size_t start;
 	if (!ptr) return NULL;
 	dst = ptr;
 	start = *dst_length ? utf8_len(dst, *dst_length) : 0;

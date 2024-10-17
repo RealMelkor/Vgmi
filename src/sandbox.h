@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #define SANDBOX_INFO "The program is not sandboxed"
 #define SANDBOX_FILESYSTEM "Unrestricted"
@@ -12,8 +12,10 @@
 #ifndef DISABLE_SANDBOX
 
 #ifdef __linux__
+#ifdef __has_include
 #if __has_include(<linux/landlock.h>)
 #define HAS_LANDLOCK
+#endif
 #endif
 #undef NO_SANDBOX
 #undef SANDBOX_INFO

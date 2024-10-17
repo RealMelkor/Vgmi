@@ -58,8 +58,8 @@ then
 	mkdir -p lib
 	mkdir -p build
 	cd build
-	h="7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97"
-	ssl_version="3.9.2"
+	h="4d841955f0acc3dfc71d0e3dd35f283af461222350e26843fea9731c0246a1e4"
+	ssl_version="4.0.0"
 	remote_dir="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/"
 	check_hash $h "$remote_dir/libressl-$ssl_version.tar.gz"
 	tar -zxf libressl-$ssl_version.tar.gz

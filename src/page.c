@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,13 +80,19 @@ int page_update(int in, int out, const char *data, size_t length,
 		pfd.fd = in;
 		pfd.events = POLLIN;
 		fds = poll(&pfd, 1, 0);
-		if (fds == -1) return ERROR_ERRNO;
+		if (fds == -1) {
+			ret = ERROR_ERRNO;
+			break;
+		}
 		if (!fds) {
 			int bytes;
 			pfd.fd = out;
 			pfd.events = POLLOUT;
 			fds = poll(&pfd, 1, 0);
-			if (fds == -1) return ERROR_ERRNO;
+			if (fds == -1) {
+				ret = ERROR_ERRNO;
+				break;
+			}
 			if (!fds) continue;
 			bytes = PARSER_CHUNK;
 			if (bytes_sent + bytes > length)
@@ -99,7 +105,7 @@ int page_update(int in, int out, const char *data, size_t length,
 
 		len = read(in, P(cell));
 		if (len != sizeof(cell)) {
-			ret = -1;
+			ret = ERROR_INVALID_DATA;
 			break;
 		}
 
@@ -123,13 +129,15 @@ int page_update(int in, int out, const char *data, size_t length,
 
 			length = sizeof(struct page_cell) * line.length;
 			ptr = &page->lines[page->length];
-			ptr->cells = malloc(length);
-			if (!ptr->cells) {
-				free(page->lines);
-				ret = ERROR_MEMORY_FAILURE;
-				break;
-			}
-			memcpy(ptr->cells, line.cells, length);
+			if (length) {
+				ptr->cells = malloc(length);
+				if (!ptr->cells) {
+					free(page->lines);
+					ret = ERROR_MEMORY_FAILURE;
+					break;
+				}
+				memcpy(ptr->cells, line.cells, length);
+			} else ptr->cells = NULL;
 			ptr->length = line.length;
 
 			line.length = 0;

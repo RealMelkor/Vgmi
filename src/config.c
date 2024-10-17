@@ -69,7 +69,7 @@ static int set_field(struct field field, int v, char *str) {
 }
 
 int config_set_field(int id, const char *value) {
-	if (id < 0 || (unsigned)id > LENGTH(fields))
+	if (id < 0 || (unsigned)id >= LENGTH(fields))
 		return ERROR_INVALID_ARGUMENT;
 	switch (fields[id].type) {
 	case VALUE_INT:
@@ -92,7 +92,6 @@ int config_set_field(int id, const char *value) {
 
 int config_load(void) {
 	FILE *f;
-	struct field field;
 	char buf[1024];
 	int i, in_str, in_comment;
 	srand(time(NULL));
@@ -101,7 +100,8 @@ int config_load(void) {
 		return ERROR_STORAGE_ACCESS;
 
 	in_comment = in_str = i = 0;
-	while (1) {
+	for (;;) {
+		struct field field = {0};
 		int ch = fgetc(f);
 		if (ch == EOF || ch == '\n') {
 			int ivalue;

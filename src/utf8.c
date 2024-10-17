@@ -171,7 +171,7 @@ int utf8_len(const char *ptr, size_t length) {
 	const char *start = ptr, *end = ptr + length, *last;
 	for (last = NULL; ptr < end && *ptr; ptr += utf8_char_length(*ptr))
 		last = ptr;
-	if (ptr >= end) ptr = last;
+	if (ptr + 1 >= end) ptr = last + 1;
 	return ptr ? (ptr - start) : 0;
 }
 

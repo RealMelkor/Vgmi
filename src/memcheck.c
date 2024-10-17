@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #ifdef MEM_CHECK
 #include <stdlib.h>
@@ -70,7 +70,7 @@ void __free(void* ptr, const char* file, int line, const char* func) {
 			fclose(output);
 			tb_shutdown();
 			printf("mem_check detected a fatal error\n");
-			return exit(0);
+			return exit(-1);
 #endif
 		}
 		for(j = i; j != allocationCount - 1; j++)
@@ -79,6 +79,7 @@ void __free(void* ptr, const char* file, int line, const char* func) {
 		allocation = realloc(allocation,
 				     sizeof(struct __allocation) *
 				     allocationCount);
+		if (!allocation) return exit(-1);
 	}
 	if(i > allocationCount)
 		fprintf(output, "Error free : %p | %s, Line %d : %s\n",
@@ -92,11 +93,12 @@ void __free(void* ptr, const char* file, int line, const char* func) {
 
 void* __malloc(size_t size, const char* file, int line, const char* func) {
 	void* ptr = malloc(size);
-	if(ptr)	{
+	if (ptr) {
 		allocationCount++;
 		allocation = realloc(allocation,
 					sizeof(struct __allocation) *
 					allocationCount);
+		if (!allocation) return exit(-1);
 		allocation[allocationCount - 1].ptr = ptr;
 		allocation[allocationCount - 1].line = line;
 		allocation[allocationCount - 1].size = size;

@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,15 +29,17 @@ int about_bookmarks(char **out, size_t *length_out) {
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
 	if (!(tmp = dyn_strcat(data, &length, V(title)))) goto fail;
+	data = tmp;
 
 	for (i = 0; i < bookmark_length; i++) {
 
-		char buf[1024];
+		char buf[sizeof(bookmarks[i]) + 512] = {0};
 		int len;
 
 		len = snprintf(V(buf), "=>%s %s\n=>/%ld Delete\n\n",
 				bookmarks[i].url, bookmarks[i].name, i) + 1;
-		if (!(tmp = dyn_strcat(data, &length, buf, len))) goto fail;
+		if (!(tmp = dyn_strcat(data, &length, buf, len)))
+			goto fail;
 		data = tmp;
 	}
 

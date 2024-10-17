@@ -217,7 +217,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			tabcompletion(client, &client->cmd[1]);
 		} else {
 			size_t i = client->tabcompletion_selected;
-			i = (i >= LENGTH(client->matches) ||
+			i = ((i + 1) >= LENGTH(client->matches) ||
 				client->matches[i + 1] < 0) ? 0 : i + 1;
 			client->tabcompletion_selected = i;
 			tabcomplete(client);
@@ -228,8 +228,8 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		client->tabcompletion_selected--;
 		if (client->tabcompletion_selected < 0) {
 			size_t i;
-			for (i = 0; i < LENGTH(client->matches); i++) {
-				if (client->matches[i + 1] < 0) break;
+			for (i = 1; i < LENGTH(client->matches); i++) {
+				if (client->matches[i] < 0) break;
 			}
 			client->tabcompletion_selected = i;
 		}
@@ -260,7 +260,7 @@ rewrite:
 	} else if (req->status == GMI_SECRET) {
 		int i = 0;
 		size_t j;
-		for (j = prefix; j < sizeof(client->cmd) &&
+		for (j = prefix; j < sizeof(client->cmd) - 1 &&
 				client->tab->input[i]; j++) {
 			i += utf8_char_length(client->tab->input[i]);
 			client->cmd[j] = '*';

@@ -16,7 +16,7 @@ int click_tab(struct client *client, struct tb_event ev, int close) {
 	struct tab *start, *tab, *ret;
 	int count, x, width;
 
-	for (tab = client->tab; tab->prev; tab = tab->prev) ;
+	for (tab = client->tab; tab && tab->prev; tab = tab->prev) ;
 	count = 0;
 	for (start = tab; start; start = start->next) count++;
 	width = (client->width - count * 2) / count;

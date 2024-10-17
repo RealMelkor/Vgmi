@@ -20,7 +20,7 @@
 
 int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
-	int i = 0, j = 0;
+	size_t i = 0, j = 0;
 	uint32_t prev = 0;
 	while (link[i]) {
 		uint32_t ch;
@@ -33,16 +33,15 @@ int format_link(const char *link, size_t length,
 				continue;
 			} else if (link[i + len] == '.' &&
 					link[i + len + 1] == '/'){
-				j -= 2;
-				if (j < 0) j = 0;
+				if (j < 2) j = 0;
+				else j -= 2;
 				while (out[j] != '/' && j)
 					j = utf8_previous(out, j);
 				i += len + 1;
 				continue;
 			}
 		}
-		if (i + len >= (ssize_t)length ||
-				j + len >= (ssize_t)out_length) {
+		if (i + len >= length || j + len >= out_length) {
 			out[j] = '\0';
 			break;
 		}

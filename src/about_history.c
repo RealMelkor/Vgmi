@@ -39,9 +39,7 @@ int about_history(char **out, size_t *length_out) {
 
 	for (entry = history; entry; entry = entry->next) {
 		char buf[sizeof(*entry)];
-		/* TODO: handle title as utf8 */
-		int len = snprintf(V(buf), "=>%s %s\n",
-				entry->url, entry->title) + 1;
+		int len = snprintf(V(buf), "=>%s %s\n", entry->url, entry->title) + 1;
 		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
 		if (i++ == MAXIMUM_LIST_LENGTH) break;
 	}

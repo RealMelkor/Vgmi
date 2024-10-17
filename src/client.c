@@ -31,7 +31,7 @@
 #include "url.h"
 #include "proc.h"
 
-int client_init_termbox() {
+int client_init_termbox(void) {
 	if (tb_init()) return ERROR_TERMBOX_FAILURE;
 	if (tb_set_input_mode(TB_INPUT_ESC | TB_INPUT_MOUSE))
 		return ERROR_TERMBOX_FAILURE;

@@ -50,11 +50,11 @@ int dns_getip(const char *hostname, ip *out) {
 	error = 0;
 	if (ipv4) {
 		*out = malloc(sizeof(struct sockaddr_in));
-		if (!out) error = ERROR_MEMORY_FAILURE;
+		if (!*out) error = ERROR_MEMORY_FAILURE;
 		else memcpy(*out, ipv4, sizeof(struct sockaddr_in));
 	} else if (ipv6) {
 		*out = malloc(sizeof(struct sockaddr_in6));
-		if (!out) error = ERROR_MEMORY_FAILURE;
+		if (!*out) error = ERROR_MEMORY_FAILURE;
 		else memcpy(*out, ipv6, sizeof(struct sockaddr_in6));
 	} else error = ERROR_INVALID_ADDRESS;
 	

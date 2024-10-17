@@ -217,9 +217,14 @@ int tab_request(struct tab* tab, const char *url) {
 		free(args);
 		return ERROR_MEMORY_FAILURE;
 	}
-	if (pthread_attr_init(&tattr)) return ERROR_PTHREAD;
-	if (pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED))
+	if (pthread_attr_init(&tattr)) {
+		free(args);
 		return ERROR_PTHREAD;
+	}
+	if (pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED)) {
+		free(args);
+		return ERROR_PTHREAD;
+	}
 	pthread_create(&args->thread, &tattr, tab_request_thread, args);
 	return 0;
 }

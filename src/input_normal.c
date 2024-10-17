@@ -19,6 +19,7 @@
 
 void client_reset(struct client *client) {
 	if (!client) return;
+	memset(client->cmd, 0, sizeof(client->cmd));
 	client->tabcompletion = client->exit = client->g = client->count = 0;
 }
 

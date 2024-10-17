@@ -36,7 +36,7 @@ int xdg_available(void) {
 	return has_xdg;
 }
 
-static const char *redirect() {
+static const char *redirect(void) {
 	return config.launcherTerminal ? "" : ">/dev/null 2>&1";
 }
 
