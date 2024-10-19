@@ -1,99 +1,125 @@
 #!/bin/sh
 
-download=wget
-if ! hash $download 2>/dev/null; then # FreeBSD
-        download=fetch
-fi
-if [ "$(uname)" == OpenBSD ] ; then # OpenBSD
-        download=ftp
-fi
-if ! hash $download 2>/dev/null; then
-        download=curl
-if ! hash $download 2>/dev/null; then
-        echo "No download program found"
-        exit
-fi
-        download="curl -O"
-fi
+download () {
+	if command -v wget >/dev/null; then
+		wget "$url" -O "$file"
+	elif command -v fetch >/dev/null; then # FreeBSD
+		fetch "$url"
+	elif [ "$(uname)" = 'OpenBSD' ] && command -v ftp >/dev/null; then # OpenBSD
+		ftp "$url"
+	elif command -v curl >/dev/null; then
+		curl -O "$url"
+	else
+		printf 'No download program found\n'
+		exit 1
+	fi
+}
 
 hash_file () {
-	file=$1
-	if command -v sha256 > /dev/null # OpenBSD, FreeBSD
-	then
-		actual_hash="$(sha256 $file | rev | cut -d ' ' -f 1 | rev)"
-		return 1
+	file="$1"
+
+	if command -v sha256 >/dev/null; then # OpenBSD, FreeBSD
+		hasher='sha256 -r'
+	elif command -v shasum >/dev/null; then # NetBSD, MacOS, Ubuntu
+		hasher='shasum -a 256'
+	elif command -v sha256sum >/dev/null; then # Linux, Illumos
+		hasher='sha256sum'
+	else
+		printf 'No sha256 program found\n'
+		exit 1
 	fi
-	if command -v shasum > /dev/null # NetBSD, MacOS
-	then
-		actual_hash="$(shasum -a 256 $file | cut -d ' ' -f 1)"
-		return 1
-	fi
-	if command -v sha256sum > /dev/null # Linux, Illumos
-	then
-		actual_hash="$(sha256sum $file | cut -d ' ' -f 1)"
-		return 1
-	fi
-	echo "No sha256 program found"
-	exit
+
+	actual_hash="$($hasher "$file" | cut -d ' ' -f 1)"
 }
 
 check_hash () {
-	expected_hash=$1
-	url=$2
-	$download $url
-	hash_file "$(echo $url | rev | cut -d '/' -f 1 | rev)"
-	if [ "$actual_hash" != "$expected_hash" ]; then
-		echo "$file: unexpected hash"
-		echo "$actual_hash != $expected_hash"
-		exit
+	cd "$downloads"
+
+	expected_hash="$1"
+	url="$2"
+	file="$(basename $url)"
+	target_file="${3:-$file}"
+	local_file="${target_file:-$file}"
+
+	# do not download if it exists locally
+	if [ -f "$target_file" ]; then
+		hash_file "$target_file"
+		if [ "${expected_hash:-X}" = "${actual_hash:-}" ]; then
+			cd - >/dev/null
+			return
+		fi
 	fi
+
+	download
+	hash_file "$file"
+	if [ "${expected_hash:-X}" != "${actual_hash:-}" ]; then
+		printf "${file}: unexpected hash\n"
+		printf "$actual_hash != $expected_hash\n"
+		exit 1
+	fi
+	[ "$file" != "$target_file" ] && mv "$file" "$target_file"
+	cd - >/dev/null
 }
 
-mkdir -p include
+# runs from vgmi root, so include/ and lib/ are created in root folder
+root="$(dirname "$(realpath "$0")")"
+cd "$root"
 
-# LibreSSL 3.9.1
+downloads="${root}/.dependencies"
+mkdir -p 'include' "$downloads"
+
+# LibreSSL 4.0.0
 # OpenBSD already has libressl
-if [ "$(uname)" != OpenBSD ] ;
-then
-	mkdir -p lib
-	mkdir -p build
-	cd build
-	h="4d841955f0acc3dfc71d0e3dd35f283af461222350e26843fea9731c0246a1e4"
-	ssl_version="4.0.0"
-	remote_dir="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/"
-	check_hash $h "$remote_dir/libressl-$ssl_version.tar.gz"
-	tar -zxf libressl-$ssl_version.tar.gz
-	cd libressl-$ssl_version
-	if [ "$(uname)" == SunOS ] ;
-	then
-		CC=gcc MAKE=gmake ./configure
+if [ "$(uname)" != 'OpenBSD' ]; then
+
+	build_dir="$(mktemp -d /tmp/vgmi.build_XXXXXX)" || {
+		printf "could not create temporary build folder\n"
+		exit 1
+	}
+	trap 'rm -rf "$build_dir"; exit' INT
+	mkdir -p 'lib'
+	cd "$build_dir"
+
+	ssl_version='4.0.0'
+	expected_hash='4d841955f0acc3dfc71d0e3dd35f283af461222350e26843fea9731c0246a1e4'
+	remote_dir='https://ftp.openbsd.org/pub/OpenBSD/LibreSSL'
+	lib="libressl-${ssl_version}"
+	archive="${lib}.tar.gz"
+
+	check_hash "$expected_hash" "${remote_dir}/${archive}"
+	tar -zxf "${downloads}/${archive}"
+	cd "$lib"
+	if [ "$(uname)" = SunOS ]; then
+		CC=gcc MAKE=gmake
 		gmake -j 4
 	else
 		./configure
 		make -j 4
 	fi
-	cp include/*.h ../../include/
-	cp -R include/compat ../../include/
-	cp -R include/openssl ../../include/
-	cp tls/.libs/libtls.a ../../lib
-	cp crypto/.libs/libcrypto.a ../../lib
-	cp ssl/.libs/libssl.a ../../lib
-	cd ../../
+	cp include/*.h "${root}/include/"
+	cp -R 'include/compat' "${root}/include/"
+	cp -R 'include/openssl' "${root}/include/"
+	cp 'tls/.libs/libtls.a' "${root}/lib/"
+	cp 'crypto/.libs/libcrypto.a' "${root}/lib/"
+	cp 'ssl/.libs/libssl.a' "${root}/lib/"
+	cd "$root"
+	rm -rf "$build_dir"
 fi
 
 # stb_image 2.30
-h="594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3"
-check_hash $h "https://raw.githubusercontent.com/nothings/stb/013ac3beddff3dbffafd5177e7972067cd2b5083/stb_image.h"
-mv stb_image.h include/
+expected_hash='594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3'
+remote_url='https://raw.githubusercontent.com/nothings/stb/013ac3beddff3dbffafd5177e7972067cd2b5083/stb_image.h'
+check_hash "$expected_hash" "$remote_url" "${downloads}/stb_image.h"
+cp "${downloads}/stb_image.h" "${root}/include/stb_image.h"
 
-if [ "$(uname)" == SunOS ] ;
-then
+cd "$root"
+if [ "$(uname)" = 'SunOS' ]; then
 	sed -i -e "/CC/s/^#//" Makefile
 	sed -i -e "/LDFLAGS/s/^#//" Makefile
 	sed -i -e "/CFLAGS/s/^#//" Makefile
 fi
-if [ "$(uname)" == Darwin ] ;
-then
+if [ "$(uname)" = 'Darwin' ]; then
 	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
 fi
+
 make -j4

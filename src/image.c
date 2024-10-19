@@ -170,7 +170,7 @@ int image_init(void) {
 }
 
 static int color_abs(int c, int x, int i) {
-	return abs(c - i > 215 ? i * 10 - 2152:x * 40 + !!x * 55);
+	return abs(c - (i > 215 ? i * 10 - 2152:x * 40 + !!x * 55));
 }
 
 static int color(uint8_t r, uint8_t g, uint8_t b) {
