@@ -194,7 +194,8 @@ int storage_read(const char *name, char *out, size_t length,
 int storage_init_path(int *fd, int download) {
 	char path[PATH_MAX];
 	int ret;
-	ret = download ? storage_path(V(path)) : storage_download_path(V(path));
+	if (download) storage_path(V(path));
+	else storage_download_path(V(path));
 	if ((ret = storage_mkdir(path))) return ret;
 	if ((*fd = open(path, O_DIRECTORY | O_CLOEXEC)) < 0)
 		return ERROR_STORAGE_ACCESS;

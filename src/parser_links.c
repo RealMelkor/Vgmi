@@ -20,45 +20,40 @@
 
 int format_link(const char *link, size_t length,
 			char *out, size_t out_length) {
-	size_t i = 0, j = 0;
-	uint32_t prev = 0;
-	while (link[i]) {
-		uint32_t ch;
-		int len;
-		len = utf8_char_to_unicode(&ch, &link[i]);
-		if ((prev == '/' || prev == 0) && ch == '.') {
-			if (link[i + len] == '/') {
-				j -= 1;
-				i += len;
-				continue;
-			} else if (link[i + len] == '.' &&
-					link[i + len + 1] == '/'){
-				if (j < 2) j = 0;
-				else j -= 2;
-				while (out[j] != '/' && j)
-					j = utf8_previous(out, j);
-				i += len + 1;
-				continue;
+	char buf[1024], *ptr, *end;
+	/* remove ./ and ../ at the start */
+	if (length > 2 && !memcmp(link, "./", 2)) {
+		end = buf + STRLCPY(buf, &link[2]);
+	} else if (length > 3 && !memcmp(link, "../", 3)) {
+		end = buf + STRLCPY(buf, &link[3]);
+	} else {
+		end = buf + STRLCPY(buf, link);
+	}
+	if (end >= buf + sizeof(buf)) end = buf + sizeof(buf) - 1;
+	/* remove /./ */
+	while ((ptr = strnstr(buf, "/./", sizeof(buf)))) {
+		while (ptr++ < end - 2) {
+			*ptr = *(ptr + 2);
+		}
+	}
+	/* parse /../ */
+	while ((ptr = strnstr(buf, "/../", sizeof(buf)))) {
+		char *to = ptr + sizeof("/..") - 1;
+		while (*(--ptr) != '/' && ptr > buf) ;
+		while (*ptr) *(ptr++) = *(to++);
+	}
+	/* add a slash at the end if the URL doesn't have one */
+	if (strstr(buf, "gemini://") == buf) {
+		if (!strchr(&buf[sizeof("gemini://")], '/')) {
+			size_t len = strnlen(buf, sizeof(buf));
+			if (len < sizeof(buf) - 1) {
+				buf[len] = '/';
+				buf[len + 1] = '\0';
 			}
 		}
-		if (i + len >= length || j + len >= out_length) {
-			out[j] = '\0';
-			break;
-		}
-		if (ch < ' ') ch = '\0';
-		memcpy(&out[j], &link[i], len);
-		i += len;
-		j += len;
-		prev = ch;
 	}
-	out[j] = '\0';
-	if (strstr(out, "gemini://") == out) {
-		if (!strchr(&out[sizeof("gemini://")], '/')) {
-			out[j++] = '/';
-			out[j] = '\0';
-		}
-	}
-	return j;
+	strlcpy(out, buf, out_length);
+	return 0;
 }
 
 int parse_links(int in, size_t length, int out) {

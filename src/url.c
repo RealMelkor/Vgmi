@@ -98,20 +98,19 @@ int protocol_from_url(const char *url) {
 
 int port_from_url(const char *url) {
 
-	const char *start, *end;
-	char buf[MAX_URL];
+	const char *const_ptr;
+	char *ptr, buf[MAX_URL];
 	int port;
 
-	start = strnstr(url, "://", MAX_URL);
-	if (!start) start = url;
-	end = strchr(start + sizeof("://"), '/');
-	start = strchr(start + sizeof("://"), ':');
-	if (!start || (end && end < start)) return 0;
-	start++;
-	end = strchr(start, '/') + 1;
-	if (!end) end = start + strlen(start);
-	strlcpy(buf, start, end - start);
-	port = atoi(buf);
+	const_ptr = strnstr(url, "://", MAX_URL);
+	if (!const_ptr) const_ptr = url;
+	else const_ptr += sizeof("://") - 1;
+	STRLCPY(buf, const_ptr);
+	ptr = strchr(buf, '/');
+	if (ptr) *ptr = '\0';
+	ptr = strchr(buf, ':');
+	if (!ptr) return 0;
+	port = atoi(ptr + 1);
 	if (!port) return ERROR_INVALID_PORT;
 	return port;
 }
