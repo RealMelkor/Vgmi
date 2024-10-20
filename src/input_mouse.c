@@ -63,6 +63,9 @@ void click_link(struct client *client, struct tb_event ev, int newtab) {
 		req->selected = ret;
 		return;
 	}
+	client_reset(client);
+	client->mode = MODE_NORMAL;
+	tb_hide_cursor();
 	ret--;
 	link = req->page.links[ret];
 	ret = newtab ? client_newtab(client, link, 1) :

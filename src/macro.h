@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}

@@ -149,6 +149,7 @@ void parser_page(int in, int out) {
 			ret = parse_gemtext(in, length, width, out);
 			break;
 		case MIME_PLAIN:
+		case MIME_TEXT:
 			ret = parse_plain(in, length, width, out);
 			break;
 		default:

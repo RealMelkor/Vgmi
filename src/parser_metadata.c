@@ -26,8 +26,9 @@ int metadata_trim(const char *metadata, size_t len, char *out, size_t outlen) {
 int parser_mime(char *meta, size_t len) {
 	char mime[1024];
 	metadata_trim(meta, len, V(mime));
-	if (!strncmp(mime, "text/gemini", sizeof(mime))) return MIME_GEMTEXT;
-	if (!strncmp(mime, "text/plain", sizeof(mime))) return MIME_PLAIN;
+	if (!STRCMP(mime, "text/gemini")) return MIME_GEMTEXT;
+	if (!STRCMP(mime, "text/plain")) return MIME_PLAIN;
+	if (!memcmp(mime, "text/", sizeof("text/") - 1)) return MIME_TEXT;
 	if (!memcmp(mime, "image/", sizeof("image/") - 1)) return MIME_IMAGE;
 	return MIME_UNKNOWN;
 }

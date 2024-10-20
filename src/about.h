@@ -1,10 +1,10 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
 #define LTS 0
 #define MAJOR "2"
-#define MINOR "0"
+#define MINOR "1"
 #if LTS
 #define VERSION MAJOR "." MINOR " LTS"
 #else

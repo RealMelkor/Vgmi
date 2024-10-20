@@ -18,14 +18,15 @@ FLAGS = -DENABLE_SECCOMP_FILTER
 
 SRC_DIR = src
 OBJ_DIR = obj
+HEADERS = $(wildcard $(SRC_DIR)/*.h)
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(wildcard $(SRC_DIR)/*.c))
 
 vgmi: ${OBJS} obj/stb_image.o
 	${CC} -o $@ obj/stb_image.o ${OBJS} ${LDFLAGS}
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(HEADERS)
 	mkdir -p obj
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(FLAGS) $(CFLAGS) -c $< -o $@
 
 obj/stb_image.o: stb_image/stb_image.c
 	mkdir -p obj
