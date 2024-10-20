@@ -67,6 +67,12 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		/* fallthrough */
 	case TB_KEY_ARROW_UP:
 		goto up;
+	case TB_KEY_ARROW_LEFT:
+		if (ev.mod & TB_MOD_ALT) goto prev;
+		break;
+	case TB_KEY_ARROW_RIGHT:
+		if (ev.mod & TB_MOD_ALT) goto next;
+		break;
 	case TB_KEY_HOME:
 		goto top;
 	case TB_KEY_END:
@@ -102,16 +108,27 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		STRLCPY(client->cmd, "Press 'y' to exit.");
 		client->exit = 1;
 		break;
+	case TB_KEY_CTRL_B:
+		client_newtab(client, "about:bookmarks", 0);
+		break;
+	case TB_KEY_CTRL_H:
+		client_newtab(client, "about:history", 0);
+		break;
 	case TB_KEY_CTRL_W:
 		return client_closetab(client);
 	case TB_KEY_CTRL_T:
 		return client_newtab(client, NULL, 0);
+	case TB_KEY_CTRL_R:
+	case TB_KEY_F5:
+		{
+			struct request *req = tab_completed(client->tab);
+			if (!req) break;
+			tab_request(client->tab, req->url);
+		}
+		break;
 	case TB_KEY_ENTER:
 		ev.ch = 'j';
 		break;
-	case TB_KEY_BACKSPACE:
-	case TB_KEY_BACKSPACE2:
-		goto prev;
 	case TB_KEY_BACK_TAB:
 	case TB_KEY_TAB:
 		{
@@ -266,6 +283,7 @@ prev:
 		}
 		break;
 	case 'l':
+next:
 		if (!client || !client->tab || !client->tab->request) break;
 		if (!client->tab->view) break;
 		{
@@ -279,19 +297,6 @@ prev:
 			}
 			client->tab->view = prev;
 		}
-		break;
-	case 'r':
-		{
-			struct request *req = tab_completed(client->tab);
-			if (!req) break;
-			tab_request(client->tab, req->url);
-		}
-		break;
-	case 'b':
-		client_newtab(client, "about:bookmarks", 0);
-		break;
-	case 'f':
-		client_newtab(client, "about:history", 0);
 		break;
 	case 'y':
 		if (client->exit) return 1;

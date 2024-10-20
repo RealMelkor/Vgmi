@@ -16,17 +16,20 @@ FLAGS = -DENABLE_SECCOMP_FILTER
 #LDFLAGS+=-lgpm
 #FLAGS+=-DENABLE_GPM
 
-SRC = $(wildcard src/*.c)
-OBJ = ${SRC:.c=.o}
-OBJS = $(subst src,obj,$(OBJ))
+SRC_DIR = src
+OBJ_DIR = obj
+OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(wildcard $(SRC_DIR)/*.c))
 
-.c.o:
-	mkdir -p obj
-	${CC} -c ${CFLAGS} ${FLAGS} $< -o $(subst src,obj,${<:.c=.o})
-
-vgmi: ${OBJ}
-	${CC} -O2 -c -o obj/stb_image.o -I./include stb_image/stb_image.c
+vgmi: ${OBJS} obj/stb_image.o
 	${CC} -o $@ obj/stb_image.o ${OBJS} ${LDFLAGS}
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p obj
+	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/stb_image.o: stb_image/stb_image.c
+	mkdir -p obj
+	${CC} -O2 -c -o obj/stb_image.o -I./include $<
 
 install:
 	cp vgmi ${PREFIX}/bin
@@ -36,4 +39,4 @@ uninstall:
 	rm ${PREFIX}/bin/vgmi
 
 clean:
-	rm vgmi ${OBJS}
+	rm -r vgmi ${OBJ_DIR}

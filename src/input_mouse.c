@@ -4,6 +4,7 @@
  */
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include "macro.h"
 #include "termbox.h"
 #include "page.h"
@@ -11,6 +12,16 @@
 #include "client.h"
 #include "tab.h"
 #include "error.h"
+#include "input.h"
+
+void click_url(struct client *client, struct tb_event ev) {
+	struct request *req = tab_completed(client->tab);
+	if (!req) return;
+	if ((size_t)ev.x > STRLEN(req->url)) return;
+	client_enter_mode_cmdline(client);
+	snprintf(V(client->cmd), ":o %s", req ? req->url : "");
+	client->cursor = ev.x + 3;
+}
 
 int click_tab(struct client *client, struct tb_event ev, int close) {
 	struct tab *start, *tab, *ret;
@@ -71,6 +82,10 @@ int client_input_mouse(struct client *client, struct tb_event ev) {
 	case TB_KEY_MOUSE_MIDDLE:
 	case TB_KEY_MOUSE_RELEASE:
 		if (ev.mod & TB_MOD_MOTION) break;
+		if (ev.y == client->height - 2) {
+			click_url(client, ev);
+			return 0;
+		}
 		if (ev.y == 0 && HAS_TABS(client)) {
 			return click_tab(client, ev,
 					ev.key == TB_KEY_MOUSE_MIDDLE);
