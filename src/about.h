@@ -2,7 +2,7 @@
  * ISC License
  * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
-#define LTS 0
+#define LTS 1
 #define MAJOR "2"
 #define MINOR "1"
 #if LTS
