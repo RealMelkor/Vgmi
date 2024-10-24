@@ -7,10 +7,18 @@ CC = cc
 CFLAGS = -ansi -std=c89 -O2 -Wall -Wpedantic -Wextra \
 		-I./include -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
-# MacOS
-#CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
 
 FLAGS = -DENABLE_SECCOMP_FILTER #-DENABLE_PKEY
+
+OS := $(shell uname -s)
+ifeq ($(OS),SunOS) # Solaris, Illumos
+	CFLAGS=-I./include -Wall -Wextra -pedantic -O2 -Wformat-truncation=0
+	LDFLAGS=-s -L./lib -L/usr/local/lib -lm -ltls -lssl -lcrypto -lpthread -lsocket
+	CC=gcc
+endif
+ifeq ($(OS),Darwin) # MacOS
+	CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
+endif
 
 # Uncomment for GPM support on Linux
 #LDFLAGS+=-lgpm

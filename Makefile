@@ -1,19 +1,27 @@
 SHELL = /bin/sh
 
-CC=cc
-PREFIX=/usr/local
-CFLAGS=-I./include -I/usr/local/include -ansi -Wall -Wextra -std=c89 \
-       -pedantic -O2 -D_POSIX_C_SOURCE=200809L
-LDFLAGS=-s -L/usr/local/lib -lm -ltls -lcrypto -lssl -lpthread
+PREFIX = /usr/local
+CC = cc
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -I/usr/local/include -I./include
+LDFLAGS = -s -L./lib -L/usr/local/lib -ltls -lssl -lcrypto -lpthread -lm
+FLAGS =
+HEADERS != (ls src/*.h)
+SRC != (ls src/*.c)
+OBJ = ${SRC:.c=.o}
 
-# uncomment to build on Illumos
-#CFLAGS=-I./include -Wall -Wextra -pedantic -O2 -Wformat-truncation=0
-#LDFLAGS=-s -L./lib -L/usr/local/lib -lm -ltls -lssl -lcrypto -lpthread -lsocket
-#CC=gcc
+OS != (uname -s)
+.if ${OS} == "FreeBSD"
+LDFLAGS += -lcasper -lcap_net
+.endif
 
-build: src/*
+.c.o: ${HEADERS}
+	${CC} -c ${CFLAGS} ${FLAGS} $< -o ${<:.c=.o}
+
+vgmi: ${OBJ}
+	${CC} -o $@ ${OBJ} stb_image/stb_image.o ${LDFLAGS}
+
+stb_image/stb_image.o: stb_image/stb_image.c
 	${CC} -O2 -c -o stb_image/stb_image.o -I./include stb_image/stb_image.c
-	${CC} ${CFLAGS} src/*.c stb_image/stb_image.o -o vgmi ${LDFLAGS}
 
 install:
 	cp vgmi ${PREFIX}/bin/
@@ -24,3 +32,4 @@ uninstall:
 
 clean:
 	rm -f vgmi
+	rm ${OBJ}

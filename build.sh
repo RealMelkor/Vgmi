@@ -62,7 +62,7 @@ check_hash () {
 }
 
 # runs from vgmi root, so include/ and lib/ are created in root folder
-root="$(dirname "$(realpath "$0")")"
+root=$(cd "$(dirname "$0")" && pwd -P)
 cd "$root"
 
 downloads="${root}/.dependencies"
@@ -113,13 +113,5 @@ check_hash "$expected_hash" "$remote_url" "${downloads}/stb_image.h"
 cp "${downloads}/stb_image.h" "${root}/include/stb_image.h"
 
 cd "$root"
-if [ "$(uname)" = 'SunOS' ]; then
-	sed -i -e "/CC/s/^#//" Makefile
-	sed -i -e "/LDFLAGS/s/^#//" Makefile
-	sed -i -e "/CFLAGS/s/^#//" Makefile
-fi
-if [ "$(uname)" = 'Darwin' ]; then
-	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
-fi
 
 make -j4
