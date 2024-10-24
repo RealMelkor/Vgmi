@@ -10,7 +10,7 @@ LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
 # MacOS
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
 
-FLAGS = -DENABLE_SECCOMP_FILTER
+FLAGS = -DENABLE_SECCOMP_FILTER #-DENABLE_PKEY
 
 # Uncomment for GPM support on Linux
 #LDFLAGS+=-lgpm

@@ -22,3 +22,8 @@
 #define STATIC_ALLOC
 #endif
 #endif
+#ifdef __OpenBSD__
+#define TIME_T "%lld"
+#else
+#define TIME_T "%ld"
+#endif

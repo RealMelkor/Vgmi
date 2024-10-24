@@ -253,7 +253,7 @@ int command_exec(struct client *client, const char* args, size_t len) {
 	int err;
 	if (no_argument(client, args, len)) return 0;
 	client->error = 0;
-	snprintf(V(name), ".tmp_vgmi_exec_%ld%d", time(NULL), rand());
+	snprintf(V(name), ".tmp_vgmi_exec_"TIME_T"%d", time(NULL), rand());
 	if (command_download(client, name, 1)) return -1;
 	if (client->error != ERROR_INFO) return 0;
 	client->error = 0;

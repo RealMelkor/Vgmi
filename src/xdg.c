@@ -42,7 +42,7 @@ static const char *redirect(void) {
 
 static int open_download(const char *input) {
 
-	char buf[PATH_MAX], cmd[PATH_MAX + 128], download_dir[PATH_MAX];
+	char buf[PATH_MAX], cmd[PATH_MAX * 4], download_dir[PATH_MAX];
 	const char *ptr;
 	int ret;
 	size_t i;

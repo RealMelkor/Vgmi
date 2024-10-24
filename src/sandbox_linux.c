@@ -73,6 +73,10 @@ struct sock_filter filter[] = {
 	SC_ALLOW(rt_sigprocmask),
 	SC_ALLOW(rt_sigreturn),
 	SC_ALLOW(mprotect),
+#ifdef ENABLE_PKEY
+	SC_ALLOW(pkey_mprotect),
+	SC_ALLOW(pkey_alloc),
+#endif
 	SC_ALLOW(pread64),
 	SC_ALLOW(uname),
 	SC_ALLOW(ppoll),

@@ -16,11 +16,6 @@
 #include "error.h"
 
 #define FILENAME "known_hosts"
-#ifdef __OpenBSD__
-#define TIME_T "%lld"
-#else
-#define TIME_T "%ld"
-#endif
 
 #define HT_MOD	(HT_SIZE - 1)
 
