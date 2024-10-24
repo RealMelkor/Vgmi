@@ -17,7 +17,7 @@ LDFLAGS += -lcasper -lcap_net
 .c.o: ${HEADERS}
 	${CC} -c ${CFLAGS} ${FLAGS} $< -o ${<:.c=.o}
 
-vgmi: ${OBJ}
+vgmi: ${OBJ} stb_image/stb_image.o
 	${CC} -o $@ ${OBJ} stb_image/stb_image.o ${LDFLAGS}
 
 stb_image/stb_image.o: stb_image/stb_image.c

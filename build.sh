@@ -1,5 +1,10 @@
 #!/bin/sh
 
+MAKE=make
+if [ "$(uname)" = SunOS ]; then
+	export CC=gcc MAKE=gmake
+fi
+
 download () {
 	if command -v wget >/dev/null; then
 		wget "$url" -O "$file"
@@ -89,13 +94,8 @@ if [ "$(uname)" != 'OpenBSD' ]; then
 	check_hash "$expected_hash" "${remote_dir}/${archive}"
 	tar -zxf "${downloads}/${archive}"
 	cd "$lib"
-	if [ "$(uname)" = SunOS ]; then
-		CC=gcc MAKE=gmake
-		gmake -j 4
-	else
-		./configure
-		make -j 4
-	fi
+	./configure
+	$MAKE -j 4
 	cp include/*.h "${root}/include/"
 	cp -R 'include/compat' "${root}/include/"
 	cp -R 'include/openssl' "${root}/include/"
@@ -114,4 +114,4 @@ cp "${downloads}/stb_image.h" "${root}/include/stb_image.h"
 
 cd "$root"
 
-make -j4
+$MAKE -j4
