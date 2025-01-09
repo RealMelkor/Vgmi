@@ -202,6 +202,8 @@ int sandbox_init(void) {
 	if (setrlimit(RLIMIT_FSIZE, &limit))
 		return ERROR_SANDBOX_FAILURE;
 
+	if (prctl(PR_SET_DUMPABLE, 0))
+		return ERROR_SANDBOX_FAILURE;
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
 		return ERROR_SANDBOX_FAILURE;
 
@@ -243,8 +245,11 @@ int sandbox_init(void) {
 	return 0;
 }
 
+#include <stdlib.h>
 int sandbox_isolate(void) {
 	if (!config.enableSandbox) return 0;
+	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+		return ERROR_SANDBOX_FAILURE;
 	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_STRICT))
 		return ERROR_SANDBOX_FAILURE;
 	return 0;

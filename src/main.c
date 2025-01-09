@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef __linux__
+#include <sys/prctl.h>
+#include <errno.h>
+#endif
 #include "macro.h"
 #include "error.h"
 #include "client.h"
@@ -27,6 +31,12 @@ int main(int argc, char *argv[]) {
 	struct client client = {0};
 	int ret;
 	const char *url = "about:newtab";
+
+#if defined(__linux__) && !defined(DEBUG)
+	if (prctl(PR_SET_DUMPABLE, 0) && argc < 2) {
+		printf("PR_SET_DUMPABLE: %s\n", strerror(errno));
+	}
+#endif
 
 	if (argc > 1) {
 #ifdef ENABLE_IMAGE

@@ -26,7 +26,7 @@ int about_newtab(char **out, size_t *length_out) {
 		char line[sizeof(struct bookmark) + 8];
 		size_t line_length;
 		line_length = snprintf(V(line), "=>%s %s\n",
-				bookmarks[i].url, bookmarks[i].name);
+				bookmarks[i].url, bookmarks[i].name) + 1;
 		if (!(data = dyn_strcat(data, &length, line, line_length)))
 			goto fail;
 	}
