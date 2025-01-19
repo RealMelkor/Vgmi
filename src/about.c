@@ -74,26 +74,13 @@ HEADER \
 "Devices access\t\t: Unrestricted\n" \
 "Parser isolation\t: Unrestricted\n";
 
-void *dyn_utf8_strcat(char *dst, size_t *dst_length,
-			const char *src, size_t src_len) {
-	size_t start;
-	const size_t sum = (dst ? *dst_length : 0) + src_len + 2;
-	void *ptr = realloc(dst, sum + 1);
-	if (!ptr) return NULL;
-	dst = ptr;
-	start = *dst_length ? utf8_len(dst, *dst_length) : 0;
-	utf8_cpy(&dst[start], src, sum - start);
-	*dst_length = utf8_len(dst, sum);
-	return dst;
-}
-
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
-	const size_t sum = (dst ? *dst_length : 0) + src_len + 2;
+	const size_t sum = (*dst_length = strnlen(dst, *dst_length)) + src_len;
 	void *ptr = realloc(dst, sum + 1);
 	if (!ptr) return NULL;
 	dst = ptr;
-	strlcpy(&dst[*dst_length ? strnlen(dst, *dst_length) : 0], src, sum);
+	strlcpy(&dst[*dst_length], src, src_len);
 	*dst_length = strnlen(dst, sum);
 	return dst;
 }
