@@ -24,8 +24,8 @@
 "* Ctrl+PgDn - Switch to the next tab\n" \
 "* Alt+Arrow Left - Go back to the previous page\n" \
 "* Alt+Arrow Right - Go forward to the next page\n" \
-"* Home - Go at the top of the page\n" \
-"* End - Go at the bottom of the page\n" \
+"* Home - Scroll to the top of the page\n" \
+"* End - Scroll to the bottom of the page\n" \
 "* Ctrl+f - Open search mode\n" \
 "* Ctrl+b - Open about:bookmarks in a new tab\n" \
 "* Ctrl+h - Open about:history in a new tab\n" \
@@ -40,8 +40,8 @@
 "* gt - Switch to the next tab\n" \
 "* h - Go back to the previous page\n" \
 "* l - Go forward to the next page\n" \
-"* gg - Go at the top of the page\n" \
-"* G - Go at the bottom of the page\n" \
+"* gg - Scroll to the top of the page\n" \
+"* G - Scroll to the bottom of the page\n" \
 "* / - Open search mode\n" \
 "* : - Open input mode\n" \
 "* u - Open input mode with the current url\n" \

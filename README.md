@@ -8,22 +8,22 @@
 
 Standard | Vim | Action
 --- | --- | ---
-Up Arrow | k | Scroll Up
+Up Arrow | k | Scroll up
 Down Arrow | j, Enter | Scroll down
 Ctrl+PgUp | gT | Switch to the previous tab
 Ctrl+PgDn | gt | Switch to the next tab
 Alt+Left | h | Go back to the previous page
 Alt+Right | l | Go forward to the next page
-Home | gg | Go at the top of the page
-End | G | Go at the top of the page
+Home | gg | Scroll to the top of the page
+End | G | Scroll to the bottom of the page
 Ctrl+f | / | Open search mode
 \- | : | Open input mode
-\- | u  | Open input mode with the current url
+\- | u  | Open input mode with the current URL
 Ctrl+b | \- | Open about:bookmarks in a new tab
 Ctrl+h | \- | Open about:history in a new tab
 Ctrl+r, F5 | \- | Reload the page
-Ctrl+g | n | Jump to next search occurence
-\- | N | Jump to previous search occurence
+Ctrl+g | n | Jump to next search occurrence
+\- | N | Jump to previous search occurrence
 \- | [number]Tab | Select link
 Left mouse | Tab | Open link
 Middle mouse | Shift+Tab | Open link in a new tab
@@ -37,10 +37,10 @@ Command | Description
 :q | Close the current tab
 :qa	| Close all tabs, exit the program
 :e | Refresh the page
-:o [url] | Open an url
+:o [URL] | Open an URL
 :s [search] | Search the Geminispace using the default search engine
-:nt [url] | Open a new tab, the url is optional
-:add [name] | Add the current url to the bookmarks, the name is optional
+:nt [URL] | Open a new tab, the URL is optional
+:add [name] | Add the current URL to the bookmarks, the name is optional
 :[number] | Scroll to the line number
 :gencert | Generate a client-certificate for the current capsule
 :forget [host] | Forget the certificate for the host
@@ -66,7 +66,7 @@ On Linux, Vgmi uses [seccomp(2)][5] to restrict system calls and
 On Illumos and Solaris, Vgmi uses [privileges(7)][7] to isolate the
 parser processes.
 
-On top of sandboxing the main process, Vgmi forks itself to parse foreign data
+In addition to sandboxing the main process, Vgmi forks itself to parse foreign data
 in completely isolated and sandboxed processes.
 
 ## Dependencies
