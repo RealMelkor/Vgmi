@@ -6,39 +6,46 @@
 
 ## Keybindings
 
-* k  - Scroll up
-* j  - Scroll down
-* gT  - Switch to the previous tab
-* gt  - Switch to the next tab
-* h  - Go back to the previous page
-* l  - Go forward to the next page
-* gg - Go at the top of the page
-* G  - Go at the bottom of the page
-* /  - Open search mode
-* :  - Open input mode
-* u  - Open input mode with the current url
-* b - Open about:bookmarks in a new tab
-* f - Open about:history in a new tab
-* r  - Reload the page
-* [number]Tab  - Select link
-* Tab  - Follow selected link
-* Shift+Tab  - Open selected link in a new tab
+Standard | Vim | Action
+--- | --- | ---
+Up Arrow | k | Scroll Up
+Down Arrow | j, Enter | Scroll down
+Ctrl+PgUp | gT | Switch to the previous tab
+Ctrl+PgDn | gt | Switch to the next tab
+Alt+Left | h | Go back to the previous page
+Alt+Right | l | Go forward to the next page
+Home | gg | Go at the top of the page
+End | G | Go at the top of the page
+Ctrl+f | / | Open search mode
+\- | : | Open input mode
+\- | u  | Open input mode with the current url
+Ctrl+b | \- | Open about:bookmarks in a new tab
+Ctrl+h | \- | Open about:history in a new tab
+Ctrl+r, F5 | \- | Reload the page
+Ctrl+g | n | Jump to next search occurence
+\- | N | Jump to previous search occurence
+\- | [number]Tab | Select link
+Left mouse | Tab | Open link
+Middle mouse | Shift+Tab | Open link in a new tab
 
 You can prefix a movement key with a number to repeat it.
 
 ## Commands
 
-* :q			    - Close the current tab
-* :qa			    - Close all tabs, exit the program
-* :o [url]		    - Open an url
-* :s [search]	    - Search the Geminispace using geminispace.info
-* :nt [url]		    - Open a new tab, the url is optional
-* :add [name]       - Add the current url to the bookmarks, the name is optional
-* :[number]		    - Scroll to the line number
-* :gencert		    - Generate a client-certificate for the current capsule
-* :forget [host]	- Forget the certificate for the host
-* :download [name]	- Download the current page, the name is optional
-* :help         	- Open about:help in a new tab
+Command | Description
+--- | ---
+:q | Close the current tab
+:qa	| Close all tabs, exit the program
+:e | Refresh the page
+:o [url] | Open an url
+:s [search] | Search the Geminispace using the default search engine
+:nt [url] | Open a new tab, the url is optional
+:add [name] | Add the current url to the bookmarks, the name is optional
+:[number] | Scroll to the line number
+:gencert | Generate a client-certificate for the current capsule
+:forget [host] | Forget the certificate for the host
+:download [name] | Download the current page, the name is optional
+:help | Open about:help in a new tab
 
 ## Sandboxing
 

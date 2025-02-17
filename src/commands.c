@@ -45,6 +45,14 @@ int command_close(struct client *client, const char* ptr, size_t len) {
 	return !client->tab;
 }
 
+int command_reload(struct client *client, const char* ptr, size_t len) {
+	struct request *req;
+	if (no_argument(client, ptr, len)) return 0;
+	req = tab_completed(client->tab);
+	if (req) tab_request(client->tab, req->url);
+	return 0;
+}
+
 int command_newtab(struct client *client, const char* ptr, size_t len) {
 
 	int ret;

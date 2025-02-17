@@ -129,6 +129,10 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case TB_KEY_ENTER:
 		ev.ch = 'j';
 		break;
+	case TB_KEY_CTRL_F:
+		goto search;
+	case TB_KEY_CTRL_G:
+		goto nextsearch;
 	case TB_KEY_BACK_TAB:
 	case TB_KEY_TAB:
 		{
@@ -185,6 +189,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 	case ':':
 		client_enter_mode_cmdline(client);
 		break;
+search:
 	case '/':
 		{
 			struct request *req = tab_completed(client->tab);
@@ -195,12 +200,13 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 			req->page.selected = 1;
 		}
 		break;
+nextsearch:
 	case 'n':
 	case 'N':
 		{
 			struct request *req = tab_completed(client->tab);
 			if (!req) break;
-			if (ev.ch == 'n') {
+			if (ev.ch != 'N') {
 				if (req->page.selected < req->page.occurrences)
 					req->page.selected++;
 			} else {

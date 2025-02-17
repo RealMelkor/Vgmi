@@ -15,8 +15,27 @@
 #pragma GCC diagnostic ignored "-Woverlength-strings"
 #define HELP_INFO \
 "## Keybindings\n\n" \
+"### Standard\n\n" \
+"* Arrow Up - Scroll up\n" \
+"* Arrow Down - Scroll down\n" \
+"* Ctrl+t - Open new tab\n" \
+"* Ctrl+w - Close tab\n" \
+"* Ctrl+PgUp - Switch to the previous tab\n" \
+"* Ctrl+PgDn - Switch to the next tab\n" \
+"* Alt+Arrow Left - Go back to the previous page\n" \
+"* Alt+Arrow Right - Go forward to the next page\n" \
+"* Home - Go at the top of the page\n" \
+"* End - Go at the bottom of the page\n" \
+"* Ctrl+f - Open search mode\n" \
+"* Ctrl+b - Open about:bookmarks in a new tab\n" \
+"* Ctrl+h - Open about:history in a new tab\n" \
+"* Ctrl+r, F5 - Reload the page\n" \
+"* Ctrl+g - Jump to next search occurence\n" \
+"* Left click - Open link\n" \
+"* Middle click - Open link in a new tab\n\n" \
+"### Vi\n\n" \
 "* k - Scroll up\n" \
-"* j - Scroll up\n" \
+"* j - Scroll down\n" \
 "* gT - Switch to the previous tab\n" \
 "* gt - Switch to the next tab\n" \
 "* h - Go back to the previous page\n" \
@@ -29,6 +48,8 @@
 "* b - Open about:bookmarks in a new tab\n" \
 "* f - Open about:history in a new tab\n" \
 "* r - Reload the page\n" \
+"* n - Jump to next search occurence\n" \
+"* N - Jump to previous search occurence\n" \
 "* [number]Tab - Select link\n" \
 "* Tab - Follow the selected link\n" \
 "* Shift+Tab - Open the selected link in a new tab\n\n" \
@@ -36,6 +57,7 @@
 "## Commands\n\n" \
 "* :q - Close the current tab\n" \
 "* :qa - Close all tabs, exit the program\n" \
+"* :e - Refresh page\n" \
 "* :open [url] - Open an url (alias: ':o')\n" \
 "* :s [search] - Search the Geminispace using a search engine\n" \
 "* :tabnew [url] - Open a new tab, the url is optional (alias: ':nt')\n" \

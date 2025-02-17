@@ -32,7 +32,7 @@ int about_config_arg(char *param, char **out, size_t *length_out) {
 		if (ret) return ret;
 		return about_config(out, length_out);
 	}
-	len = snprintf(V(buf), "10 %s\r\n0", fields[id].name);
+	len = snprintf(V(buf), "10 %s\r\n0", fields[id].name) + 1;
 	if (!(data = dyn_strcat(NULL, &length, buf, len)))
 		return ERROR_MEMORY_FAILURE;
 	*out = data;
@@ -58,12 +58,12 @@ int about_config(char **out, size_t *length_out) {
 		case VALUE_INT:
 			len = snprintf(V(buf), "=>%d %s = %d %s\n", i,
 					fields[i].name, *(int*)fields[i].ptr,
-					info);
+					info) + 1;
 			break;
 		case VALUE_STRING:
 			len = snprintf(V(buf), "=>%d %s = %s %s\n", i,
 					fields[i].name, (char*)fields[i].ptr,
-					info);
+					info) + 1;
 			break;
 		}
 		if (!len) continue;

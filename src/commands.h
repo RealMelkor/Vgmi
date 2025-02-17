@@ -5,6 +5,7 @@
 int command_quit(struct client *client, const char* ptr, size_t len);
 int command_close(struct client *client, const char* ptr, size_t len);
 int command_open(struct client *client, const char* ptr, size_t len);
+int command_reload(struct client *client, const char* ptr, size_t len);
 int command_search(struct client *client, const char* ptr, size_t len);
 int command_gencert(struct client *client, const char* ptr, size_t len);
 int command_forget(struct client *client, const char* ptr, size_t len);
@@ -25,6 +26,7 @@ static struct command commands[] = {
 	{"qa",		command_quit},
 	{"q",		command_close},
 	{"o",		command_open},
+	{"e",		command_reload},
 	{"open",	command_open},
 	{"s",		command_search},
 	{"add",		command_add},
