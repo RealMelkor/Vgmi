@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2025 RMF <rawmonk@rmf-dev.com>
  */
 #ifndef DISABLE_XDG
 #include <stdio.h>
@@ -89,7 +89,7 @@ int xdg_proc(int in, int out) {
 
 	if (storage_init()) return -1;
 	if (storage_init_download()) return -1;
-	if (config_load()) return -1;
+	config_load();
 
 	sandbox_set_name("vgmi [xdg]");
 	i = byte = 0;
