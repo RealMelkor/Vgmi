@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2025 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -252,5 +252,6 @@ int storage_clear_tmp(void) {
 		if (!memcmp(entry->d_name, V(".tmp_vgmi_exec_") - 1))
 			unlinkat(download_fd, entry->d_name, 0);
 	}
+	closedir(dir);
 	return 0;
 }

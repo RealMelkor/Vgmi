@@ -46,7 +46,7 @@ struct field {
 static struct field fields[] = {
 	{"hexviewer.enabled", VALUE_INT, &config.enableHexViewer, 0},
 	{"image.enabled", VALUE_INT, &config.enableImage, 1},
-	{"mouse.enabled", VALUE_INT, &config.enableMouse, 1},
+	{"mouse.enabled", VALUE_INT, &config.enableMouse, 0},
 #ifdef STATIC_ALLOC
 	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad, 1},
 #endif

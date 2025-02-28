@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2025 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,6 +93,7 @@ int config_set_field(int id, const char *value) {
 int config_load(void) {
 	FILE *f;
 	char buf[1024];
+	struct field field = {0};
 	int i, in_str, in_comment;
 	srand(time(NULL));
 	config_default();
@@ -101,7 +102,6 @@ int config_load(void) {
 
 	in_comment = in_str = i = 0;
 	for (;;) {
-		struct field field = {0};
 		int ch = fgetc(f);
 		if (ch == EOF || ch == '\n') {
 			int ivalue;
