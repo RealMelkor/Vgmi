@@ -80,13 +80,19 @@ int parse_request(struct parser *parser, struct request *request) {
 		pfd.fd = parser->in;
 		pfd.events = POLLIN;
 		fds = poll(&pfd, 1, 0);
-		if (fds == -1) return ERROR_ERRNO;
+		if (fds == -1) {
+			ret = ERROR_ERRNO;
+			goto fail;
+		}
 		if (!fds) {
 			int bytes;
 			pfd.fd = parser->out;
 			pfd.events = POLLOUT;
 			fds = poll(&pfd, 1, 0);
-			if (fds == -1) return ERROR_ERRNO;
+			if (fds == -1) {
+				ret = ERROR_ERRNO;
+				goto fail;
+			}
 			if (!fds) continue;
 			bytes = PARSER_CHUNK;
 			if (sent + bytes > request->length)
@@ -102,7 +108,8 @@ int parse_request(struct parser *parser, struct request *request) {
 			break;
 		}
 		if (length == (size_t)-1) break;
-		if (!length || vread(parser->in, url, length)) {
+		if (!length || length >= MAX_URL ||
+				vread(parser->in, url, length)) {
 			ret = -1;
 			break;
 		}

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <string.h>
+#include <unistd.h>
 #include "termbox.h"
 #include "macro.h"
 #include "config.h"
@@ -221,11 +222,8 @@ int tab_request(struct tab* tab, const char *url) {
 		free(args);
 		return ERROR_PTHREAD;
 	}
-	if (pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED)) {
-		free(args);
-		return ERROR_PTHREAD;
-	}
 	pthread_create(&args->thread, &tattr, tab_request_thread, args);
+	args->request->thread = (void*)args->thread;
 	return 0;
 }
 
@@ -275,14 +273,24 @@ struct request *tab_completed(struct tab *tab) {
 	return NULL;
 }
 
+void *tab_free_thread(void *tab) {
+	tab_free(tab);
+	return NULL;
+}
+
 void tab_free(struct tab *tab) {
 	struct request *req = tab->request;
+	pthread_mutex_lock(tab->mutex);
 	while (req) {
 		struct request *next = req->next;
+		while (req->state == STATE_ONGOING) {
+			pthread_join((pthread_t)req->thread, NULL);
+		}
 		request_free(req);
 		req = next;
 	}
 	tab->request = NULL;
+	pthread_mutex_unlock(tab->mutex);
 	pthread_mutex_destroy(tab->mutex);
 	free(tab->mutex);
 	free(tab);
@@ -300,6 +308,6 @@ struct tab *tab_close(struct tab *tab) {
 	} else if (prev) {
 		ret = prev;
 	} else ret = NULL;
-	tab_free(tab);
+	pthread_create((pthread_t*)&tab->thread, NULL, tab_free_thread, tab);
 	return ret;
 }

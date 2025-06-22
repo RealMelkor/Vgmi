@@ -26,7 +26,7 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 	int unicode = 0;
 	size_t i;
 
-	for (i = 0; i < sizeof(part) && i < dlen; i++) {
+	for (i = 0; i < LENGTH(part) && i < dlen; i++) {
 		uint32_t len;
 		if (*ptr && *ptr != '.') {
 			if (*ptr & 128)
@@ -37,7 +37,7 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 		len = outlen - pos;
 		if (unicode) {
 			int ret;
-			pos += strlcpy(&out[pos], "xn--", sizeof(out) - pos);
+			pos += strlcpy(&out[pos], "xn--", outlen - pos);
 			ret = punycode_encode(i - n, &part[n],
 					NULL, &len, &out[pos]);
 			if (ret != punycode_success)
@@ -206,11 +206,12 @@ static int valid_char(char c) {
 }
 
 int url_convert(const char *url, char *out, size_t length) {
-	unsigned int j, i;
+	unsigned int j = 0, i = 0;
 	int slash = 0;
-	for (i = j = 0; i < length;) {
+	while (i < length) {
 		uint32_t ch;
 		int len, k;
+		if (j > MAX_URL) break;
 		len = utf8_char_to_unicode(&ch, &url[j]);
 		if (!ch) {
 			out[i] = 0;
@@ -218,8 +219,7 @@ int url_convert(const char *url, char *out, size_t length) {
 		}
 		if (slash < 3) {
 			slash += ch == '/';
-			utf8_unicode_to_char(&out[i], ch);
-			i += len;
+			i += utf8_unicode_to_char(&out[i], ch);
 			j += len;
 			continue;
 		}
@@ -230,6 +230,10 @@ int url_convert(const char *url, char *out, size_t length) {
 		for (k = 0; k < len; k++) {
 			if (i + 3 > length) break;
 			out[i++] = '%';
+			if (j > MAX_URL) {
+				out[i] = 0;
+				return -1;
+			}
 			i += snprintf(&out[i], length - i, "%02X", url[j++]);
 		}
 	}

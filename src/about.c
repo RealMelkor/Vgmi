@@ -76,8 +76,11 @@ HEADER \
 
 void *dyn_strcat(char *dst, size_t *dst_length,
 			const char *src, size_t src_len) {
-	const size_t sum = (*dst_length = strnlen(dst, *dst_length)) + src_len;
-	void *ptr = realloc(dst, sum + 1);
+	size_t sum;
+	void *ptr;
+	if (src_len > SIZE_MAX - *dst_length) return NULL;
+	sum = (*dst_length = strnlen(dst, *dst_length)) + src_len;
+	ptr = realloc(dst, sum + 1);
 	if (!ptr) return NULL;
 	dst = ptr;
 	strlcpy(&dst[*dst_length], src, src_len);

@@ -39,7 +39,7 @@ int format_link(const char *link, size_t length,
 	/* parse /../ */
 	while ((ptr = strnstr(buf, "/../", sizeof(buf)))) {
 		char *to = ptr + sizeof("/..") - 1;
-		while (*(--ptr) != '/' && ptr > buf) ;
+		while (ptr > buf && *(--ptr) != '/') ;
 		while (*ptr) *(ptr++) = *(to++);
 	}
 	/* add a slash at the end if the URL doesn't have one */

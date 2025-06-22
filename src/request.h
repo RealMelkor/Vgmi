@@ -30,6 +30,7 @@ struct request {
 	int status;
 	struct request *next;
 	struct page page;
+	void *thread;
 };
 
 int request_process(struct request*, struct secure*, const char*);

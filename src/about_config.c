@@ -24,7 +24,7 @@ int about_config_arg(char *param, char **out, size_t *length_out) {
 		query++;
 	}
 	id = atoi(param);
-	if ((!id && strcmp(param, "0")) || (unsigned)id > LENGTH(fields)) {
+	if ((!id && strcmp(param, "0")) || (unsigned)id >= LENGTH(fields)) {
 		return ERROR_INVALID_ARGUMENT;
 	}
 	if (query) {

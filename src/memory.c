@@ -19,7 +19,7 @@ int pkey = -1;
 int readonly(const char *in, size_t length, char **out) {
 	void *ptr = mmap(NULL, length, PROT_READ|PROT_WRITE,
 			MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
-	if (!ptr) return ERROR_MEMORY_FAILURE;
+	if (ptr == MAP_FAILED) return ERROR_MEMORY_FAILURE;
 	memcpy(ptr, in, length);
 #ifdef USE_PKEY
 	if (pkey == -1) {

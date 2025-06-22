@@ -125,7 +125,7 @@ int secure_connect(struct secure *secure, struct request request) {
 		ret = connect(sockfd, addr, sizeof(struct sockaddr_in));
 		break;
 	case AF_INET6:
-		((struct sockaddr_in6*)addr)->sin6_port = request.port;
+		((struct sockaddr_in6*)addr)->sin6_port = htons(request.port);
 		ret = connect(sockfd, addr, sizeof(struct sockaddr_in6));
 		break;
 	}

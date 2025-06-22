@@ -7,6 +7,7 @@ struct tab {
 	struct request *request;
 	struct request *view;
 	void *mutex;
+	void *thread;
 	struct secure *secure;
 	char error[3072];
 	char input[1024];

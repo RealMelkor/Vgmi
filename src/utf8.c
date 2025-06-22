@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include "strlcpy.h"
 #include "wcwidth.h"
 
 static const unsigned char utf8_length[256] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -127,19 +129,7 @@ int utf8_width(const char *ptr, size_t length) {
 }
 
 int utf8_cpy(char *dst, const char *src, size_t length) {
-	size_t i;
-	for (i = 0; i < length; ) {
-		size_t len = utf8_char_length(src[i]);
-		if (i + len >= length) {
-			dst[i] = '\0';
-			break;
-		}
-		while (len--) {
-			dst[i] = src[i];
-			i++;
-		}
-	}
-	return i;
+	return strlcpy(dst, src, length);
 }
 
 int utf8_fgetc(FILE *f, uint32_t *out) {
@@ -168,11 +158,7 @@ int utf8_fgetc(FILE *f, uint32_t *out) {
 }
 
 int utf8_len(const char *ptr, size_t length) {
-	const char *start = ptr, *end = ptr + length, *last;
-	for (last = NULL; ptr < end && *ptr; ptr += utf8_char_length(*ptr))
-		last = ptr;
-	if (ptr + 1 >= end) ptr = last + 1;
-	return ptr ? (ptr - start) : 0;
+	return strnlen(ptr, length);
 }
 
 int utf8_fprintf(FILE *f, const char *buf, size_t length) {
