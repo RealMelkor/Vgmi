@@ -53,8 +53,8 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 }
 
 void parser_request(int in, int out) {
-	parser_sandbox(out, "vgmi [request]");
-	while (1) { /* TODO: send error code */
+	if (parser_sandbox(out, "vgmi [request]")) return;
+	while (1) {
 
 		int ret, bytes;
 		size_t length;

@@ -138,9 +138,8 @@ fail:
 }
 
 void parser_page(int in, int out) {
-	char *data = NULL;
-	parser_sandbox(out, "vgmi [page]");
-	while (1) { /* TODO: send error code */
+	if (parser_sandbox(out, "vgmi [page]")) return;
+	while (1) {
 
 		int ret;
 		size_t length;
@@ -165,11 +164,7 @@ void parser_page(int in, int out) {
 		}
 
 		if (ret) break;
-
-		free(data);
-		data = NULL;
 	}
-	free(data);
 }
 
 int parse_page(struct parser *parser, struct request *request, int width) {

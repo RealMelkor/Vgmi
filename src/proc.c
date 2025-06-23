@@ -41,8 +41,10 @@ int proc_fork(char *arg, int *fd_in, int *fd_out) {
 
 		close(STDOUT_FILENO);
 		dup(in[1]);
+		close(in[1]);
 		close(STDIN_FILENO);
 		dup(out[0]);
+		close(out[0]);
 
 		execvp(argv_ptr[0], argv);
 		exit(0);

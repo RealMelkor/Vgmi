@@ -181,6 +181,17 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		}
 	}
 	if (ev.ch >= '0' && ev.ch <= '9') {
+		if (ev.mod & TB_MOD_ALT) {
+			uint32_t i;
+			while (client->tab->prev)
+				client->tab = client->tab->prev;
+			for (i = '1'; i < ev.ch; i++) {
+				if (!client->tab->next) break;
+				client->tab = client->tab->next;
+			}
+			client_reset(client);
+			return 0;
+		}
 		client->count = client->count * 10 + ev.ch - '0';
 		if (client->count > MAX_COUNT) client->count = MAX_COUNT;
 		return 0;

@@ -73,7 +73,7 @@ cd "$root"
 downloads="${root}/.dependencies"
 mkdir -p 'include' "$downloads"
 
-# LibreSSL 4.0.0
+# LibreSSL 4.1.0
 # OpenBSD already has libressl
 if [ "$(uname)" != 'OpenBSD' ]; then
 
@@ -85,8 +85,8 @@ if [ "$(uname)" != 'OpenBSD' ]; then
 	mkdir -p 'lib'
 	cd "$build_dir"
 
-	ssl_version='4.0.0'
-	expected_hash='4d841955f0acc3dfc71d0e3dd35f283af461222350e26843fea9731c0246a1e4'
+	ssl_version='4.1.0'
+	expected_hash='0f71c16bd34bdaaccdcb96a5d94a4921bfb612ec6e0eba7a80d8854eefd8bb61'
 	remote_dir='https://ftp.openbsd.org/pub/OpenBSD/LibreSSL'
 	lib="libressl-${ssl_version}"
 	archive="${lib}.tar.gz"

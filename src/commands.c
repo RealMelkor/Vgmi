@@ -115,15 +115,15 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 		if (buf[i] <= ' ') buf[i] = '\0';
 	}
 
-	link = atoi(buf);
-	if (!link) {
+	for (i = 0; buf[i]; i++) {
+		if (buf[i] >= '0' && buf[i] <= '9') continue;
 		tab_request(client->tab, buf);
 		return 0;
 	}
 
 	req = tab_completed(client->tab);
 	if (!req) return 0;
-	link--;
+	link = atoi(buf) - 1;
 	if (link >= req->page.links_count) {
 		client->error = 1;
 		STRLCPY(client->cmd, "Invalid link number");

@@ -184,6 +184,7 @@ restart:
 	}
 	free(args);
 	tab_clean_requests(tab);
+	request.thread = NULL;
 	return NULL;
 }
 
@@ -283,7 +284,7 @@ void tab_free(struct tab *tab) {
 	pthread_mutex_lock(tab->mutex);
 	while (req) {
 		struct request *next = req->next;
-		while (req->state == STATE_ONGOING) {
+		if (req->thread) {
 			pthread_join((pthread_t)req->thread, NULL);
 		}
 		request_free(req);

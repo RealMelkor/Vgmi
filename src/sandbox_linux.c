@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2025 RMF <rawmonk@rmf-dev.com>
  */
 #if defined (__linux__) && !defined (DISABLE_SANDBOX)
 #include <linux/seccomp.h>
