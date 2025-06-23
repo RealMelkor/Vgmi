@@ -14,6 +14,7 @@
 #include "client.h"
 #include "tab.h"
 #include "input.h"
+#include "gemini.h"
 #include "config.h"
 #include "error.h"
 
@@ -21,6 +22,16 @@ void client_reset(struct client *client) {
 	if (!client) return;
 	memset(client->cmd, 0, sizeof(client->cmd));
 	client->tabcompletion = client->exit = client->g = client->count = 0;
+}
+
+void client_reset_mode(struct client *client) {
+	struct request *req = tab_input(client->tab);
+	if (!req || (req->status != GMI_INPUT && req->status != GMI_SECRET))
+		return;
+	req->state = STATE_ENDED;
+	client_reset(client);
+	client->mode = MODE_NORMAL;
+	tb_hide_cursor();
 }
 
 static void move_tab_left(struct client *client) {
@@ -181,17 +192,6 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		}
 	}
 	if (ev.ch >= '0' && ev.ch <= '9') {
-		if (ev.mod & TB_MOD_ALT) {
-			uint32_t i;
-			while (client->tab->prev)
-				client->tab = client->tab->prev;
-			for (i = '1'; i < ev.ch; i++) {
-				if (!client->tab->next) break;
-				client->tab = client->tab->next;
-			}
-			client_reset(client);
-			return 0;
-		}
 		client->count = client->count * 10 + ev.ch - '0';
 		if (client->count > MAX_COUNT) client->count = MAX_COUNT;
 		return 0;

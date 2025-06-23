@@ -156,7 +156,7 @@ int page_update(int in, int out, const char *data, size_t length,
 	return ret;
 }
 
-int page_free(struct page page) {
+void page_free(struct page page) {
 	size_t i;
 	for (i = 0; i < page.length; i++) {
 		free(page.lines[i].cells);
@@ -167,5 +167,4 @@ int page_free(struct page page) {
 	}
 	free(page.links);
 	free(page.img);
-	return 0;
 }

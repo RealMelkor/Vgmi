@@ -41,11 +41,15 @@ int click_tab(struct client *client, struct tb_event ev, int close) {
 	}
 	if (!tab) return 0;
 	if (!close) {
+		client_reset_mode(client);
 		client->tab = tab;
 		return 0;
 	}
 	ret = tab_close(tab);
-	if (tab == client->tab) client->tab = ret;
+	if (tab == client->tab) {
+		client_reset(client);
+		client->tab = ret;
+	}
 	return ret == NULL;
 }
 

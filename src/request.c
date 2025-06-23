@@ -191,15 +191,13 @@ int request_follow(struct request* req, const char *link,
 	return (size_t)(ptr - url) > length ? ERROR_INVALID_URL : 0;
 }
 
-int request_free_ref(struct request req) {
+void request_free_ref(struct request req) {
 	free_readonly(req.data, req.length);
 	free(req.addr);
 	page_free(req.page);
-	return 0;
 }
 
-int request_free(struct request *req) {
+void request_free(struct request *req) {
 	request_free_ref(*req);
 	free(req);
-	return 0;
 }

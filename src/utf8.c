@@ -129,7 +129,18 @@ int utf8_width(const char *ptr, size_t length) {
 }
 
 int utf8_cpy(char *dst, const char *src, size_t length) {
-	return strlcpy(dst, src, length);
+	size_t i;
+	dst[length - 1] = 0;
+	for (i = 0; i < length && src[i]; ) {
+		size_t len = utf8_char_length(src[i]);
+		if (i + len >= length) break;
+		while (len--) {
+			dst[i] = src[i];
+			i++;
+		}
+	}
+	if (i < length) dst[i] = '\0';
+	return i;
 }
 
 int utf8_fgetc(FILE *f, uint32_t *out) {
@@ -158,7 +169,11 @@ int utf8_fgetc(FILE *f, uint32_t *out) {
 }
 
 int utf8_len(const char *ptr, size_t length) {
-	return strnlen(ptr, length);
+	const char *start = ptr, *end = ptr + length, *last;
+	for (last = NULL; ptr < end && *ptr; ptr += utf8_char_length(*ptr))
+		last = ptr;
+	if (ptr + 1 >= end) ptr = last + 1;
+	return ptr ? (ptr - start) : 0;
 }
 
 int utf8_fprintf(FILE *f, const char *buf, size_t length) {

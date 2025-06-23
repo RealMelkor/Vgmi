@@ -47,6 +47,8 @@ int sandbox_init(void) {
 			CAP_SEEK, CAP_CREATE, CAP_FCNTL, CAP_FTRUNCATE);
 	if (cap_rights_limit(storage_fd, &rights))
 		return ERROR_SANDBOX_FAILURE;
+	if (cap_rights_limit(download_fd, &rights))
+		return ERROR_SANDBOX_FAILURE;
 
 	capcas = cap_init();
 	if (!capcas) return ERROR_SANDBOX_FAILURE;

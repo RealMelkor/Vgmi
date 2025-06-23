@@ -37,6 +37,5 @@ int readonly(const char *in, size_t length, char **out) {
 }
 
 int free_readonly(void *ptr, size_t length) {
-	munmap(ptr, length);
-	return 0;
+	return munmap(ptr, length);
 }

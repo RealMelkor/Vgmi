@@ -74,6 +74,8 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 				newline(termwriter);
 				x = 0;
 				nextspace = i;
+				if (j >= LENGTH(termwriter->cells))
+					continue;
 				if (WHITESPACE(termwriter->cells[j].codepoint))
 					continue;
 			}

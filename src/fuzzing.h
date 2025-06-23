@@ -1,3 +1,3 @@
 #ifdef DEBUG
-void fuzzing(int iterations);
+int fuzzing(int iterations);
 #endif

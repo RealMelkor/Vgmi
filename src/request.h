@@ -37,5 +37,5 @@ int request_process(struct request*, struct secure*, const char*);
 int request_cancel(struct request*);
 int request_scroll(struct request*, int, struct rect);
 int request_follow(struct request*, const char*, char*, size_t);
-int request_free(struct request*);
-int request_free_ref(struct request req);
+void request_free(struct request*);
+void request_free_ref(struct request req);

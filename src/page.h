@@ -81,7 +81,7 @@ int writeto(struct termwriter *termwriter, const char *str,
 int page_display(struct page text, int from, struct rect rect, int selected);
 int page_update(int in, int out, const char *data, size_t length,
 			struct page *page);
-int page_free(struct page page);
+void page_free(struct page page);
 void page_search(struct page *page, const char *search);
 int page_selection_line(struct page page);
 int page_link_line(struct page page, int y, int x);

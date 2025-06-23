@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef DEBUG
+#include "fuzzing.h"
+#endif
 #ifdef __linux__
 #include <sys/prctl.h>
 #include <errno.h>
@@ -46,6 +49,12 @@ int main(int argc, char *argv[]) {
 			storage_close();
 			image_parser(STDIN_FILENO, STDOUT_FILENO);
 			proc_exit();
+			return 0;
+		}
+#endif
+#ifdef DEBUG
+		if (!strcmp(argv[1], "--fuzz")) {
+			fuzzing(100000);
 			return 0;
 		}
 #endif

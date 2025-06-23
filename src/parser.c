@@ -32,8 +32,8 @@ struct parser {
 	int out;
 	pthread_mutex_t mutex;
 };
-struct parser request_parser;
-struct parser page_parser;
+struct parser request_parser = { .mutex = PTHREAD_MUTEX_INITIALIZER };
+struct parser page_parser = { .mutex = PTHREAD_MUTEX_INITIALIZER };
 
 void parser_request(int in, int out);
 
@@ -67,7 +67,8 @@ int parse_request(struct parser *parser, struct request *request) {
 	request->page.links = NULL;
 	ret = 0;
 	if (!gemtext && sent < request->length)
-		write(parser->out, request->data, request->length - sent);
+		write(parser->out, &request->data[sent],
+				request->length - sent);
 	while (gemtext) {
 
 		size_t length = 0;
@@ -120,6 +121,7 @@ int parse_request(struct parser *parser, struct request *request) {
 		tmp = realloc(request->page.links,
 			sizeof(char*) * (request->page.links_count + 1));
 		if (!tmp) {
+			free_readonly(ptr, length);
 			ret = ERROR_MEMORY_FAILURE;
 			break;
 		}

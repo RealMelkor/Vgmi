@@ -93,7 +93,7 @@ static void refresh_search(struct client *client) {
 int handle_cmd(struct client *client) {
 
 	const char invalid[] = "Invalid command: %s";
-	char name[MAX_CMD_NAME], cmd[MAX_CMDLINE - sizeof(invalid)];
+	char name[MAX_CMD_NAME] = {0}, cmd[MAX_CMDLINE - sizeof(invalid)] = {0};
 	size_t i;
 	int number;
 
@@ -122,7 +122,7 @@ int handle_cmd(struct client *client) {
 			break;
 		}
 		len = i + utf8_char_length(cmd[i]);
-		for (; i < len; i++)
+		for (; i < len && i < sizeof(name); i++)
 			name[i] = cmd[i];
 	}
 	for (i = 0; i < LENGTH(commands); i++) {
@@ -231,7 +231,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			for (i = 1; i < LENGTH(client->matches); i++) {
 				if (client->matches[i] < 0) break;
 			}
-			client->tabcompletion_selected = i;
+			client->tabcompletion_selected = i - 1;
 		}
 		tabcomplete(client);
 		break;
@@ -254,7 +254,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	insert_unicode(V(client->tab->input), &client->cursor, ev.ch);
 	client->cursor += prefix;
 rewrite:
-	if (req->status == GMI_INPUT) {
+	if (req->status == GMI_INPUT || req->status == GMI_SECRET) {
 		strlcpy(&client->cmd[prefix], client->tab->input,
 				sizeof(client->cmd) - prefix);
 	} else if (req->status == GMI_SECRET) {
