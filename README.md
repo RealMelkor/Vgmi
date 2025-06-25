@@ -2,7 +2,7 @@
 
 [Gemini][0] client written in C with vim-like keybindings.
 
-![pic0](./img/img4.png)
+![pic0](./img/img5.png)
 
 ## Keybindings
 
@@ -10,6 +10,8 @@ Standard | Vim | Action
 --- | --- | ---
 Up Arrow | k | Scroll up
 Down Arrow | j, Enter | Scroll down
+Ctrl+t | \- | Open a new tab
+Ctrl+w | \- | Close the current tab
 Ctrl+PgUp | gT | Switch to the previous tab
 Ctrl+PgDn | gt | Switch to the next tab
 Alt+Left | h | Go back to the previous page

@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 int bookmark_load(void);
 int bookmark_rewrite(void);

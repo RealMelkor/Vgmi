@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 int command_quit(struct client *client, const char* ptr, size_t len);
 int command_close(struct client *client, const char* ptr, size_t len);

@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 #define CONFIG_STRING_LENGTH 1024
 struct config {

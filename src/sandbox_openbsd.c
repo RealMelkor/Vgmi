@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 #if defined (__OpenBSD__) && !defined (DISABLE_SANDBOX)
 #include <stdio.h>

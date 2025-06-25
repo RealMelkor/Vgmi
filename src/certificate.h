@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 
 int certificate_getpath(const char* host, char* crt, size_t crt_len,

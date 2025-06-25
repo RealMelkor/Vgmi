@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@firemail.cc>
+ * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdlib.h>
 #include <string.h>
@@ -54,6 +54,7 @@ int certificate_create(char *host, char *error, int errlen) {
 #else
 	arc4random_buf(&id, sizeof(id));
 #endif
+	if (id < 0) id = -id;
 	if (ASN1_INTEGER_set(X509_get_serialNumber(x509), id) != 1)
 		goto failed;
 

@@ -1153,17 +1153,13 @@ int tb_extend_cell(int x, int y, uint32_t ch) {
 }
 
 int tb_set_input_mode(int mode) {
+	int esc_or_alt;
 	if_not_init_return();
-	if (mode == TB_INPUT_CURRENT) {
-		return global.input_mode;
-	}
-
-	if ((mode & (TB_INPUT_ESC | TB_INPUT_ALT)) == 0) {
+	if (mode == TB_INPUT_CURRENT) return global.input_mode;
+	esc_or_alt = TB_INPUT_ESC | TB_INPUT_ALT;
+	if ((mode & esc_or_alt) == 0) {
 		mode |= TB_INPUT_ESC;
-	}
-
-	if ((mode & (TB_INPUT_ESC | TB_INPUT_ALT)) ==
-			(TB_INPUT_ESC | TB_INPUT_ALT)) {
+	} else if ((mode & esc_or_alt) == esc_or_alt) {
 		mode &= ~TB_INPUT_ALT;
 	}
 
@@ -1229,11 +1225,17 @@ int tb_print_ex(int x, int y, uintattr_t fg, uintattr_t bg, size_t *out_w,
 		*out_w = 0;
 	}
 	while (*str) {
-		str += utf8_char_to_unicode(&uni, str);
-		w = mk_wcwidth((wchar_t)uni);
-		if (w <= 0) {
-			w = 1;
+		rv = utf8_char_to_unicode(&uni, str);
+		if (rv < 0) {
+			uni = 0xfffd;
+			str += rv * -1;
+		} else if (rv > 0) {
+			str += rv;
+		} else {
+			break;
 		}
+		w = wcwidth((wchar_t)uni);
+		if (w < 0) w = 1;
 		if (w == 0 && x > ix) {
 			if_err_return(rv, tb_extend_cell(x - 1, y, uni));
 		} else {
@@ -1850,57 +1852,49 @@ static int read_terminfo_path(const char *path) {
 	return TB_OK;
 }
 
-static int parse_terminfo_caps(void) {
-	/* 
-	 * See term(5) "LEGACY STORAGE FORMAT" and "EXTENDED STORAGE FORMAT"
-	 * for a description of this behavior.
-	 */
-	int16_t *header;
-	int bytes_per_int, align_offset, pos_str_offsets, pos_str_table, i;
-
-	/* Ensure there's at least a header's worth of data */
-	if (global.nterminfo < 6) {
+static int get_terminfo_int16(int offset, int16_t *val) {
+	if (offset < 0 || offset >= (int)global.nterminfo) {
+		*val = -1;
 		return TB_ERR;
 	}
+	memcpy(val, global.terminfo + offset, sizeof(int16_t));
+	return TB_OK;
+}
 
-	header = (int16_t *)global.terminfo;
-	/*
-	 * header[0] the magic number (octal 0432 or 01036)
-	 * header[1] the size, in bytes, of the names section
-	 * header[2] the number of bytes in the boolean section
-	 * header[3] the number of short integers in the numbers section
-	 * header[4] the number of offsets in the strings section
-	 * header[5] the size, in bytes, of the string table
-	 */
+static int parse_terminfo_caps(void) {
+	int16_t magic_number, nbytes_names, nbytes_bools, num_ints, num_offsets,
+		nbytes_strings;
+	size_t nbytes_header;
+	int i, bytes_per_int, align_offset, pos_str_offsets, pos_str_table;
+	if (global.nterminfo < 6 * (int)sizeof(int16_t)) return TB_ERR;
+	nbytes_header = 6 * sizeof(int16_t);
+	get_terminfo_int16(0 * sizeof(int16_t), &magic_number);
+	get_terminfo_int16(1 * sizeof(int16_t), &nbytes_names);
+	get_terminfo_int16(2 * sizeof(int16_t), &nbytes_bools);
+	get_terminfo_int16(3 * sizeof(int16_t), &num_ints);
+	get_terminfo_int16(4 * sizeof(int16_t), &num_offsets);
+	get_terminfo_int16(5 * sizeof(int16_t), &nbytes_strings);
 
-	/* Legacy ints are 16-bit, extended ints are 32-bit */
-	bytes_per_int = header[0] == 01036 ? 4  /* 32-bit */
-		: 2; /* 16-bit */
+	bytes_per_int = magic_number == 01036 ? 4 : 2;
 
-	/* 
-	 * Between the boolean section and the number section, a null byte
-	 * will be inserted, if necessary, to ensure that the number section
-	 * begins on an even byte
-	 */
-	align_offset = (header[1] + header[2]) % 2 != 0 ? 1 : 0;
+	align_offset = (nbytes_names + nbytes_bools) % 2 != 0 ? 1 : 0;
 
 	pos_str_offsets =
-		(6 * sizeof(int16_t)) /* header (12 bytes) */
-		+ header[1]           /* length of names section */
-		+ header[2]           /* length of boolean section */
+		nbytes_header
+		+ nbytes_names
+		+ nbytes_bools
 		+ align_offset +
-		(header[3] * bytes_per_int); /* length of numbers section */
+		(num_ints * bytes_per_int);
 
-	/* length of string offsets table */
-	pos_str_table = pos_str_offsets + (header[4] * sizeof(int16_t));
+	pos_str_table =
+		pos_str_offsets +
+		(num_offsets * sizeof(int16_t));
 
-	/* Load caps */
+
 	for (i = 0; i < TB_CAP__COUNT; i++) {
-		const char *cap = get_terminfo_string(
-			pos_str_offsets, header[4],
-			pos_str_table, header[5], terminfo_cap_indexes[i]);
+		const char *cap = get_terminfo_string(pos_str_offsets, num_offsets,
+				pos_str_table, nbytes_strings, terminfo_cap_indexes[i]);
 		if (!cap) {
-			/* Something is not right */
 			return TB_ERR;
 		}
 		global.caps[i] = cap;
@@ -1943,28 +1937,24 @@ static int load_builtin_caps(void) {
 	return TB_ERR_UNSUPPORTED_TERM;
 }
 
-static const char *get_terminfo_string(int16_t str_offsets_pos,
-		int16_t str_offsets_len, int16_t str_table_pos,
-		int16_t str_table_len, int16_t str_index) {
+static const char *get_terminfo_string(int16_t offsets_pos,
+		int16_t offsets_len, int16_t table_pos,
+		int16_t table_size, int16_t index) {
+	int16_t table_offset;
+	int table_offset_offset, str_offset;
+	if (index >= offsets_len) return "";
 
-	const int16_t *str_offset;
-	const int str_byte_index = (int)str_index * (int)sizeof(int16_t);
-
-	if (str_byte_index >= (int)str_offsets_len * (int)sizeof(int16_t)) {
-		return "";
-	}
-	str_offset = (int16_t *)(global.terminfo +
-			(int)str_offsets_pos + str_byte_index);
-	if ((char *)str_offset >= global.terminfo + global.nterminfo) {
+	table_offset_offset = (int)offsets_pos + (index * (int)sizeof(int16_t));
+	if (get_terminfo_int16(table_offset_offset, &table_offset) != TB_OK) {
 		return NULL;
 	}
-	if (*str_offset < 0 || *str_offset >= str_table_len) return "";
-	if (((size_t)((int)str_table_pos + (int)*str_offset)) >=
-			global.nterminfo) {
-		return NULL;
-	}
-	return (const char *)(global.terminfo +
-			(int)str_table_pos + (int)*str_offset);
+
+	if (table_offset < 0 || table_offset >= table_size) return "";
+
+	str_offset = (int)table_pos + (int)table_offset;
+	if (str_offset >= (int)global.nterminfo) return NULL;
+
+	return (const char *)(global.terminfo + str_offset);
 }
 
 static int wait_event(struct tb_event *event, int timeout) {
@@ -2158,23 +2148,22 @@ static int extract_esc_cap(struct tb_event *event) {
 }
 
 static int extract_esc_mouse(struct tb_event *event) {
-
 	struct bytebuf_t *in = &global.in;
 
-	enum type { TYPE_VT200 = 0, TYPE_1006, TYPE_1015, TYPE_MAX };
+	enum { TYPE_VT200 = 0, TYPE_1006, TYPE_1015, TYPE_MAX };
 
-	char *cmp[TYPE_MAX];
-
-	enum type type = 0;
-	int ret = TB_ERR, b, fail;
+	int type = 0;
+	int ret = TB_ERR;
 	size_t buf_shift = 0;
 
+	const char *cmp[TYPE_MAX] = {0};
 	cmp[TYPE_VT200] = "\x1b[M";
 	cmp[TYPE_1006] = "\x1b[<";
 	cmp[TYPE_1015] = "\x1b[";
 
 	for (; type < TYPE_MAX; type++) {
-		const size_t size = strlen(cmp[type]);
+		size_t size = strlen(cmp[type]);
+
 		if (in->len >= size &&
 				(strncmp(cmp[type], in->buf, size)) == 0) {
 			break;
@@ -2188,47 +2177,52 @@ static int extract_esc_mouse(struct tb_event *event) {
 
 	switch (type) {
 	case TYPE_VT200:
-		if (in->len < 6) break;
-		b = in->buf[3] - 0x20;
-		fail = 0;
+		if (in->len >= 6) {
+			int b = in->buf[3] - 0x20;
+			int fail = 0;
 
-		switch (b & 3) {
-		case 0:
-			event->key = ((b & 64) != 0) ? TB_KEY_MOUSE_WHEEL_UP
-				: TB_KEY_MOUSE_LEFT;
-			break;
-		case 1:
-			event->key = ((b & 64) != 0) ? TB_KEY_MOUSE_WHEEL_DOWN
-				: TB_KEY_MOUSE_MIDDLE;
-			break;
-		case 2:
-			event->key = TB_KEY_MOUSE_RIGHT;
-			break;
-		case 3:
-			event->key = TB_KEY_MOUSE_RELEASE;
-			break;
-		default:
-			ret = TB_ERR;
-			fail = 1;
-			break;
-		}
-
-		if (!fail) {
-			if ((b & 32) != 0) {
-				event->mod |= TB_MOD_MOTION;
+			switch (b & 3) {
+			case 0:
+				event->key = ((b & 64) != 0) ?
+					TB_KEY_MOUSE_WHEEL_UP :
+					TB_KEY_MOUSE_LEFT;
+				break;
+			case 1:
+				event->key = ((b & 64) != 0) ?
+					TB_KEY_MOUSE_WHEEL_DOWN :
+					TB_KEY_MOUSE_MIDDLE;
+				break;
+			case 2:
+				event->key = TB_KEY_MOUSE_RIGHT;
+				break;
+			case 3:
+				event->key = TB_KEY_MOUSE_RELEASE;
+				break;
+			default:
+				ret = TB_ERR;
+				fail = 1;
+				break;
 			}
 
-			event->x = ((uint8_t)in->buf[4]) - 0x21;
-			event->y = ((uint8_t)in->buf[5]) - 0x21;
+			if (!fail) {
+				if ((b & 32) != 0) {
+					event->mod |= TB_MOD_MOTION;
+				}
 
-			ret = TB_OK;
+				event->x = ((uint8_t)in->buf[4]) - 0x21;
+				event->y = ((uint8_t)in->buf[5]) - 0x21;
+
+				ret = TB_OK;
+			}
+
+			buf_shift = 6;
 		}
-
-		buf_shift = 6;
 		break;
 	case TYPE_1006: /* fallthrough */
 	case TYPE_1015:
-	{
+	if (1) {
+		size_t i;
+
 		enum {
 			FIRST_M = 0,
 			FIRST_SEMICOLON,
@@ -2236,11 +2230,9 @@ static int extract_esc_mouse(struct tb_event *event) {
 			FIRST_LAST_MAX
 		};
 
-		size_t indices[FIRST_LAST_MAX] =
-			{index_fail, index_fail, index_fail};
-		int m_is_capital = 0, start, fail;
-		size_t i;
-		unsigned n1, n2, n3;
+		size_t indices[FIRST_LAST_MAX] = {index_fail, index_fail,
+			index_fail};
+		int m_is_capital = 0;
 
 		for (i = 0; i < in->len; i++) {
 			if (in->buf[i] == ';') {
@@ -2259,53 +2251,62 @@ static int extract_esc_mouse(struct tb_event *event) {
 
 		if (indices[FIRST_M] == index_fail ||
 				indices[FIRST_SEMICOLON] == index_fail ||
-				indices[LAST_SEMICOLON] == index_fail) {
+				indices[LAST_SEMICOLON] == index_fail)
+		{
 			ret = TB_ERR;
-			break;
-		}
-		start = (type == TYPE_1015 ? 2 : 3);
+		} else {
+			int start = (type == TYPE_1015 ? 2 : 3);
 
-		n1 = strtoul(&in->buf[start], NULL, 10);
-		n2 = strtoul(&in->buf[indices[FIRST_SEMICOLON] + 1], NULL, 10);
-		n3 = strtoul(&in->buf[indices[LAST_SEMICOLON] + 1], NULL, 10);
+			unsigned n1 = strtoul(&in->buf[start], NULL, 10);
+			int n2 =
+				atoi(&in->buf[indices[FIRST_SEMICOLON] + 1]);
+			int n3 =
+				atoi(&in->buf[indices[LAST_SEMICOLON] + 1]);
+			int fail = 0;
 
-		if (type == TYPE_1015) n1 -= 0x20;
-
-		fail = 0;
-		switch (n1 & 3) {
-		case 0:
-			event->key = ((n1 & 64) != 0) ? TB_KEY_MOUSE_WHEEL_UP
-					: TB_KEY_MOUSE_LEFT;
-			break;
-		case 1:
-			event->key = ((n1 & 64) != 0) ? TB_KEY_MOUSE_WHEEL_DOWN
-					: TB_KEY_MOUSE_MIDDLE;
-			break;
-		case 2:
-			event->key = TB_KEY_MOUSE_RIGHT;
-			break;
-		case 3:
-			event->key = TB_KEY_MOUSE_RELEASE;
-			break;
-		default:
-			ret = TB_ERR;
-			fail = 1;
-			break;
-		}
-
-		buf_shift = in->len;
-
-		if (!fail) {
-			if (!m_is_capital) event->key = TB_KEY_MOUSE_RELEASE;
-
-			if ((n1 & 32) != 0) {
-				event->mod |= TB_MOD_MOTION;
+			if (type == TYPE_1015) {
+				n1 -= 0x20;
 			}
 
-			event->x = ((uint8_t)n2) - 1;
-			event->y = ((uint8_t)n3) - 1;
+			switch (n1 & 3) {
+			case 0:
+				event->key = ((n1 & 64) != 0) ?
+					TB_KEY_MOUSE_WHEEL_UP :
+					TB_KEY_MOUSE_LEFT;
+				break;
+			case 1:
+				event->key = ((n1 & 64) != 0) ?
+					TB_KEY_MOUSE_WHEEL_DOWN :
+					TB_KEY_MOUSE_MIDDLE;
+				break;
+			case 2:
+				event->key = TB_KEY_MOUSE_RIGHT;
+				break;
+			case 3:
+				event->key = TB_KEY_MOUSE_RELEASE;
+				break;
+			default:
+				ret = TB_ERR;
+				fail = 1;
+				break;
+			}
 
-			ret = TB_OK;
+			buf_shift = in->len;
+
+			if (!fail) {
+				if (!m_is_capital) {
+					event->key = TB_KEY_MOUSE_RELEASE;
+				}
+
+				if ((n1 & 32) != 0) {
+					event->mod |= TB_MOD_MOTION;
+				}
+
+				event->x = (n2 - 1 < 0) ? 0 : n2 - 1;
+				event->y = (n3 - 1 < 0) ? 0 : n3 - 1;
+
+				ret = TB_OK;
+			}
 		}
 	}
 		break;
@@ -2314,6 +2315,7 @@ static int extract_esc_mouse(struct tb_event *event) {
 	}
 
 	if (buf_shift > 0) bytebuf_shift(in, buf_shift);
+
 	if (ret == TB_OK) event->type = TB_EVENT_MOUSE;
 
 	return ret;
