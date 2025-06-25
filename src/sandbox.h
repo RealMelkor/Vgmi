@@ -4,8 +4,8 @@
 
 #include <stddef.h>
 
-int sandbox_init();
-int sandbox_close();
+int sandbox_init(void);
+int sandbox_close(void);
 
 #ifndef NO_SANDBOX
 
@@ -59,7 +59,7 @@ extern SBC WR_CERTIFICATE;
 extern SBC WR_END;
 extern SBC RD_CERTIFICATE;
 
-int sandbox_savebookmarks();
+int sandbox_savebookmarks(void);
 struct gmi_tab;
 int sandbox_download(struct gmi_tab* tab, const char* path);
 int sandbox_dl_length(size_t length);
@@ -75,7 +75,8 @@ extern int rd_pair[2];
 #endif // sun
 
 #else // no sandbox
-int xdg_open(char*);
+int xdg_open(const char*);
+int xdg_request(const char*);
 #endif
 
 #include <signal.h>

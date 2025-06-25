@@ -32,7 +32,7 @@ char config_path[1024];
 const char* download_str = "Downloads";
 
 int home_fd = -1;
-int gethomefd() {
+int gethomefd(void) {
 	if (home_fd > -1)
 		return home_fd;
 	struct passwd *pw = getpwuid(geteuid());
@@ -50,7 +50,7 @@ int gethomefd() {
 }
 
 int download_fd = -1;
-int getdownloadfd() {
+int getdownloadfd(void) {
 	if (download_fd > -1)
 		return download_fd;
 	if (home_fd == -1 && gethomefd() == -1)
@@ -72,7 +72,7 @@ int getdownloadfd() {
 }
 
 int config_fd = -1;
-int getconfigfd() {
+int getconfigfd(void) {
 	if (config_fd > -1)
 		return config_fd;
 	if (home_fd == -1 && gethomefd() == -1)
@@ -135,7 +135,7 @@ int cert_create(char* host, char* error, int errlen) {
 	EVP_PKEY_assign_RSA(pkey, rsa);
 	int id;
 #ifdef __linux__
-	getrandom(&id, sizeof(id), GRND_RANDOM);
+	if (getrandom(&id, sizeof(id), GRND_RANDOM) == -1) goto failed;
 #else
 	arc4random_buf(&id, sizeof(id));
 #endif
@@ -219,8 +219,8 @@ skip_error:
 	return ret;
 }
 
-int fatalI();
-void fatal();
+int fatalI(void);
+void fatal(void);
 
 struct cert {
 	struct cert* next;
@@ -256,7 +256,7 @@ void cert_add(char* host, const char* hash, unsigned long long start,
 	last_cert->end = end;
 }
 
-int cert_load() {
+int cert_load(void) {
 	config_fd = getconfigfd();
 	if (config_fd < 0) return -1;
 	int known_hosts = openat(config_fd, "known_hosts", 0);
@@ -448,12 +448,12 @@ int cert_getcert(char* host, int reload) {
 }
 
 #ifdef SANDBOX_SUN
-int cert_rewrite() {
+int cert_rewrite(void) {
 	int fd = wr_pair[1];
 	if (send(fd, &WR_KNOWNHOSTS, sizeof(SBC), 0) != sizeof(SBC))
 		return -3;
 #else
-int cert_rewrite() {
+int cert_rewrite(void) {
 	int cfd = getconfigfd();
 	if (cfd < 0) return -1;
 
@@ -555,7 +555,7 @@ int cert_verify(char* host, const char* hash,
 	return 0;
 }
 
-void cert_free() {
+void cert_free(void) {
 	struct cert *cert, *next_cert;
 	cert = first_cert;
 	while (cert) {

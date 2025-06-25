@@ -163,7 +163,7 @@ struct gmi_client {
 };
 
 extern struct gmi_client client;
-int gmi_init();
+int gmi_init(void);
 int gmi_goto(struct gmi_tab* tab, int id);
 int gmi_goto_new(struct gmi_tab* tab, int id);
 int gmi_request(struct gmi_tab* tab, const char* url, int add);
@@ -171,25 +171,25 @@ void gmi_load(struct gmi_page* page);
 int gmi_render(struct gmi_tab* tab);
 void gmi_cleanforward(struct gmi_tab* tab);
 int gmi_nextlink(struct gmi_tab* tab, char* url, char* link);
-struct gmi_tab* gmi_newtab();
+struct gmi_tab* gmi_newtab(void);
 struct gmi_tab* gmi_newtab_url(const char* url);
 int gmi_loadfile(struct gmi_tab* tab, char* path);
 void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title);
-void gmi_newbookmarks();
-int gmi_loadbookmarks();
-int gmi_savebookmarks();
+void gmi_newbookmarks(void);
+int gmi_loadbookmarks(void);
+int gmi_savebookmarks(void);
 void gmi_addtohistory(struct gmi_tab* tab);
 int gmi_removebookmark(int index);
-void gmi_polling();
+void gmi_polling(void);
 void gmi_gohome(struct gmi_tab* tab, int add);
 void gmi_gettitle(struct gmi_page* page, const char* url);
 void gmi_freepage(struct gmi_page* page);
 void gmi_freetab(struct gmi_tab* tab);
-void gmi_free();
+void gmi_free(void);
 
-void fatal();
-int fatalI();
-void* fatalP();
+void fatal(void);
+int fatalI(void);
+void* fatalP(void);
 
 #include "img.h"
 

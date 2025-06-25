@@ -4,6 +4,6 @@
 
 struct tb_event;
 int input(struct tb_event event);
-int tb_interupt();
+int tb_interupt(void);
 
 #endif

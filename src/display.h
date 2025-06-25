@@ -2,8 +2,8 @@
 #ifndef _DISPLAY_H_
 #define _DISPLAY_H_
 
-void display();
-void display_history();
+void display(void);
+void display_history(void);
 int display_ask(char* info, char* action);
 
 #endif

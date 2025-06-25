@@ -42,7 +42,7 @@ int sandbox_getaddrinfo(const char *hostname, const char *servname,
 }
 
 #include "cert.h"
-int sandbox_init() {
+int sandbox_init(void) {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
@@ -100,7 +100,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_close() {
+int sandbox_close(void) {
 #ifndef DISABLE_XDG
 	xdg_close();
 #endif
@@ -149,7 +149,7 @@ int make_writeonly(FILE* f) {
 extern char home_path[1024];
 extern char config_path[1024];
 
-int sandbox_init() {
+int sandbox_init(void) {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
@@ -188,7 +188,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_close() {
+int sandbox_close(void) {
 #ifndef DISABLE_XDG
 	xdg_close();
 #endif
@@ -356,7 +356,7 @@ int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
 	return ret;
 }
 
-int landlock_init() {
+int landlock_init(void) {
 	struct landlock_ruleset_attr attr = {
 		.handled_access_fs =	LANDLOCK_ACCESS_FS_EXECUTE |
 					LANDLOCK_ACCESS_FS_READ_FILE |
@@ -388,7 +388,7 @@ extern char config_path[1024];
 extern char download_path[1024];
 #endif
 
-int sandbox_init() {
+int sandbox_init(void) {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
@@ -471,7 +471,7 @@ skip_landlock:;
 	return 0;
 }
 
-int sandbox_close() {
+int sandbox_close(void) {
 #if defined(__linux__) && !defined(__MUSL__)
 	if (libgcc_s)
 		dlclose(libgcc_s);
@@ -586,7 +586,7 @@ sandbox_error:
 	return err;
 }
 
-int sandbox_listen_rd() {
+int sandbox_listen_rd(void) {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, rd_pair)) {
                 printf("socketpair: %s\n", strerror(errno));
                 return -1;
@@ -630,7 +630,7 @@ int sandbox_listen_rd() {
 	exit(-1);
 }
 
-int sandbox_listen() {
+int sandbox_listen(void) {
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, wr_pair)) {
                 printf("socketpair: %s\n", strerror(errno));
                 return -1;
@@ -736,7 +736,7 @@ int sandbox_listen() {
 	exit(-1);
 }
 
-int sandbox_init() {
+int sandbox_init(void) {
 #ifndef DISABLE_XDG
 	if (xdg_init()) {
 		printf("xdg failure\n");
@@ -781,7 +781,7 @@ int sandbox_init() {
 	return 0;
 }
 
-int sandbox_close() {
+int sandbox_close(void) {
 #ifndef DISABLE_XDG
 	xdg_close();
 #endif
@@ -798,11 +798,11 @@ int sandbox_close() {
 #endif // #ifndef NO_SANDBOX
 
 #ifdef NO_SANDBOX
-int sandbox_init() {
+int sandbox_init(void) {
 	return 0;
 }
 
-int sandbox_close() {
+int sandbox_close(void) {
 	return 0;
 }
 #endif

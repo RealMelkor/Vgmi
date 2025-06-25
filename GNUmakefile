@@ -34,4 +34,4 @@ uninstall:
 	rm ${PREFIX}/bin/vgmi
 
 clean:
-	rm vgmi ${OBJS}
+	rm -rf vgmi ${OBJS}

@@ -1,7 +1,5 @@
 /* See LICENSE file for copyright and license details. */
-#ifdef __linux__
 #define _GNU_SOURCE
-#endif
 #ifdef sun
 #include <port.h>
 #endif
@@ -20,12 +18,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <termbox.h>
-#include <ctype.h>
 #include <time.h>
 #include "gemini.h"
 #include "cert.h"
 #include "wcwidth.h"
-#include "display.h"
 #include "input.h"
 #include "sandbox.h"
 #include "str.h"
@@ -43,18 +39,18 @@ struct gmi_client client;
 void tb_colorline(int x, int y, uintattr_t color);
 void* gmi_request_thread(struct gmi_tab* tab);
 
-void fatal() {
+void fatal(void) {
 	tb_shutdown();
 	printf("Failed to allocate memory, terminating\n");
 	exit(0);
 }
 
-int fatalI() {
+int fatalI(void) {
 	fatal();
 	return -1;
 }
 
-void* fatalP() {
+void* fatalP(void) {
 	fatal();
 	return NULL;
 }
@@ -101,8 +97,6 @@ int gmi_goto_new(struct gmi_tab* tab, int id) {
 }
 
 int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
-	int url_len = strnlen(url, MAX_URL);
-
 	if (!*link) {
 		return 0;
 	}
@@ -128,19 +122,23 @@ int gmi_nextlink(struct gmi_tab* tab, char* url, char* link) {
 		return ret;
 	}
 	if (link[0] == '/') {
-		if (url_len > GMI && strstr(url, "gemini://")) {
-			char* ptr = strchr(&url[GMI], '/');
-			if (ptr) *ptr = '\0';
-		}
 		char urlbuf[MAX_URL];
 		size_t l = STRLCPY(urlbuf, url);
 		if (l >= sizeof(urlbuf))
 			goto nextlink_overflow;
-		if (strlcpy(urlbuf + l, link, sizeof(urlbuf) - l) >=
-		    sizeof(urlbuf) - l)
+
+		if (l > GMI && strstr(urlbuf, "gemini://")) {
+			char* ptr = strchr(&urlbuf[GMI], '/');
+			if (ptr) {
+				*ptr = '\0';
+				l = strlen(urlbuf);
+			}
+		}
+
+		if (strlcpy(urlbuf + l, link,
+				sizeof(urlbuf) - l) >= sizeof(urlbuf) - l)
 			goto nextlink_overflow;
-		int ret = gmi_request(tab, urlbuf, 1);
-		return ret;
+		return gmi_request(tab, urlbuf, 1);
 	}
 	if (strstr(link, "https://") == link ||
 		   strstr(link, "http://") == link ||
@@ -651,7 +649,7 @@ char home_page[] =
 "* :q - Close the current tab\n" \
 "* :qa - Close all tabs, exit the program\n" \
 "* :o [url] - Open an url\n" \
-"* :s [search] - Search the Geminispace using geminispace.info\n" \
+"* :s [search] - Search the Geminispace using tlgs.one\n" \
 "* :nt [url] - Open a new tab, the url is optional\n" \
 "* :add [name] - Add the current url to the bookmarks, the name is optional\n"\
 "* :[number] - Scroll to the line number\n" \
@@ -661,36 +659,29 @@ char home_page[] =
 "* :download [name] - Download the current page, the name is optional\n"
 "* :exec - Open the last downloaded file";
 
-void gmi_newbookmarks() {
+void gmi_newbookmarks(void) {
 	int len;
-	const char geminispace[] = "gemini://geminispace.info Geminispace";
-	const char gemigit[] = "gemini://gemini.rmf-dev.com Gemigit";
-	client.bookmarks = malloc(sizeof(char*) * 3);
+	const char tlgs[] =
+		"gemini://tlgs.one TLGS - \"Totally Legit\" Gemini Search";
+	client.bookmarks = malloc(sizeof(char*) * 2);
 	if (!client.bookmarks) goto fail_malloc;
 
-	len = sizeof(geminispace);
+	len = sizeof(tlgs);
 	client.bookmarks[0] = malloc(len);
 	if (!client.bookmarks[0]) goto fail_malloc;
-	strlcpy(client.bookmarks[0], geminispace, len);
+	strlcpy(client.bookmarks[0], tlgs, len);
 
-	len = sizeof(gemigit);
-	client.bookmarks[1] = malloc(len);
-	if (!client.bookmarks[1]) goto fail_malloc;
-	strlcpy(client.bookmarks[1], gemigit, len);
-
-	client.bookmarks[2] = NULL;
+	client.bookmarks[1] = NULL;
 	return;
 fail_malloc:
 	fatal();
 }
 
-int gmi_loadbookmarks() {
+int gmi_loadbookmarks(void) {
 	int fd = openat(config_fd, "bookmarks.txt", O_RDONLY);
-	if (fd < 0)
-		return -1;
+	if (fd < 0) return -1;
 	FILE* f = fdopen(fd, "rb");
-	if (!f)
-		return -1;
+	if (!f) return -1;
 #ifdef SANDBOX_FREEBSD
 	if (makefd_readonly(fd)) {
 		fclose(f);
@@ -700,31 +691,34 @@ int gmi_loadbookmarks() {
 	fseek(f, 0, SEEK_END);
 	size_t len = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	char* data = malloc(len);
-	if (!data) {
-		memory_failure(client.tab);
-		fclose(f);
-		return -1;
-	}
-	if (len != fread(data, 1, len, f)) {
-		fclose(f);
-		return -1;
+	char* data = NULL;
+	if (len) {
+		data = malloc(len);
+		if (!data) {
+			memory_failure(client.tab);
+			fclose(f);
+			return -1;
+		}
+		if (len != fread(data, 1, len, f)) {
+			fclose(f);
+			return -1;
+		}
 	}
 	fclose(f);
 	char* ptr = data;
-	long n = 0;
-	while (++ptr && ptr < data+len) if (*ptr == '\n') n++;
-	client.bookmarks = malloc(sizeof(char*) * (n + 1));
+	long n = 1;
+	for (char *end = ptr + len; ptr < end; ptr++) if (*ptr == '\n') n++;
+	client.bookmarks = calloc(n + 1, sizeof(char*));
 	if (!client.bookmarks) {
 		memory_failure(client.tab);
 		return -1;
 	}
-	client.bookmarks[n] = NULL;
+	if (!data) return 0;
 	n = 0;
 	ptr = data;
 	char* str = data;
-	while (++ptr && ptr < data+len) {
-		if (*ptr != '\n') continue;
+	for (char *end = ptr + len; ptr < end; ptr++) {
+		if (*ptr != '\n' && ptr + 1 != end) continue;
 		*ptr = '\0';
 		client.bookmarks[n] = malloc(ptr-str+1);
 		if (!client.bookmarks[n]) {
@@ -861,7 +855,8 @@ void gmi_addbookmark(struct gmi_tab* tab, char* url, char* title) {
 	gmi_savebookmarks();
 }
 
-int gmi_savebookmarks() {
+int gmi_savebookmarks(void) {
+	int ret = 0;
 #ifdef SANDBOX_SUN
 	int fd = wr_pair[1];
 	if (send(fd, &WR_BOOKMARKS, sizeof(SBC), 0) != sizeof(SBC))
@@ -881,16 +876,17 @@ int gmi_savebookmarks() {
 #endif
 #endif
 	for (int i = 0; client.bookmarks[i]; i++) {
-		write(fd, client.bookmarks[i], strlen(client.bookmarks[i]));
+		int len = strlen(client.bookmarks[i]);
+		ret = write(fd, client.bookmarks[i], len) != len;
 		char c = '\n';
-		write(fd, &c, 1);
+		if (!ret) len = write(fd, &c, 1) != 1;
 	}
 #ifdef SANDBOX_SUN
 	send(fd, &WR_END, sizeof(SBC), 0);
 #else
 	close(fd);
 #endif
-	return 0;
+	return ret;
 }
 
 char* gmi_getbookmarks(int* len) {
@@ -951,7 +947,7 @@ void gmi_gohome(struct gmi_tab* tab, int add) {
 	pthread_mutex_unlock(&tab->render_mutex);
 }
 
-struct gmi_tab* gmi_newtab() {
+struct gmi_tab* gmi_newtab(void) {
 	return gmi_newtab_url("about:home");
 }
 
@@ -1118,7 +1114,7 @@ int gmi_request_dns(struct gmi_tab* tab) {
 	}
 
 	long start = time(NULL);
-	for (int i=0; !tab->request.resolved; i++) {
+	while (!tab->request.resolved) {
 		if (tab->request.state == STATE_CANCEL) break;
 		if (time(NULL) - start > TIMEOUT) break;
 		nanosleep(&timeout, NULL);
@@ -1952,7 +1948,7 @@ int gmi_loadfile(struct gmi_tab* tab, char* path) {
 	return len;
 }
 
-int gmi_init() {
+int gmi_init(void) {
 	if (tls_init()) {
 		tb_shutdown();
 		printf("Failed to initialize TLS\n");
@@ -2011,7 +2007,7 @@ int gmi_init() {
 	return 0;
 }
 
-void gmi_free() {
+void gmi_free(void) {
 	while (client.tab)
 		gmi_freetab(client.tab);
 	gmi_savebookmarks();

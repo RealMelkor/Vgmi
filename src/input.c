@@ -19,7 +19,7 @@ void cfmakeraw(struct termios *t);
 #include "util.h"
 #include <stdio.h>
 
-int get_cursor_pos() {
+int get_cursor_pos(void) {
 	int pos = 0;
 	for (int i = 0; i < client.input.cursor; i++) {
 		pos += tb_utf8_char_length(client.input.field[pos]);
@@ -28,7 +28,7 @@ int get_cursor_pos() {
 	return pos;
 }
 
-int vim_counter() {
+int vim_counter(void) {
 	int counter = atoi(client.vim.counter);
 	bzero(client.vim.counter, sizeof(client.vim.counter));
 	return counter?counter:1;
@@ -42,7 +42,7 @@ void fix_scroll(struct gmi_tab* tab) {
 		tab->scroll = -1;
 }
 
-int command() {
+int command(void) {
 	struct gmi_tab* tab = client.tab;
 	struct gmi_page* page = &tab->page;
 
@@ -110,7 +110,7 @@ int command() {
 	if (STARTWITH(client.input.field, ":s")) {
 		char urlbuf[MAX_URL];
 		snprintf(urlbuf, sizeof(urlbuf),
-			 "gemini://geminispace.info/search?%s",
+			 "gemini://tlgs.one/search?%s",
 			 &client.input.field[3]);
 		client.input.field[0] = '\0';
 		gmi_cleanforward(tab);
@@ -269,7 +269,7 @@ int command() {
 #ifdef SANDBOX_SUN
 		sandbox_dl_length(data_len);
 #endif
-		write(fd, data, data_len);
+		if (write(fd, data, data_len) != (ssize_t)data_len) return -1;
 #ifndef SANDBOX_SUN
 		close(fd);
 #endif
@@ -741,7 +741,7 @@ int input(struct tb_event ev) {
 	return input_page(ev);
 }
 
-int tb_interupt() {
+int tb_interupt(void) {
 	int sig = 0;
 	return write(global.resize_pipefd[1], &sig, sizeof(sig)) ==
 		sizeof(sig) ? 0 : -1;

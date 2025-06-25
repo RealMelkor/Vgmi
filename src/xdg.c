@@ -31,7 +31,7 @@ int xdg_request(char* str) {
         return write(xdg_pipe[1], str, len) != len;
 }
 
-void xdg_listener() {
+void xdg_listener(void) {
         char buf[4096];
         while (1) {
                 int len = read(xdg_pipe[0], buf, sizeof(buf));
@@ -41,7 +41,7 @@ void xdg_listener() {
         }
 }
 
-int xdg_init() {
+int xdg_init(void) {
 	if (gethomefd() < 0) {
 		return -1;
 	}
@@ -57,7 +57,10 @@ int xdg_init() {
         }
         close(xdg_pipe[1]);
 
-	chdir(download_path);
+	if (chdir(download_path)) {
+		printf("chdir failed\n");
+		return -1;
+	}
 
 #ifndef NO_SANDBOX
 #ifdef __OpenBSD__
@@ -92,7 +95,7 @@ int xdg_init() {
         exit(0);
 }
 
-void xdg_close() {
+void xdg_close(void) {
         if (xdg_pipe[0] > -1)
                 close(xdg_pipe[0]);
         if (xdg_pipe[1] > -1)

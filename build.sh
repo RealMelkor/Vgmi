@@ -4,7 +4,7 @@ download=wget
 if ! hash $download 2>/dev/null; then # FreeBSD
         download=fetch
 fi
-if [ "$(uname)" == OpenBSD ] ; then # OpenBSD
+if [ "$(uname)" = "OpenBSD" ] ; then # OpenBSD
         download=ftp
 fi
 if ! hash $download 2>/dev/null; then
@@ -54,16 +54,16 @@ mkdir -p build
 cd build
 mkdir -p ../lib
 
-# LibreSSL 3.8.0
+# LibreSSL 4.1.0
 # OpenBSD already has libressl
-if [ "$(uname)" != OpenBSD ] ;
+if [ "$(uname)" != "OpenBSD" ] ;
 then
-	ssl_version="3.8.2"
-	h="6d4b8d5bbb25a1f8336639e56ec5088052d43a95256697a85c4ce91323c25954"
+	ssl_version="4.1.0"
+	h="0f71c16bd34bdaaccdcb96a5d94a4921bfb612ec6e0eba7a80d8854eefd8bb61"
 	check_hash $h "https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-$ssl_version.tar.gz"
 	tar -zxf libressl-$ssl_version.tar.gz
 	cd libressl-$ssl_version
-	if [ "$(uname)" == SunOS ] ;
+	if [ "$(uname)" = "SunOS" ] ;
 	then
 		CC=gcc MAKE=gmake ./configure
 		gmake -j 4
@@ -80,24 +80,24 @@ then
 	cd ../
 fi
 
-# Termbox2 2.0.0
-h="c11c247467585874d56d7426310e5a56295cd314b82260410615c166474b6f78"
-check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/a8e2644708f3c2045d4f236c89f92880d683a3cc/termbox2.h"
+# Termbox2 2.5.0
+h="9024627dd7c22dc2d0185b703ee9afb20b1dde91a2bed9ff73b5ca0be77c792d"
+check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/refs/heads/master/termbox2.h"
 cp termbox2.h ../include/termbox.h
 
-# stb_image 2.28
-h="38e08c1c5ab8869ae8d605ddaefa85ad3fea24a2964fd63a099c0c0f79c70bcc"
-check_hash $h "https://raw.githubusercontent.com/nothings/stb/5736b15f7ea0ffb08dd38af21067c314d6a3aae9/stb_image.h"
+# stb_image 2.30
+h="594c2fe35d49488b4382dbfaec8f98366defca819d916ac95becf3e75f4200b3"
+check_hash $h "https://raw.githubusercontent.com/nothings/stb/013ac3beddff3dbffafd5177e7972067cd2b5083/stb_image.h"
 cp stb_image.h ../include/
 
 cd ../
-if [ "$(uname)" == SunOS ] ;
+if [ "$(uname)" = "SunOS" ] ;
 then
 	sed -i -e "/CC/s/^#//" Makefile
 	sed -i -e "/LIBS/s/^#//" Makefile
 	sed -i -e "/CFLAGS/s/^#//" Makefile
 fi
-if [ "$(uname)" == Darwin ] ;
+if [ "$(uname)" = "Darwin" ] ;
 then
 	sed -i -e "/LDFLAGS/s/^#//" GNUmakefile
 	sed -i -e "/CFLAGS/s/^#//" GNUmakefile

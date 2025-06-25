@@ -1,8 +1,5 @@
 /* See LICENSE file for copyright and license details. */
 #include <pthread.h>
-#ifdef __linux__
-#define _GNU_SOURCE
-#endif
 #include <signal.h>
 #include <termbox.h>
 #include "input.h"

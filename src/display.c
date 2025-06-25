@@ -33,7 +33,7 @@ void hide_query(char* url, char* urlbuf) {
         urlbuf[posx] = '\0';
 }
 
-void display() {
+void display(void) {
 	int bg = GREY;
         struct gmi_tab* tab = client.tab;
         struct gmi_page* page = &tab->page;
@@ -157,7 +157,7 @@ void display() {
 	tb_present();
 }
 
-void display_history() {
+void display_history(void) {
 	char urlbuf[1024];
         int ret = 0;
         struct tb_event ev;
