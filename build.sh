@@ -93,9 +93,11 @@ cp stb_image.h ../include/
 cd ../
 if [ "$(uname)" = "SunOS" ] ;
 then
-	sed -i -e "/CC/s/^#//" Makefile
-	sed -i -e "/LIBS/s/^#//" Makefile
-	sed -i -e "/CFLAGS/s/^#//" Makefile
+	sed -i -e "/CC/s/^#//" GNUmakefile
+	sed -i -e "/LDFLAGS/s/^#//" GNUmakefile
+	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
+	gmake
+	exit
 fi
 if [ "$(uname)" = "Darwin" ] ;
 then

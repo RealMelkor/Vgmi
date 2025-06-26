@@ -654,6 +654,8 @@ int sandbox_listen(void) {
                 if (len <= 0)
                         break;
 		if (fd > -1) {
+			SBC end_marker = (len >= 4) ? *(SBC*)&buf[len - 4] : 0;
+			if (end_marker) len -= 4;
 			write(fd, buf, len);
 			int sync = 0;
 			if (length) {
@@ -662,7 +664,7 @@ int sandbox_listen(void) {
 				if (length > 0) continue;
 				sync = 1;
 			}
-			if (*(SBC*)&buf[len - 4] == WR_END || sync) {
+			if (end_marker || sync) {
 				fsync(fd);
 				close(fd);
 				fd = -1;

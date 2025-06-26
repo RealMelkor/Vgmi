@@ -12,6 +12,10 @@ LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -lanl -ldl -lpthread
 # MacOS
 #CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
 #LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
+# Illumos
+#CC = gcc
+#CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
+#LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lpthread -lm -lsocket
 
 FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
 

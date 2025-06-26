@@ -720,7 +720,7 @@ int gmi_loadbookmarks(void) {
 	for (char *end = ptr + len; ptr < end; ptr++) {
 		if (*ptr != '\n' && ptr + 1 != end) continue;
 		*ptr = '\0';
-		client.bookmarks[n] = malloc(ptr-str+1);
+		client.bookmarks[n] = malloc(ptr - str + 1);
 		if (!client.bookmarks[n]) {
 			memory_failure(client.tab);
 			break;

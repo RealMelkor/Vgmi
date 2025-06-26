@@ -68,7 +68,7 @@ extern int wr_pair[2];
 extern int rd_pair[2];
 
 #ifndef SB_IGNORE
-#define gmi_savebookmarks() sandbox_savebookmarks()
+#define gmi_savebookmarks sandbox_savebookmarks
 #define cert_create(X, Y, Z) sandbox_cert_create(X, Y, Z)
 #endif
 
