@@ -12,6 +12,7 @@ struct request;
 
 #ifdef PARSER_INTERNAL
 int vread(int fd, void *buf, size_t nbytes);
+int vwrite(int fd, void *buf, size_t nbytes);
 int readnext(int fd, uint32_t *ch, size_t *pos, size_t length);
 int renderable(uint32_t codepoint);
 #endif

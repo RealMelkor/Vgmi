@@ -56,3 +56,16 @@ int vread(int fd, void *buf, size_t nbytes) {
 	}
 	return 0;
 }
+
+
+int vwrite(int fd, void *buf, size_t nbytes) {
+	ssize_t len;
+	char *ptr = buf;
+	while (nbytes) {
+		len = write(fd, ptr, nbytes);
+		if (len < 1) return -1;
+		nbytes -= len;
+		ptr += len;
+	}
+	return 0;
+}

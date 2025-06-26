@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
 #include "strlcpy.h"
 #include "strnstr.h"
@@ -28,15 +29,16 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 
 	found = 0;
 	for (i = 0; i < sizeof(buf) && i < len && i < length; i++) {
-		int ret = read(fd, &buf[i], 1);
-		if (ret != 1) return -1;
+		if (vread(fd, &buf[i], 1)) return -1;
 		if (i && buf[i] == '\n' && buf[i - 1] == '\r') {
 			found = 1;
 			break;
 		}
 	}
-	if (!found || i < 1) return -1;
-	*bytes_read = i + 1;
+	*bytes_read = i + found;
+	if (!found || i < 1) {
+		return -1;
+	}
 	buf[i - 1] = '\0';
 
 	ptr = strchr(buf, ' ');
@@ -57,10 +59,10 @@ void parser_request(int in, int out) {
 	while (1) {
 
 		int ret, bytes;
-		size_t length;
+		size_t length = 0;
 		struct request request = {0};
 
-		if (vread(in, &length, sizeof(length))) break;
+		if (vread(in, P(length))) break;
 		ret = parse_response(in, length, V(request.meta),
 				&request.status, &bytes);
 		if (request.status == -1) ret = ERROR_INVALID_STATUS;
@@ -68,17 +70,18 @@ void parser_request(int in, int out) {
 			uint8_t byte;
 			request.status = -1;
 			for (; bytes < (signed)length; bytes++)
-				read(in, P(byte));
-			write(out, P(request.status));
-			write(out, P(ret));
+				if (vread(in, P(byte))) break;
+			if ((size_t)bytes != length) break;
+			if (vwrite(out, P(request.status))) break;
+			if (vwrite(out, P(ret))) break;
 			continue;
 		}
 
-		write(out, P(request.status));
+		if (vwrite(out, P(request.status))) break;
 		if (request.status == GMI_SUCCESS && !request.meta[0]) {
 			STRLCPY(request.meta, "text/gemini");
 		}
-		write(out, V(request.meta));
+		if (vwrite(out, V(request.meta))) break;
 		if (request.status == GMI_SUCCESS) {
 			request.page.mime = parser_mime(V(request.meta));
 			request.page.offset = bytes;
@@ -86,8 +89,8 @@ void parser_request(int in, int out) {
 			request.page.mime = 0;
 			request.page.offset = 0;
 		}
-		write(out, P(request.page.mime));
-		write(out, P(request.page.offset));
+		if (vwrite(out, P(request.page.mime))) break;
+		if (vwrite(out, P(request.page.offset))) break;
 
 		if (request.status == GMI_SUCCESS &&
 				is_gemtext(V(request.meta))) {
@@ -97,7 +100,9 @@ void parser_request(int in, int out) {
 		} else {
 			uint8_t byte;
 			size_t i;
-			for (i = bytes; i < length; i++) read(in, &byte, 1);
+			for (i = bytes; i < length; i++)
+				if (vread(in, &byte, 1)) break;
+			if ((size_t)bytes != i) break;
 		}
 	}
 }

@@ -254,7 +254,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	insert_unicode(V(client->tab->input), &client->cursor, ev.ch);
 	client->cursor += prefix;
 rewrite:
-	if (req->status == GMI_INPUT || req->status == GMI_SECRET) {
+	if (req->status == GMI_INPUT) {
 		strlcpy(&client->cmd[prefix], client->tab->input,
 				sizeof(client->cmd) - prefix);
 	} else if (req->status == GMI_SECRET) {
