@@ -46,7 +46,7 @@ int proc_fork(char *arg, int *fd_in, int *fd_out) {
 	argv[1] = arg;
 	argv[2] = NULL;
 
-	err = posix_spawn(&pid, argv[0], &action, NULL, argv, NULL);
+	err = posix_spawnp(&pid, argv[0], &action, NULL, argv, NULL);
 
 	close(in[1]);
 	close(out[0]);
