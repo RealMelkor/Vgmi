@@ -6,10 +6,10 @@
 #define _DEFAULT_SOURCE
 #include <syscall.h>
 #endif
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <spawn.h>
 #include "error.h"
 #include "proc.h"
 
@@ -21,38 +21,39 @@ void proc_argv(char **argv) {
 
 int proc_fork(char *arg, int *fd_in, int *fd_out) {
 
-	int in[2], out[2];
+	int in[2], out[2], err;
 	uint8_t byte;
 	pid_t pid;
+	char **argv;
+	posix_spawn_file_actions_t action;
 
 	if (!argv_ptr) return ERROR_NULL_ARGUMENT;
+	if (pipe(in) || pipe(out)) return ERROR_ERRNO;
 
-	if (pipe(in) || pipe(out) || (pid = vfork()) < 0) return ERROR_ERRNO;
-	if (!pid) {
-		char **argv;
-		close(in[0]);
-		close(out[1]);
+	posix_spawn_file_actions_init(&action);
+	posix_spawn_file_actions_addclose(&action, STDOUT_FILENO);
+	posix_spawn_file_actions_adddup2(&action, in[1], STDOUT_FILENO);
+	posix_spawn_file_actions_addclose(&action, in[0]);
+	posix_spawn_file_actions_addclose(&action, in[1]);
+	posix_spawn_file_actions_addclose(&action, STDIN_FILENO);
+	posix_spawn_file_actions_adddup2(&action, out[0], STDIN_FILENO);
+	posix_spawn_file_actions_addclose(&action, out[0]);
+	posix_spawn_file_actions_addclose(&action, out[1]);
 
-		argv = malloc(sizeof(char*) * 3);
-		if (!argv) exit(0);
-		argv[0] = argv_ptr[0];
-		argv[1] = arg;
-		argv[2] = NULL;
+	argv = malloc(sizeof(char*) * 3);
+	if (!argv) exit(0);
+	argv[0] = argv_ptr[0];
+	argv[1] = arg;
+	argv[2] = NULL;
 
-		close(STDOUT_FILENO);
-		if (dup(in[1]) == -1) exit(0);
-		close(in[1]);
-		close(STDIN_FILENO);
-		if (dup(out[0]) == -1) exit(0);
-		close(out[0]);
-
-		execvp(argv_ptr[0], argv);
-		exit(0);
-	}
+	err = posix_spawn(&pid, argv[0], &action, NULL, argv, NULL);
 
 	close(in[1]);
 	close(out[0]);
 
+	free(argv);
+
+	if (err != 0) return ERROR_ERRNO;
 	if (read(in[0], &byte, 1) != 1 || byte) return ERROR_SANDBOX_FAILURE;
 	if (fd_out) *fd_out = out[1];
 	if (fd_in) *fd_in = in[0];
