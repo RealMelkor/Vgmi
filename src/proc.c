@@ -40,10 +40,10 @@ int proc_fork(char *arg, int *fd_in, int *fd_out) {
 		argv[2] = NULL;
 
 		close(STDOUT_FILENO);
-		dup(in[1]);
+		if (dup(in[1]) == -1) exit(0);
 		close(in[1]);
 		close(STDIN_FILENO);
-		dup(out[0]);
+		if (dup(out[0]) == -1) exit(0);
 		close(out[0]);
 
 		execvp(argv_ptr[0], argv);

@@ -29,7 +29,7 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 
 	found = 0;
 	for (i = 0; i < sizeof(buf) && i < len && i < length; i++) {
-		if (vread(fd, &buf[i], 1)) return -1;
+		if (vread(fd, &buf[i], 1)) break;
 		if (i && buf[i] == '\n' && buf[i - 1] == '\r') {
 			found = 1;
 			break;
@@ -58,7 +58,7 @@ void parser_request(int in, int out) {
 	if (parser_sandbox(out, "vgmi [request]")) return;
 	while (1) {
 
-		int ret, bytes;
+		int ret, bytes = 0;
 		size_t length = 0;
 		struct request request = {0};
 

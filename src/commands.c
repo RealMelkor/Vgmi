@@ -278,9 +278,10 @@ int command_exec(struct client *client, const char* args, size_t len) {
 	snprintf(V(buf), "\"%s\" %s/\"%s\"",
 			config.launcher, download_dir, name);
 	tb_shutdown();
-	system(buf);
+	err = system(buf);
 	unlinkat(download_fd, name, 0);
 	client_init_termbox();
+	if (err == -1) return -1;
 	return 0;
 }
 

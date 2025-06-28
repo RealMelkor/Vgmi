@@ -45,30 +45,33 @@ int parse_request(struct parser *parser, struct request *request) {
 
 	pthread_mutex_lock(&parser->mutex);
 
-	write(parser->out, P(request->length));
+	ret = ERROR_ERRNO;
+
+	if (vwrite(parser->out, P(request->length))) goto fail;
 	sent = request->length > sizeof(request->meta) ?
 		sizeof(request->meta) : request->length;
-	write(parser->out, request->data, sent);
+	if (vwrite(parser->out, request->data, sent)) goto fail;
 
-	if ((ret = vread(parser->in, P(request->status)))) goto fail;
+	if (vread(parser->in, P(request->status))) goto fail;
 	if (request->status == -1) {
 		int error;
-		if ((ret = vread(parser->in, P(error)))) goto fail;
+		if (vread(parser->in, P(error))) goto fail;
 		ret = error;
 		goto fail;
 	}
-	if ((ret = vread(parser->in, V(request->meta)))) goto fail;
-	if ((ret = vread(parser->in, P(request->page.mime)))) goto fail;
-	if ((ret = vread(parser->in, P(request->page.offset)))) goto fail;
+	if (vread(parser->in, V(request->meta))) goto fail;
+	if (vread(parser->in, P(request->page.mime))) goto fail;
+	if (vread(parser->in, P(request->page.offset))) goto fail;
 
 	gemtext = request->status == GMI_SUCCESS &&
 			is_gemtext(V(request->meta));
 	request->page.links_count = 0;
 	request->page.links = NULL;
+	if (!gemtext && sent < request->length) {
+		if(vwrite(parser->out, &request->data[sent],
+				request->length - sent)) goto fail;
+	}
 	ret = 0;
-	if (!gemtext && sent < request->length)
-		write(parser->out, &request->data[sent],
-				request->length - sent);
 	while (gemtext) {
 
 		size_t length = 0;
@@ -99,7 +102,8 @@ int parse_request(struct parser *parser, struct request *request) {
 			if (sent + bytes > request->length)
 				bytes = request->length - sent;
 			if (bytes < 1) continue;
-			write(parser->out, &request->data[sent], bytes);
+			if (vwrite(parser->out, &request->data[sent], bytes))
+				goto fail;
 			sent += bytes;
 			continue;
 		}
@@ -178,9 +182,10 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 	pthread_mutex_lock(&parser->mutex);
 
 	length = request->length - request->page.offset;
-	write(parser->out, P(length));
-	write(parser->out, P(width));
-	write(parser->out, P(request->page.mime));
+	if (vwrite(parser->out, P(length)) ||
+			vwrite(parser->out, P(width)) ||
+			vwrite(parser->out, P(request->page.mime)))
+		return ERROR_ERRNO;
 
 	request->page.width = width;
 	ret = page_update(parser->in, parser->out,
@@ -214,6 +219,6 @@ int parser_sandbox(int out, const char *title) {
 	sandbox_set_name(title);
 	if (sandbox_isolate()) return -1;
 	byte = 0;
-	write(out, &byte, 1);
+	if (vwrite(out, &byte, 1)) return -1;
 	return 0;
 }

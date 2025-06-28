@@ -39,11 +39,13 @@ int about_certificates(char **out, size_t *length_out) {
 
 	char *data = NULL;
 	size_t length = 0;
+	int fd;
 	const char title[] = "# Client certificates\n\n";
 	DIR *dir;
 	struct dirent *entry;
 
-	if (!(dir = fdopendir(dup(storage_fd)))) return ERROR_ERRNO;
+	if ((fd = dup(storage_fd)) == -1) return ERROR_ERRNO;
+	if (!(dir = fdopendir(fd))) return ERROR_ERRNO;
 	rewinddir(dir);
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;

@@ -64,7 +64,6 @@ int parse_links(int in, size_t length, int out) {
 
 	pos = link = header = ignore_mode = ignore = 0;
 	newline = 1;
-	link = 0;
 	for (i = 0; i < length; ) {
 
 		uint32_t ch;
@@ -171,15 +170,15 @@ int parse_links(int in, size_t length, int out) {
 			if (link_length < 1) {
 				link_length = STRLCPY(buf, ".");
 			}
-			write(out, P(link_length));
-			write(out, buf, link_length);
+			if (vwrite(out, P(link_length))) return -1;
+			if (vwrite(out, buf, link_length)) return -1;
 		}
 
 		newline = 1;
 
 	}
 	i = -1;
-	write(out, P(i));
-	write(out, V(title));
+	if (vwrite(out, P(i))) return -1;
+	if (vwrite(out, V(title))) return -1;
 	return 0;
 }

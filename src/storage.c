@@ -110,8 +110,12 @@ int storage_download_path(char *out, size_t length) {
 
 	f = popen("xdg-user-dir DOWNLOAD 2>&1", "r");
 	if (f) {
-		fread(out, 1, length, f);
+		size_t bytes = fread(out, 1, length, f);
 		pclose(f);
+		if (bytes < 1) {
+			out[0] = 0;
+			return -1;
+		}
 		if (out[0] == '/') { /* success if the output is a path */
 			size_t i = 0;
 			while (i < length) {
@@ -194,8 +198,9 @@ int storage_read(const char *name, char *out, size_t length,
 int storage_init_path(int *fd, int download) {
 	char path[PATH_MAX];
 	int ret;
-	if (download) storage_path(V(path));
-	else storage_download_path(V(path));
+	if (download) {
+		if (storage_path(V(path))) return ERROR_STORAGE_ACCESS;
+	} else if (storage_download_path(V(path))) return ERROR_STORAGE_ACCESS;
 	if ((ret = storage_mkdir(path))) return ret;
 	if ((*fd = open(path, O_DIRECTORY | O_CLOEXEC)) < 0)
 		return ERROR_STORAGE_ACCESS;
@@ -241,12 +246,13 @@ int storage_find(const char* executable, char *path, size_t length) {
 
 int storage_clear_tmp(void) {
 	DIR *dir;
-	int ret;
+	int ret, fd;
 	struct dirent *entry;
 
 	if (download_fd < 0 && ((ret = storage_init_path(&download_fd, 1))))
 		return ret;
-	if (!(dir = fdopendir(dup(download_fd)))) return ERROR_ERRNO;
+	if ((fd = dup(download_fd)) == -1) return ERROR_ERRNO;
+	if (!(dir = fdopendir(fd))) return ERROR_ERRNO;
 	rewinddir(dir);
 	while ((entry = readdir(dir))) {
 		if (!memcmp(entry->d_name, V(".tmp_vgmi_exec_") - 1))

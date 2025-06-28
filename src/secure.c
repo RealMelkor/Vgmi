@@ -202,7 +202,10 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		return ERROR_TLS_FAILURE;
 	}
 	*length = len;
-	if (readonly(ptr, *length, data)) return ERROR_ERRNO;
+	if (readonly(ptr, *length, data)) {
+		free(ptr);
+		return ERROR_ERRNO;
+	}
 	free(ptr);
 	return 0;
 }

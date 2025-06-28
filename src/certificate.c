@@ -50,7 +50,7 @@ int certificate_create(char *host, char *error, int errlen) {
 #endif
 
 #ifdef __linux__
-	getrandom(&id, sizeof(id), GRND_RANDOM);
+	if (getrandom(&id, sizeof(id), GRND_RANDOM) == -1) goto failed;
 #else
 	arc4random_buf(&id, sizeof(id));
 #endif
@@ -92,6 +92,7 @@ int certificate_create(char *host, char *error, int errlen) {
 	if (PEM_write_PrivateKey(f, pkey, NULL, NULL, 0, NULL, NULL) != 1)
 		goto failed;
 	fclose(f);
+	f = NULL;
 
 	/* Certificate */
 	fd = storage_open(crt, O_CREAT|O_WRONLY|O_TRUNC, 0600);
@@ -108,8 +109,8 @@ int certificate_create(char *host, char *error, int errlen) {
 	if (PEM_write_X509(f, x509) != 1)
 		goto failed;
 	fclose(f);
-
 	f = NULL;
+
 	ret = 0;
 	goto skip_error;
 failed:
