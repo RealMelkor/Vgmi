@@ -102,7 +102,7 @@ void parser_request(int in, int out) {
 			size_t i;
 			for (i = bytes; i < length; i++)
 				if (vread(in, &byte, 1)) break;
-			if ((size_t)bytes != i) break;
+			if ((size_t)i != length) break;
 		}
 	}
 }
