@@ -1346,8 +1346,10 @@ const char *tb_strerror(int err) {
 		case TB_ERR_RESIZE_POLL:
 		case TB_ERR_RESIZE_READ:
 		default:
-			strerror_r(global.last_errno, global.errbuf,
-					sizeof(global.errbuf));
+			if (strerror_r(global.last_errno, global.errbuf,
+					sizeof(global.errbuf))) {
+				return "Unknown error";
+			};
 			return (const char *)global.errbuf;
 	}
 }
@@ -2020,8 +2022,12 @@ static int wait_event(struct tb_event *event, int timeout) {
 
 		if (resize_has_events) {
 			int ignore = 0;
-			read(global.resize_pipefd[0], &ignore, sizeof(ignore));
-			/* TODO Harden against errors encountered mid-resize */
+			ssize_t ret = read(global.resize_pipefd[0],
+						&ignore, sizeof(ignore));
+			if (ret != sizeof(ignore)) {
+				global.last_errno = errno;
+				return TB_ERR_READ;
+			}
 			if_err_return(rv, update_term_size());
 			if_err_return(rv, resize_cellbufs());
 			event->type = TB_EVENT_RESIZE;
@@ -2334,8 +2340,9 @@ static int resize_cellbufs(void) {
 
 static void handle_resize(int sig) {
 	int errno_copy = errno;
-	write(global.resize_pipefd[1], &sig, sizeof(sig));
-	errno = errno_copy;
+	if (write(global.resize_pipefd[1], &sig, sizeof(sig)) != sizeof(sig)) {
+		errno = errno_copy;
+	}
 }
 
 static int send_attr(uintattr_t fg, uintattr_t bg) {
@@ -2818,7 +2825,10 @@ int tb_refresh(void) {
 
 	if_not_init_return();
 
-	write(global.resize_pipefd[1], &i32, sizeof(i32));
+	if (write(global.resize_pipefd[1], &i32, sizeof(i32)) != sizeof(i32)) {
+		global.last_errno = errno;
+		return TB_ERR;
+	}
 
 	return TB_OK;
 }

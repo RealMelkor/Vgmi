@@ -32,8 +32,8 @@ struct parser {
 	int out;
 	pthread_mutex_t mutex;
 };
-struct parser request_parser = { .mutex = PTHREAD_MUTEX_INITIALIZER };
-struct parser page_parser = { .mutex = PTHREAD_MUTEX_INITIALIZER };
+struct parser request_parser;
+struct parser page_parser;
 
 void parser_request(int in, int out);
 
@@ -197,6 +197,7 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 }
 
 int parser_create(struct parser *parser, int type) {
+	pthread_mutex_init(&parser->mutex, NULL);
 	switch (type) {
 	case PARSER_GEMTEXT:
 		return proc_fork("--page", &parser->in, &parser->out);

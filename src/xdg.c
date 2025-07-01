@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <string.h>
-#include <time.h>
 #include "macro.h"
 #include "strnstr.h"
 #include "proc.h"
@@ -15,6 +15,8 @@
 #include "error.h"
 #include "config.h"
 #include "storage.h"
+#define PARSER_INTERNAL
+#include "parser.h"
 
 char launcher_path[PATH_MAX];
 const char download_prefix[] = "download://";
@@ -61,7 +63,7 @@ static int open_download(const char *input) {
 
 	snprintf(V(cmd), "\"%s\" %s/\"%s\" %s",
 			config.launcher, download_dir, buf, redirect());
-	system(cmd);
+	if (system(cmd) == -1) return ERROR_ERRNO;
 	return 0;
 }
 
@@ -77,7 +79,7 @@ int xdg_exec(char *line, size_t len) {
 		return open_download(line);
 	}
 	snprintf(V(cmd), "\"%s\" %s %s", config.launcher, line, redirect());
-	system(cmd);
+	if (system(cmd) == -1) return -1;
 	return 0;
 }
 
@@ -93,7 +95,7 @@ int xdg_proc(int in, int out) {
 
 	sandbox_set_name("vgmi [xdg]");
 	i = byte = 0;
-	write(out, P(byte));
+	if (vwrite(out, P(byte))) return -1;
 	while (1) {
 		if (i >= sizeof(buf)) i = 0;
 		if (read(in, P(byte)) != 1) break;
@@ -103,7 +105,7 @@ int xdg_proc(int in, int out) {
 		}
 		buf[i] = 0;
 		byte = xdg_exec(V(buf));
-		write(out, P(byte));
+		if (vwrite(out, P(byte))) return -1;
 		i = 0;
 	}
 	return 0;
@@ -112,9 +114,9 @@ int xdg_proc(int in, int out) {
 int xdg_in = -1, xdg_out = -1;
 int xdg_request(const char *request) {
 	unsigned char byte;
-	write(xdg_out, request, strlen(request));
+	if (vwrite(xdg_out, (void*)request, strlen(request))) return ERROR_XDG;
 	byte = '\n';
-	write(xdg_out, P(byte));
+	if (vwrite(xdg_out, P(byte))) return ERROR_XDG;
 	if (read(xdg_in, &byte, 1) != 1 || byte) return ERROR_XDG;
 	return 0;
 }

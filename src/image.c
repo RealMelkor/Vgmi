@@ -16,6 +16,8 @@
 #include "proc.h"
 #include "macro.h"
 #include "config.h"
+#define PARSER_INTERNAL
+#include "parser.h"
 
 int image_process = 0;
 
@@ -92,7 +94,7 @@ void image_parser(int in, int out) {
 	sandbox_isolate();
 
 	byte = 0;
-	write(out, &byte, 1);
+	if (vwrite(out, &byte, 1)) return;
 
 	while (1) {
 
@@ -110,15 +112,15 @@ void image_parser(int in, int out) {
 		if (!data) goto fail;
 #endif
 		if (!size) goto fail;
-		write(out, P(size));
+		if (vwrite(out, P(size))) goto fail;
 		if (__read(in, data, size)) goto fail;
 		img = image_load(data, size, &x, &y);
 		if (!img) goto fail;
 #ifndef STATIC_ALLOC
 		free(data);
 #endif
-		write(out, P(x));
-		write(out, P(y));
+		if (vwrite(out, P(x))) goto fail;
+		if (vwrite(out, P(y))) goto fail;
 		if (_write(out, img, x * y * 3)) break;
 #ifndef STATIC_ALLOC
 		free(img);
@@ -126,7 +128,7 @@ void image_parser(int in, int out) {
 		continue;
 fail:
 		size = -1;
-		write(out, P(size));
+		if (vwrite(out, P(size))) goto fail;
 #ifndef STATIC_ALLOC
 		free(data);
 #endif
@@ -141,7 +143,7 @@ void *image_parse(void *data, int len, int *x, int *y) {
 	void *img;
 	if (image_fd_out == -1 || image_fd_in == -1) return NULL;
 	empty_pipe(image_fd_in);
-	write(image_fd_out, P(len));
+	OK(vwrite(image_fd_out, P(len)));
 	OK(_read(image_fd_in, P(size)));
 	OK(size != len);
 	OK(_write(image_fd_out, data, len));

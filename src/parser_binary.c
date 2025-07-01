@@ -32,7 +32,7 @@ int parse_binary(int in, size_t length, int width, int out) {
 		uint8_t byte;
 		char buf[8];
 
-		read(in, &byte, 1);
+		if (vread(in, &byte, 1)) return -1;
 		snprintf(V(buf), "%02X ", byte);
 
 		x += 3;

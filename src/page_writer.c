@@ -11,6 +11,7 @@
 #define PAGE_INTERNAL
 #include "page.h"
 #include "request.h"
+#define PARSER_INTERNAL
 #include "parser.h"
 
 static int newline(struct termwriter *termwriter) {
@@ -30,7 +31,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 	/* flush last cells before sending EOF */
 	if (cell.special == PAGE_EOF) {
 		writenewline(termwriter, termwriter->pos);
-		write(termwriter->fd, P(cell));
+		if (vwrite(termwriter->fd, P(cell))) return -1;
 		return 0;
 	}
 
@@ -41,7 +42,7 @@ int writecell(struct termwriter *termwriter, struct page_cell cell,
 		cell.codepoint = pos;
 		cell.link = termwriter->sent++;
 		termwriter->last_reset = termwriter->sent;
-		write(termwriter->fd, P(cell));
+		if (vwrite(termwriter->fd, P(cell))) return -1;
 	}
 	
 	if (cell.codepoint == '\n') {

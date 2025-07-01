@@ -47,6 +47,7 @@ Command | Description
 :gencert | Generate a client-certificate for the current capsule
 :forget [host] | Forget the certificate for the host
 :download [name] | Download the current page, the name is optional
+:exec | Open the current page in an external program
 :help | Open about:help in a new tab
 
 ## Sandboxing

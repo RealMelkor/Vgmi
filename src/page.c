@@ -98,7 +98,10 @@ int page_update(int in, int out, const char *data, size_t length,
 			if (bytes_sent + bytes > length)
 				bytes = length - bytes_sent;
 			if (bytes < 1) continue;
-			write(out, &data[bytes_sent], bytes);
+			if (write(out, &data[bytes_sent], bytes) != bytes) {
+				ret = ERROR_ERRNO;
+				break;
+			}
 			bytes_sent += bytes;
 			continue;
 		}
