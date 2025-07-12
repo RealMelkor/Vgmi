@@ -83,15 +83,22 @@ void display(void) {
 	if (client.tabs_count > 1) {
 		tb_colorline(0, 0, bg);
 		gmi_gettitle(page, tab->url);
-		int index = 1;
+		int index = 1, x = 1;
 		struct gmi_tab* ptr = tab;
 		while (ptr->prev) {
 			index++;
 			ptr = ptr->prev;
 		}
-		tb_printf(0, 0, BLACK, bg,
-			  " %s [%d/%d]", page->title,
-			  index, client.tabs_count);
+		for (size_t i = 0; i < sizeof(page->title) && page->title[i];) {
+			uint32_t c, len;
+			len = tb_utf8_char_to_unicode(&c, &page->title[i]);
+			if (i + len > sizeof(page->title)) break;
+			i += len;
+			tb_set_cell(x, 0, c, BLACK, bg);
+			x += mk_wcwidth(c);
+		}
+		tb_printf(x, 0, BLACK, bg,
+			  " [%d/%d]", index, client.tabs_count);
 	}
 
         // current url

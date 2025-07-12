@@ -448,7 +448,7 @@ int sandbox_init(void) {
 
 #ifndef __MUSL__
 	// with glibc, load dynamic library before restricting process
-	libgcc_s = dlopen("/lib64/libgcc_s.so.1", RTLD_LAZY);
+	libgcc_s = dlopen("libgcc_s.so.1", RTLD_LAZY);
 	if (!libgcc_s)
 		printf("failed to load libgcc_s.so.1, " \
 		       "unexpected behaviors may occur\n");

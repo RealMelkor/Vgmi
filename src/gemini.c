@@ -737,7 +737,7 @@ void sanitize(char* str, size_t len) {
 	int n = 0;
 	for (size_t i = 0; i < len; i += n) {
 		n = tb_utf8_char_length(str[i]);
-		if (n > 1 || str[i] >= 32) continue;
+		if (i + n < len && (n > 1 || str[i] >= 32)) continue;
 		str[i] = '\0';
 		break;
 	}
