@@ -18,7 +18,7 @@
 #include "parser.h"
 #include "secure.h"
 #include "tab.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "url.h"
 #include "error.h"
 
@@ -140,7 +140,7 @@ restart:
 		tab->failure = 1;
 	} else if (gemini_isredirect(request.status)) {
 		redirect = 1;
-		STRLCPY(destination, request.meta);
+		STRSCPY(destination, request.meta);
 		confirm = 0;
 	} else if (request.status == -1) {
 		request.error = ERROR_INVALID_DATA;
@@ -212,7 +212,7 @@ int tab_request(struct tab* tab, const char *url) {
 
 	args = malloc(sizeof(*args));
 	if (!args) return ERROR_MEMORY_FAILURE;
-	STRLCPY(args->url, url);
+	STRSCPY(args->url, url);
 	args->tab = tab;
 	args->request = tab_request_new(tab);
 	if (!args->request) {

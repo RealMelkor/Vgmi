@@ -17,6 +17,7 @@
 #include "request.h"
 #include "tab.h"
 #include "strnstr.h"
+#include "strscpy.h"
 #include "error.h"
 #include "parser.h"
 #include "known_hosts.h"
@@ -137,7 +138,7 @@ void tab_display(struct tab *tab, struct client *client) {
 	if (client->mode != MODE_CMDLINE && tab->failure) {
 		tab->failure = 0;
 		client->error = 1;
-		snprintf(V(client->cmd), "%s", tab->error);
+		STRSCPY(client->cmd, tab->error);
 	}
 
 	switch (tab->request->state) {

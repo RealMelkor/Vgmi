@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #include "config.h"
 #define ABOUT_INTERNAL

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #define CONFIG_INTERNAL
 #include "config.h"

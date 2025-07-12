@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "utf8.h"
 #include "url.h"
@@ -23,11 +23,11 @@ int format_link(const char *link, size_t length,
 	char buf[1024], *ptr, *end;
 	/* remove ./ and ../ at the start */
 	if (length > 2 && !memcmp(link, "./", 2)) {
-		end = buf + STRLCPY(buf, &link[2]);
+		end = buf + STRSCPY(buf, &link[2]);
 	} else if (length > 3 && !memcmp(link, "../", 3)) {
-		end = buf + STRLCPY(buf, &link[3]);
+		end = buf + STRSCPY(buf, &link[3]);
 	} else {
-		end = buf + STRLCPY(buf, link);
+		end = buf + STRSCPY(buf, link);
 	}
 	if (end >= buf + sizeof(buf)) end = buf + sizeof(buf) - 1;
 	/* remove /./ */
@@ -52,7 +52,7 @@ int format_link(const char *link, size_t length,
 			}
 		}
 	}
-	strlcpy(out, buf, out_length);
+	strscpy(out, buf, out_length);
 	return 0;
 }
 
@@ -168,7 +168,7 @@ int parse_links(int in, size_t length, int out) {
 			url_convert(link, V(buf));
 			link_length = strnlen(V(buf));
 			if (link_length < 1) {
-				link_length = STRLCPY(buf, ".");
+				link_length = STRSCPY(buf, ".");
 			}
 			if (vwrite(out, P(link_length))) return -1;
 			if (vwrite(out, buf, link_length)) return -1;

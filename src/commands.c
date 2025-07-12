@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "macro.h"
 #include "strnstr.h"
 #include "config.h"
@@ -23,7 +23,7 @@ static int need_argument(struct client * client,
 			const char *field, size_t len, char *error) {
 	if (!(!len || !*field)) return 0;
 	client->error = 1;
-	STRLCPY(client->cmd, error);
+	STRSCPY(client->cmd, error);
 	return 1;
 }
 
@@ -109,7 +109,7 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	if (need_argument(client, ptr, len, "No URL")) return 0;
 	if (!client->tab) return 0;
 
-	STRLCPY(buf, ptr);
+	STRSCPY(buf, ptr);
 	i = strnlen(V(buf)) - 1;
 	for (; i > 0; i--) {
 		if (buf[i] <= ' ') buf[i] = '\0';
@@ -126,7 +126,7 @@ int command_open(struct client *client, const char* ptr, size_t len) {
 	link = atoi(buf) - 1;
 	if (link >= req->page.links_count) {
 		client->error = 1;
-		STRLCPY(client->cmd, "Invalid link number");
+		STRSCPY(client->cmd, "Invalid link number");
 		return 0;
 	}
 	request_follow(req, req->page.links[link], V(buf));
@@ -146,12 +146,12 @@ int command_gencert(struct client *client, const char* args, size_t len) {
 	req = tab_completed(client->tab);
 	if (!req) {
 		client->error = 1;
-		STRLCPY(client->cmd, "Invalid page");
+		STRSCPY(client->cmd, "Invalid page");
 		return 0;
 	}
 	if (!strncmp(req->url, V("about:") - 1)) {
 		client->error = 1;
-		STRLCPY(client->cmd,
+		STRSCPY(client->cmd,
 			"Cannot create certificate for \"about:\" pages");
 		return 0;
 	}
@@ -172,7 +172,7 @@ int command_forget(struct client *client, const char* ptr, size_t len) {
 	if (!client->tab) return 0;
 
 	host = ptr;
-	STRLCPY(buf, host);
+	STRSCPY(buf, host);
 	i = strnlen(V(buf)) - 1;
 	for (; i > 0; i--) {
 		if (buf[i] <= ' ') buf[i] = '\0';
@@ -196,24 +196,24 @@ int command_download(struct client *client, const char* args, size_t len) {
 
 	struct request *req;
 	FILE *f;
-	char name[MAX_URL], *ptr;
+	char name[MAX_CMDLINE - 128], *ptr;
 	char buf[MAX_URL];
 	int i;
 
 	req = tab_completed(client->tab);
 	if (!req) {
 		client->error = 1;
-		STRLCPY(client->cmd, "Invalid page");
+		STRSCPY(client->cmd, "Invalid page");
 		return 0;
 	}
 
 	if (len && *args) {
-		STRLCPY(name, args);
+		STRSCPY(name, args);
 	} else if (!strnstr(req->url, "://", sizeof(req->url))) {
-		STRLCPY(name, req->url);
+		STRSCPY(name, req->url);
 	} else {
 		char *start;
-		size_t i = STRLCPY(buf, req->url);
+		size_t i = STRSCPY(buf, req->url);
 		for (; i > 0; i--) {
 			if (WHITESPACE(buf[i])) buf[i] = 0;
 			else if (buf[i] == '/') buf[i] = 0;
@@ -224,11 +224,11 @@ int command_download(struct client *client, const char* args, size_t len) {
 		else ptr++;
 		start = ptr;
 		for (i = 0; *ptr; i++) ptr++;
-		if (i < 2) STRLCPY(name, req->url);
-		else STRLCPY(name, start);
+		if (i < 2) STRSCPY(name, req->url);
+		else STRSCPY(name, start);
 	}
 
-	STRLCPY(buf, name);
+	STRSCPY(buf, name);
 	for (i = 1; i < 128 && storage_download_exist(name); i++) {
 		char *dot;
 		dot = strrchr(buf, '.');
@@ -257,7 +257,7 @@ int command_download(struct client *client, const char* args, size_t len) {
 }
 
 int command_exec(struct client *client, const char* args, size_t len) {
-	char buf[PATH_MAX], download_dir[PATH_MAX], name[256];
+	char buf[PATH_MAX * 4], download_dir[PATH_MAX], name[256];
 	int err;
 	if (no_argument(client, args, len)) return 0;
 	client->error = 0;

@@ -8,7 +8,7 @@
 #include <string.h>
 #include <time.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "error.h"
 #include "image.h"
@@ -41,10 +41,10 @@ void config_default(void) {
 	config.maximumCachedPages= 15;
 	config.maximumHistorySize = 3000;
 	config.maximumHistoryCache = 200;
-	STRLCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
-	STRLCPY(config.downloadsPath, "");
-	STRLCPY(config.proxyHttp, "");
-	STRLCPY(config.launcher, "xdg-open");
+	STRSCPY(config.searchEngineURL, DEFAULT_SEARCH_URL);
+	STRSCPY(config.downloadsPath, "");
+	STRSCPY(config.proxyHttp, "");
+	STRSCPY(config.launcher, "xdg-open");
 }
 
 static int set_field(struct field field, int v, char *str) {
@@ -60,7 +60,7 @@ static int set_field(struct field field, int v, char *str) {
 			}
 			break;
 		case VALUE_STRING:
-			strlcpy(fields[i].ptr, str, CONFIG_STRING_LENGTH);
+			strscpy(fields[i].ptr, str, CONFIG_STRING_LENGTH);
 			break;
 		}
 		break;
@@ -81,7 +81,7 @@ int config_set_field(int id, const char *value) {
 		}
 		break;
 	case VALUE_STRING:
-		strlcpy(fields[id].ptr, value, CONFIG_STRING_LENGTH);
+		strscpy(fields[id].ptr, value, CONFIG_STRING_LENGTH);
 		break;
 	default:
 		return ERROR_INVALID_ARGUMENT;
@@ -130,7 +130,7 @@ int config_load(void) {
 		}
 		if (!in_str && ch == '=') {
 			buf[i] = 0;
-			STRLCPY(field.name, buf);
+			STRSCPY(field.name, buf);
 			i = 0;
 			continue;
 		}
@@ -185,7 +185,7 @@ int config_correction(void) {
 					CONFIG_STRING_LENGTH - (ptr - value));
 			}
 			if (!ptr || second) {
-				strlcpy(fields[i].ptr, DEFAULT_SEARCH_URL,
+				strscpy(fields[i].ptr, DEFAULT_SEARCH_URL,
 						CONFIG_STRING_LENGTH);
 			}
 		}

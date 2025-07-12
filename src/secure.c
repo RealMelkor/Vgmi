@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #include "client.h"
 #include "page.h"
@@ -55,7 +55,7 @@ int secure_init(struct secure *secure, const char *hostname) {
 
 	if (!secure_initialized) {
 		if (tls_init()) {
-			STRLCPY(error_tls, strerror(errno));
+			STRSCPY(error_tls, strerror(errno));
 			return ERROR_TLS_FAILURE;
 		}
 		secure_initialized = 1;
@@ -76,7 +76,7 @@ int secure_init(struct secure *secure, const char *hostname) {
 
 		tls_config_insecure_noverifycert(secure->config);
 		if (tls_configure(secure->ctx, secure->config)) {
-			STRLCPY(error_tls, _tls_config_error(secure->config));
+			STRSCPY(error_tls, _tls_config_error(secure->config));
 			return ERROR_TLS_FAILURE;
 		}
 
@@ -136,13 +136,13 @@ int secure_connect(struct secure *secure, struct request request) {
 
 	if (tls_connect_socket(secure->ctx, sockfd, request.name)) {
 		ret = ERROR_TLS_FAILURE;
-		STRLCPY(error_tls, _tls_error(secure->ctx));
+		STRSCPY(error_tls, _tls_error(secure->ctx));
 		goto error;
 	}
 
 	if (tls_handshake(secure->ctx)) {
 		ret = ERROR_TLS_FAILURE;
-		STRLCPY(error_tls, _tls_error(secure->ctx));
+		STRSCPY(error_tls, _tls_error(secure->ctx));
 		goto error;
 	}
 
@@ -163,7 +163,7 @@ error:
 
 int secure_send(struct secure *secure, const char *data, size_t len) {
 	if (tls_write(secure->ctx, data, len) == (ssize_t)len) return 0;
-	STRLCPY(error_tls, _tls_error(secure->ctx));
+	STRSCPY(error_tls, _tls_error(secure->ctx));
 	return ERROR_TLS_FAILURE;
 }
 
@@ -198,7 +198,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 	}
 	if (i < 0) {
 		free(ptr);
-		STRLCPY(error_tls, _tls_error(secure->ctx));
+		STRSCPY(error_tls, _tls_error(secure->ctx));
 		return ERROR_TLS_FAILURE;
 	}
 	*length = len;

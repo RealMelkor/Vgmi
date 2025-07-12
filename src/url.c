@@ -15,7 +15,7 @@
 #include "request.h"
 #include "error.h"
 #include "strnstr.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 
 int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 
@@ -37,7 +37,7 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 		len = outlen - pos;
 		if (unicode) {
 			int ret;
-			pos += strlcpy(&out[pos], "xn--", outlen - pos);
+			pos += strscpy(&out[pos], "xn--", outlen - pos);
 			ret = punycode_encode(i - n, &part[n],
 					NULL, &len, &out[pos]);
 			if (ret != punycode_success)
@@ -81,7 +81,7 @@ int servername_from_url(const char *url, char* out, size_t len) {
 
 	if ((size_t)(end - start) >= len) return ERROR_BUFFER_OVERFLOW;
 
-	strlcpy(out, start, end - start + 1);
+	strscpy(out, start, end - start + 1);
 	return 0;
 }
 
@@ -105,7 +105,7 @@ int port_from_url(const char *url) {
 	const_ptr = strnstr(url, "://", MAX_URL);
 	if (!const_ptr) const_ptr = url;
 	else const_ptr += sizeof("://") - 1;
-	STRLCPY(buf, const_ptr);
+	STRSCPY(buf, const_ptr);
 	ptr = strchr(buf, '/');
 	if (ptr) *ptr = '\0';
 	ptr = strchr(buf, ':');
@@ -127,13 +127,13 @@ int url_parse(struct request* request, const char *url) {
 	protocol = protocol_from_url(url);
 	if (protocol == PROTOCOL_UNKNOWN) return ERROR_UNKNOWN_PROTOCOL;
 	if (protocol == PROTOCOL_NONE) {
-		size_t length = STRLCPY(buf, "gemini://");
+		size_t length = STRSCPY(buf, "gemini://");
 		int i;
-		i = strlcpy(&buf[length], url, sizeof(buf) - length);
+		i = strscpy(&buf[length], url, sizeof(buf) - length);
 		i += length;
 		buf[i] = '\0';
 		protocol = PROTOCOL_GEMINI;
-	} else STRLCPY(buf, url);
+	} else STRSCPY(buf, url);
 
 	port = port_from_url(url);
 	if (port < 0) return port;
@@ -145,7 +145,7 @@ int url_parse(struct request* request, const char *url) {
 
 	request->protocol = protocol;
 	request->port = port;
-	STRLCPY(request->url, buf);
+	STRSCPY(request->url, buf);
 
 	return 0;
 }
@@ -163,18 +163,18 @@ int url_parse_idn(const char *in, char *out, size_t out_length) {
 		ptr++;
 	}
 	if (ptr) {
-		strlcpy(out, in, out_length);
+		strscpy(out, in, out_length);
 		return 0;
 	}
 	servername_from_url(in, V(buf));
 	if (idn_to_ascii(V(buf), V(host)))
 		return ERROR_INVALID_URL;
-	strlcpy(out, in, out_length);
+	strscpy(out, in, out_length);
 	ptr = strnstr(out, buf, out_length);
 	if (!ptr) return ERROR_INVALID_URL;
 	offset = (ptr - out) + strnlen(V(buf));
-	ptr += strlcpy(ptr, host, out_length - (ptr - out));
-	strlcpy(ptr, &in[offset], out_length - (ptr - out));
+	ptr += strscpy(ptr, host, out_length - (ptr - out));
+	strscpy(ptr, &in[offset], out_length - (ptr - out));
 	return 0;
 }
 
@@ -249,12 +249,12 @@ int url_is_absolute(const char *url) {
 int url_domain_port(const char *in, char *domain, int *port) {
 	char *ptr = strrchr(in, ':');
 	if (!ptr) {
-		strlcpy(domain, in, MAX_HOST);
+		strscpy(domain, in, MAX_HOST);
 		*port = 1965;
 		return 0;
 	}
 	*port = atoi(ptr + 1);
 	if (!*port) *port = 1965;
-	strlcpy(domain, in, ptr - in + 1);
+	strscpy(domain, in, ptr - in + 1);
 	return 0;
 }

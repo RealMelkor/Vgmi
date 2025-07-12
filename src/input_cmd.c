@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "utf8.h"
 #include "termbox.h"
 #include "gemini.h"
@@ -39,7 +39,7 @@ static void tabcompletion(struct client *client, char *in)  {
 static void tabcomplete(struct client *client)  {
 	const char *cmd = commands[client->matches[
 		client->tabcompletion_selected]].name;
-	strlcpy(&client->cmd[1], cmd, sizeof(client->cmd) - 1);
+	strscpy(&client->cmd[1], cmd, sizeof(client->cmd) - 1);
 	client->cursor = strnlen(V(client->cmd));
 }
 
@@ -50,11 +50,11 @@ static void insert_unicode(char *buf, size_t length, int *pos, uint32_t ch) {
 		len = utf8_len(buf, length);
 		if (len < *pos) *pos = len;
 	}
-	if (!end) STRLCPY(cpy, &buf[*pos]);
+	if (!end) STRSCPY(cpy, &buf[*pos]);
 	len = utf8_unicode_to_char(&buf[*pos], ch);
 	*pos += len;
 	if (end) buf[*pos] = '\0';
-	else strlcpy(&buf[*pos], cpy, length - *pos);
+	else strscpy(&buf[*pos], cpy, length - *pos);
 }
 
 static void delete_unicode(char *buf, size_t length, int *pos) {
@@ -65,8 +65,8 @@ static void delete_unicode(char *buf, size_t length, int *pos) {
 		buf[*pos] = 0;
 	} else {
 		char cpy[MAX_CMDLINE];
-		STRLCPY(cpy, &buf[next]);
-		strlcpy(&buf[*pos], cpy, length - *pos);
+		STRSCPY(cpy, &buf[next]);
+		strscpy(&buf[*pos], cpy, length - *pos);
 	}
 }
 
@@ -75,14 +75,14 @@ void client_enter_mode_cmdline(struct client *client) {
 	client->error = 0;
 	memset(client->cmd, 0, sizeof(client->cmd));
 	client->mode = MODE_CMDLINE;
-	client->cursor = STRLCPY(client->cmd, ":");
+	client->cursor = STRSCPY(client->cmd, ":");
 	if (client->tab) client->tab->input[0] = 0;
 }
 
 static void refresh_search(struct client *client) {
 	struct request *req;
 	if (client->cmd[0] != '/') return;
-	STRLCPY(client->search, &client->cmd[1]);
+	STRSCPY(client->search, &client->cmd[1]);
 	if (!(req = tab_completed(client->tab))) return;
 	page_search(&req->page, client->search);
 	req->scroll = page_selection_line(req->page);
@@ -99,7 +99,7 @@ int handle_cmd(struct client *client) {
 
 	ASSERT(sizeof(cmd) > sizeof(name))
 
-	STRLCPY(cmd, &client->cmd[1]);
+	STRSCPY(cmd, &client->cmd[1]);
 
 	if (!*cmd) return 0;
 
@@ -166,7 +166,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			char url[1024];
 			int error, i;
 			req->state = STATE_ENDED;
-			i = STRLCPY(url, req->url);
+			i = STRSCPY(url, req->url);
 			for (; i > 0 && url[i] != '/'; i--) {
 				if (url[i] == '?') {
 					url[i] = '\0';
@@ -255,7 +255,7 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	client->cursor += prefix;
 rewrite:
 	if (req->status == GMI_INPUT) {
-		strlcpy(&client->cmd[prefix], client->tab->input,
+		strscpy(&client->cmd[prefix], client->tab->input,
 				sizeof(client->cmd) - prefix);
 	} else if (req->status == GMI_SECRET) {
 		int i = 0;

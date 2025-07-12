@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include "macro.h"
 #include "error.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "gemini.h"
 
@@ -58,5 +58,5 @@ int gemini_isinput(int status) {
 int gemini_status_string(int status, char *out, size_t length) {
 	if ((unsigned)status >= LENGTH(status_str) || !status_str[status])
 		return -1;
-	return strlcpy(out, status_str[status], length);
+	return strscpy(out, status_str[status], length);
 }

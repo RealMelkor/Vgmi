@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "macro.h"
 #include "error.h"
@@ -48,7 +48,7 @@ int parse_response(int fd, size_t length, char *meta, size_t len, int *code,
 	if (!i) return ERROR_INVALID_STATUS;
 
 	memset(meta, 0, len);
-	strlcpy(meta, ptr + 1, len);
+	strscpy(meta, ptr + 1, len);
 
 	*code = gemini_status_code(i);
 	return 0;
@@ -65,10 +65,14 @@ void parser_request(int in, int out) {
 		if (vread(in, P(length))) break;
 		ret = parse_response(in, length, V(request.meta),
 				&request.status, &bytes);
-		if (request.status == -1) ret = ERROR_INVALID_STATUS;
+		if (request.status == -1) {
+			ret = ERROR_INVALID_STATUS;
+		}
 		if (ret) {
 			uint8_t byte;
 			request.status = -1;
+			if (length > sizeof(request.meta))
+				length = sizeof(request.meta);
 			for (; bytes < (signed)length; bytes++)
 				if (vread(in, P(byte))) break;
 			if ((size_t)bytes != length) break;
@@ -79,7 +83,7 @@ void parser_request(int in, int out) {
 
 		if (vwrite(out, P(request.status))) break;
 		if (request.status == GMI_SUCCESS && !request.meta[0]) {
-			STRLCPY(request.meta, "text/gemini");
+			STRSCPY(request.meta, "text/gemini");
 		}
 		if (vwrite(out, V(request.meta))) break;
 		if (request.status == GMI_SUCCESS) {

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "utf8.h"
 #include "termbox.h"
 #include "page.h"
@@ -116,7 +116,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 		break;
 	case TB_KEY_CTRL_Q:
 		if (!HAS_TABS(client)) return 1;
-		STRLCPY(client->cmd, "Press 'y' to exit.");
+		STRSCPY(client->cmd, "Press 'y' to exit.");
 		client->exit = 1;
 		break;
 	case TB_KEY_CTRL_B:
@@ -161,7 +161,7 @@ int client_input_normal(struct client *client, struct tb_event ev) {
 				if (req->page.links_count < i) {
 					/* error */
 					client->error = 1;
-					STRLCPY(client->cmd,
+					STRSCPY(client->cmd,
 							"Invalid link number");
 					break;
 				}

@@ -15,7 +15,7 @@
 #define ABOUT_INTERNAL
 #include "about.h"
 #include "error.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "memory.h"
 #include "sandbox.h"
 #include "parser.h"
@@ -83,7 +83,7 @@ void *dyn_strcat(char *dst, size_t *dst_length,
 	ptr = realloc(dst, sum + 1);
 	if (!ptr) return NULL;
 	dst = ptr;
-	strlcpy(&dst[*dst_length], src, src_len);
+	strscpy(&dst[*dst_length], src, src_len);
 	*dst_length = strnlen(dst, sum);
 	return dst;
 }
@@ -119,14 +119,14 @@ int about_parse(struct request *request) {
 	if (ptr) {
 		*ptr = 0;
 		ptr++;
-		STRLCPY(param, ptr);
+		STRSCPY(param, ptr);
 	} else param[0] = 0;
 	if (!strcmp(request->url, "about:about")) {
 		return static_page(request, V(about_page));
 	}
 	if (!strcmp(request->url, "about:blank")) {
 		request->status = GMI_SUCCESS;
-		STRLCPY(request->page.title, "about:blank");
+		STRSCPY(request->page.title, "about:blank");
 		return 0;
 	}
 	if (!strcmp(request->url, "about:bookmarks")) {
@@ -164,11 +164,11 @@ int about_parse(struct request *request) {
 			if (len + strnlen(V(param)) + 1 > sizeof(request->url))
 				return ERROR_INVALID_ARGUMENT;
 			request->url[len] = '/';
-			strlcpy(&request->url[len + 1], param,
+			strscpy(&request->url[len + 1], param,
 					sizeof(request->url) - len - 1);
 		}
 		/* reset url on succesful query */
-		if (query) STRLCPY(request->url, "about:config");
+		if (query) STRSCPY(request->url, "about:config");
 		return parse_data_status(request, data, length - 1,
 					ptr ? GMI_INPUT : GMI_SUCCESS);
 	}

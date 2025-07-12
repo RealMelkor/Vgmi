@@ -9,7 +9,7 @@
 #include <wchar.h>
 #include <pthread.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #include "config.h"
 #include "utf8.h"
@@ -142,7 +142,7 @@ int history_add(const char *url, const char *title) {
 	if (strstr(url, "gemini://") == url) {
 		url_hide_query(url, V(entry->url));
 	} else {
-		UTF8CPY(entry->title, title);
+		STRSCPY(entry->title, title);
 	}
 	pthread_mutex_lock(&history_mutex);
 	entry->next = history;

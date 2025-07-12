@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "macro.h"
 #include "error.h"
 #include "storage.h"
@@ -111,8 +111,8 @@ int bookmark_add(const char *url, const char *name) {
 			(bookmark_length + 1) * sizeof(struct bookmark));
 	if (!ptr) return ERROR_MEMORY_FAILURE;
 	bookmarks = ptr;
-	STRLCPY(bookmarks[bookmark_length].url, url);
-	UTF8CPY(bookmarks[bookmark_length].name, name);
+	STRSCPY(bookmarks[bookmark_length].url, url);
+	STRSCPY(bookmarks[bookmark_length].name, name);
 	bookmark_length++;
 
 	return 0;

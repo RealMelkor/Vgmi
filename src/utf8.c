@@ -5,10 +5,12 @@
  *		 2023-2024 RMF <rawmonk@rmf-dev.com>
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "wcwidth.h"
 
 static const unsigned char utf8_length[256] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -128,21 +130,6 @@ int utf8_width(const char *ptr, size_t length) {
 	return width;
 }
 
-int utf8_cpy(char *dst, const char *src, size_t length) {
-	size_t i;
-	dst[length - 1] = 0;
-	for (i = 0; i < length && src[i]; ) {
-		size_t len = utf8_char_length(src[i]);
-		if (i + len >= length) break;
-		while (len--) {
-			dst[i] = src[i];
-			i++;
-		}
-	}
-	if (i < length) dst[i] = '\0';
-	return i;
-}
-
 int utf8_fgetc(FILE *f, uint32_t *out) {
 
 	int ch, len;
@@ -179,4 +166,19 @@ int utf8_len(const char *ptr, size_t length) {
 int utf8_fprintf(FILE *f, const char *buf, size_t length) {
 	int i = utf8_len(buf, length);
 	return fwrite(buf, 1, i, f);
+}
+
+size_t strscpy(char *dst, const char *src, size_t dsize) {
+	size_t cnt;
+
+	if (!dsize) return 0;
+	cnt = 0;
+	while (*src) {
+		int i = utf8_length[(unsigned char)*src];
+		if (cnt + i >= dsize) break;
+		cnt += i;
+		while (i-- > 0) *dst++ = *src++;
+	}
+	*dst = '\0';
+	return cnt;
 }

@@ -4,8 +4,7 @@
  */
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}
-#define STRLCPY(X, Y) strlcpy((X), (Y), sizeof(X))
-#define UTF8CPY(X, Y) utf8_cpy((X), (Y), sizeof(X))
+#define STRSCPY(X, Y) strscpy((X), (Y), sizeof(X))
 #define STRCMP(X, Y) strncmp((X), (Y), sizeof(X))
 #define STRLEN(X) strnlen((X), sizeof(X))
 #define V(X) (X), sizeof(X)

@@ -7,7 +7,7 @@
 #include <time.h>
 #include <string.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"

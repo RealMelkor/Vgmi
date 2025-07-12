@@ -12,7 +12,7 @@
 #include <netdb.h>
 #include <tls.h>
 
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "macro.h"
 #include "error.h"
 
@@ -24,22 +24,22 @@ int error_string(int error, char *out, size_t len) {
 	const char *ptr;
 	switch (error & ERROR_MASK) {
 	case ERROR_MEMORY_FAILURE:
-		strlcpy(out, "Memory failure", len);
+		strscpy(out, "Memory failure", len);
 		break;
 	case ERROR_ERRNO:
-		strlcpy(out, strerror(errno), len);
+		strscpy(out, strerror(errno), len);
 		break;
 	case ERROR_UNKNOWN_PROTOCOL:
-		strlcpy(out, "Unknown protocol", len);
+		strscpy(out, "Unknown protocol", len);
 		break;
 	case ERROR_UNSUPPORTED_PROTOCOL:
-		strlcpy(out, "Protocol not supported", len);
+		strscpy(out, "Protocol not supported", len);
 		break;
 	case ERROR_UNKNOWN_HOST:
-		strlcpy(out, "Unknown host", len);
+		strscpy(out, "Unknown host", len);
 		break;
 	case ERROR_TLS_FAILURE:
-		strlcpy(out, error_tls, len);
+		strscpy(out, error_tls, len);
 		break;
 	case ERROR_GETADDRINFO:
 		ptr = gai_strerror(-((error & 0xFFFF0000) >> 16));
@@ -50,34 +50,34 @@ int error_string(int error, char *out, size_t len) {
 		snprintf(out, len, "DNS: %s (%s)", ptr, strerror(errno));
 		break;
 	case ERROR_INVALID_DATA:
-		strlcpy(out, "Invalid response", len);
+		strscpy(out, "Invalid response", len);
 		break;
 	case ERROR_INVALID_ARGUMENT:
-		strlcpy(out, "Invalid argument", len);
+		strscpy(out, "Invalid argument", len);
 		break;
 	case ERROR_INVALID_METADATA:
-		strlcpy(out, "No metadata", len);
+		strscpy(out, "No metadata", len);
 		break;
 	case ERROR_INVALID_ADDRESS:
-		strlcpy(out, "Invalid address", len);
+		strscpy(out, "Invalid address", len);
 		break;
 	case ERROR_INVALID_STATUS:
-		strlcpy(out, "Invalid status", len);
+		strscpy(out, "Invalid status", len);
 		break;
 	case ERROR_NO_CRLN:
-		strlcpy(out, "Invalid response", len);
+		strscpy(out, "Invalid response", len);
 		break;
 	case ERROR_TERMBOX_FAILURE:
-		strlcpy(out, "Failed initializing TUI mode", len);
+		strscpy(out, "Failed initializing TUI mode", len);
 		break;
 	case ERROR_TOO_MANY_REDIRECT:
-		strlcpy(out, "Too many redirects", len);
+		strscpy(out, "Too many redirects", len);
 		break;
 	case ERROR_INVALID_URL:
-		strlcpy(out, "Invalid URL", len);
+		strscpy(out, "Invalid URL", len);
 		break;
 	case ERROR_CERTIFICATE_MISMATCH:
-		strlcpy(out, "The server certificate changed", len);
+		strscpy(out, "The server certificate changed", len);
 		break;
 	case ERROR_STORAGE_ACCESS:
 		snprintf(out, len, "Failed to access disk storage (%s)",
@@ -88,16 +88,16 @@ int error_string(int error, char *out, size_t len) {
 				strerror(errno));
 		break;
 	case ERROR_RESPONSE_TOO_LARGE:
-		strlcpy(out, "The server response is too large", len);
+		strscpy(out, "The server response is too large", len);
 		break;
 	case ERROR_XDG:
-		strlcpy(out, "Unable to open the link", len);
+		strscpy(out, "Unable to open the link", len);
 		break;
 	case ERROR_SOCKET_CONNECTION:
-		strlcpy(out, "Failed to connect to remote server", len);
+		strscpy(out, "Failed to connect to remote server", len);
 		break;
 	case ERROR_SOCKET_CREATION:
-		strlcpy(out, "Failed to create socket", len);
+		strscpy(out, "Failed to create socket", len);
 		break;
 	default:
 		snprintf(out, len, "Unknown error (%d)", error);

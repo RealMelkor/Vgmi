@@ -14,7 +14,7 @@ struct request;
 #include "request.h"
 #include "secure.h"
 #include "memory.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "dns.h"
 #include "about.h"
@@ -33,7 +33,7 @@ int request_process(struct request *request, struct secure *secure,
 
 	/* check if it's an about: page */
 	if (!memcmp(url, V("about:") - 1)) {
-		STRLCPY(request->url, url);
+		STRSCPY(request->url, url);
 		if ((ret = about_parse(request))) goto failed;
 		request->state = STATE_COMPLETED;
 		return 0;
@@ -61,14 +61,14 @@ int request_process(struct request *request, struct secure *secure,
 		char domain[MAX_HOST] = {0};
 		int port;
 		url_domain_port(config.proxyHttp, domain, &port);
-		STRLCPY(request->name, domain);
+		STRSCPY(request->name, domain);
 		request->port = port;
 	}
 	if ((ret = dns_getip(request->name, &request->addr))) goto failed;
 	if ((ret = secure_connect(secure, *request))) goto failed;
 
-	length = strlcpy(buf, request->url, MAX_URL);
-	length += strlcpy(&buf[length], "\r\n", sizeof(buf) - length);
+	length = strscpy(buf, request->url, MAX_URL);
+	length += strscpy(&buf[length], "\r\n", sizeof(buf) - length);
 
 	if ((ret = secure_send(secure, buf, length))) goto failed;
 	if ((ret = secure_read(secure, &request->data, &request->length)))
@@ -126,14 +126,14 @@ int request_follow(struct request* req, const char *link,
 	char *ptr;
 
 	if (!strncmp(link, ".", length)) {
-		strlcpy(url, req->url, length);
+		strscpy(url, req->url, length);
 		ptr = strrchr(url, '/');
 		if (ptr) *ptr = '\0';
 		return 0;
 	}
 	if (!strncmp(link, "..", length)) {
 		char *start;
-		strlcpy(url, req->url, length);
+		strscpy(url, req->url, length);
 
 		start = strnstr(url, "://", length);
 		if (!start) return 0;
@@ -153,11 +153,11 @@ int request_follow(struct request* req, const char *link,
 		/* only allow "about:*" links on "about:*" pages */
 		if (memcmp(req->url, V("about:") - 1))
 			return ERROR_INVALID_URL;
-		return strlcpy(url, link, length) > length ?
+		return strscpy(url, link, length) > length ?
 			ERROR_INVALID_URL : 0;
 	}
 	if (link[0] == '/' && link[1] == '/') {
-		strlcpy(url, &link[2], length);
+		strscpy(url, &link[2], length);
 		return 0;
 	}
 	if (link[0] == '/') {
@@ -168,16 +168,16 @@ int request_follow(struct request* req, const char *link,
 		ptr = strchr(ptr, '/');
 		if (!ptr) ptr = req->url + strnlen(req->url, length);
 		ptr++;
-		strlcpy(url, req->url, ptr - req->url);
+		strscpy(url, req->url, ptr - req->url);
 		i = ptr - req->url - 1;
-		i += strlcpy(&url[i], link, length - i);
+		i += strscpy(&url[i], link, length - i);
 		return (size_t)i > length ? ERROR_INVALID_URL : 0;
 	}
 	if (url_is_absolute(link)) {
-		strlcpy(url, link, length);
+		strscpy(url, link, length);
 		return 0;
 	}
-	strlcpy(url, req->url, length);
+	strscpy(url, req->url, length);
 	ptr = strnstr(url, "://", length);
 	if (!ptr) ptr = url;
 	else ptr += 3;
@@ -187,7 +187,7 @@ int request_follow(struct request* req, const char *link,
 		*ptr = '/';
 	}
 	ptr++;
-	ptr += strlcpy(ptr, link, end - ptr);
+	ptr += strscpy(ptr, link, end - ptr);
 	return (size_t)(ptr - url) > length ? ERROR_INVALID_URL : 0;
 }
 

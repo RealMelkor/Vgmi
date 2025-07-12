@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "storage.h"
@@ -40,8 +40,8 @@ int known_hosts_add(const char *host, const char *hash,
 	*ptr = calloc(1, sizeof(struct known_host));
 	if (!*ptr) return ERROR_MEMORY_FAILURE;
 
-	STRLCPY((*ptr)->host, host);
-	STRLCPY((*ptr)->hash, hash);
+	STRSCPY((*ptr)->host, host);
+	STRSCPY((*ptr)->hash, hash);
 	(*ptr)->start = start;
 	(*ptr)->end = end;
 	return 0;
@@ -154,7 +154,7 @@ int known_hosts_verify(const char *host, const char *hash,
 	if (ptr->end < now) {
 		if (start > now) return ERROR_CERTIFICATE_AHEAD;
 		/* old certificate expired, accept new certificate */
-		STRLCPY(ptr->hash, hash);
+		STRSCPY(ptr->hash, hash);
 		ptr->start = start;
 		ptr->end = end;
 		return known_hosts_rewrite();

@@ -9,12 +9,13 @@
 #include <time.h>
 #include "termbox.h"
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "page.h"
 #include "request.h"
 #include "client.h"
 #include "tab.h"
 #include "utf8.h"
+#include "wcwidth.h"
 #include "url.h"
 #include "known_hosts.h"
 #include "commands.h"
@@ -92,17 +93,27 @@ void client_draw(struct client* client) {
 		if (width > TAB_WIDTH) width = TAB_WIDTH;
 		if (width < 1) width = 1;
 		for (; tab; tab = tab->next) {
-			char buf[TAB_WIDTH] = {0};
+			char buf[sizeof(req->page.title)] = {0};
 			int fg = TB_REVERSE | TB_DEFAULT, bg = TB_DEFAULT;
+			int offset, j;
 			size_t length;
 			struct request *req = tab_completed(tab);
 			if (width == 1) {
 				current--;
 				if (client->width < current * 4) continue;
 			}
-			utf8_cpy(buf, req ? req->page.title : "about:blank",
-					width);
-			length = utf8_width(V(buf));
+			strcpy(buf, req ? req->page.title : "about:blank");
+			i = j = 0;
+			while (buf[i] && (size_t)i < sizeof(buf)) {
+				uint32_t c;
+				i += utf8_char_to_unicode(&c, &buf[i]);
+				j += mk_wcwidth(c);
+				if (j >= width) {
+					buf[i] = 0;
+					break;
+				}
+			}
+			length = j;
 			if (tab == client->tab) {
 				fg = TB_DEFAULT;
 				bg = TB_DEFAULT;
@@ -111,8 +122,18 @@ void client_draw(struct client* client) {
 			}
 			tb_set_cell(x, 0, '[', fg, bg);
 			tb_set_cell(x + width + 1, 0, ']', fg, bg);
-			tb_printf(x + (width + 2 - length) / 2, 0,
-					fg, bg, "%s", buf);
+			offset = (width + 2 - length) / 2;
+			if (offset < 1) offset = 1;
+			i = j = 0;
+			while ((size_t)i < sizeof(buf) && buf[i]) {
+				uint32_t c;
+				int w;
+				i += utf8_char_to_unicode(&c, &buf[i]);
+				w = mk_wcwidth(c);
+				if (j + w > width) break;
+				tb_set_cell(x + j + offset, 0, c, fg, bg);
+				j += w;
+			}
 			x += width + 2;
 		}
 	}
@@ -168,7 +189,7 @@ void client_draw(struct client* client) {
 			}
 		}
 		if (req) url_hide_query(req->url, V(url));
-		else STRLCPY(url, "about:blank");
+		else STRSCPY(url, "about:blank");
 		tb_printf(0, client->height - 2, fg, bg, "%s%s (%s)",
 				expired ? "[Certificate expired] " : "",
 				url, req ? req->meta : "");

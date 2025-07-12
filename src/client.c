@@ -19,7 +19,7 @@
 #include "termbox.h"
 #include "utf8.h"
 #include "input.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "known_hosts.h"
 #include "storage.h"
 #include "sandbox.h"
@@ -87,9 +87,9 @@ int client_newtab(struct client *client, const char *url, int follow) {
 		client->tab->next = tab;
 		if (follow && client->tab->request && proto == PROTOCOL_NONE) {
 			struct request req = {0};
-			STRLCPY(req.url, client->tab->request->url);
+			STRSCPY(req.url, client->tab->request->url);
 			request_follow(&req, url, V(req.url));
-			STRLCPY(url_buf, req.url);
+			STRSCPY(url_buf, req.url);
 			url = url_buf;
 		}
 	}

@@ -8,7 +8,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "error.h"
 #include "storage.h"
 #define ABOUT_INTERNAL
@@ -20,17 +20,17 @@ int about_certificates_param(const char *param) {
 	size_t len;
 	FILE *f;
 
-	len = STRLCPY(path, param);
+	len = STRSCPY(path, param);
 	if (len >= sizeof(path)) return ERROR_INVALID_ARGUMENT;
-	strlcpy(&path[len], ".crt", sizeof(path) - len);
+	strscpy(&path[len], ".crt", sizeof(path) - len);
 	if (!(f = storage_fopen(path, "r"))) return ERROR_INVALID_ARGUMENT;
 	fclose(f);
-	strlcpy(&path[len], ".key", sizeof(path) - len);
+	strscpy(&path[len], ".key", sizeof(path) - len);
 	if (!(f = storage_fopen(path, "r"))) return ERROR_INVALID_ARGUMENT;
 	fclose(f);
 
 	unlinkat(storage_fd, path, 0);
-	strlcpy(&path[len], ".crt", sizeof(path) - len);
+	strscpy(&path[len], ".crt", sizeof(path) - len);
 	unlinkat(storage_fd, path, 0);
 	return 0;
 }
@@ -56,7 +56,7 @@ int about_certificates(char **out, size_t *length_out) {
 		int len;
 		FILE *f;
 		char buf[2048], host[1024];
-		char *end = host + STRLCPY(host, entry->d_name) - 4;
+		char *end = host + STRSCPY(host, entry->d_name) - 4;
 
 		if (end <= host || !memcmp(end, V(".crt"))) continue;
 		memcpy(end, V(".key"));

@@ -11,17 +11,17 @@
 #include <sys/random.h>
 #endif
 #include "storage.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "config.h"
 
 int certificate_getpath(const char *host, char *crt, size_t crt_len,
 				char *key, size_t key_len) {
 	int len = strnlen(host, 1024);
-	if (strlcpy(crt, host, crt_len) >= crt_len - 4) return -1;
-	if (strlcpy(key, host, key_len) >= key_len - 4) return -1;
-        if (strlcpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
+	if (strscpy(crt, host, crt_len) >= crt_len - 4) return -1;
+	if (strscpy(key, host, key_len) >= key_len - 4) return -1;
+        if (strscpy(&crt[len], ".crt", crt_len - len) + len >= crt_len)
 		return -1;
-        if (strlcpy(&key[len], ".key", key_len - len) + len >= key_len)
+        if (strscpy(&key[len], ".key", key_len - len) + len >= key_len)
 		return -1;
 	return len + 4;
 }

@@ -17,7 +17,7 @@
 #endif
 #include <errno.h>
 #include "macro.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "storage.h"
 #include "error.h"
 #include "utf8.h"
@@ -42,14 +42,14 @@ static int storage_mkdir(const char *path) {
 
 	if (stat(path, &st) == 0) return 0;
 
-	i = STRLCPY(path_copy, path);
+	i = STRSCPY(path_copy, path);
 	path_copy[i] = '/';
 	path_copy[i + 1] = 0;
 	for (ptr = path_copy; ptr && *ptr; ptr = strchr(ptr, '/')) {
 		char buf[PATH_MAX];
 		if (ptr++ == path_copy) continue;
 		if ((size_t)(ptr - path_copy) >= sizeof(buf)) return -1;
-		strlcpy(buf, path_copy, ptr - path_copy + 1);
+		strscpy(buf, path_copy, ptr - path_copy + 1);
 		if (stat(buf, &st) == 0) continue;
 		if (mkdir(buf, 0700)) return -1;
 	}
@@ -84,13 +84,13 @@ int storage_path(char *out, size_t length) {
 
         path = getenv("XDG_CONFIG_HOME");
         if (path && *path) {
-                unsigned int i = strlcpy(out, path, length);
+                unsigned int i = strscpy(out, path, length);
                 if (i + 1 >= length) return -1; /* path too long */
                 if (out[i - 1] != '/') { /* check if path ends with a slash */
                         out[i++] = '/';
                         out[i] = '\0';
                 }
-                strlcpy(&out[i], CONFIG_FOLDER, length - i);
+                strscpy(&out[i], CONFIG_FOLDER, length - i);
                 return 0;
         }
 
@@ -104,7 +104,7 @@ int storage_download_path(char *out, size_t length) {
 	if (length > PATH_MAX) length = PATH_MAX;
 
 	if (*config.downloadsPath == '/') {
-		strlcpy(out, config.downloadsPath, length);
+		strscpy(out, config.downloadsPath, length);
 		return 0;
 	} else *config.downloadsPath = '\0';
 
@@ -225,19 +225,19 @@ int storage_find(const char* executable, char *path, size_t length) {
 	struct stat st;
 	const char *ptr;
 	if (*executable == '/' && stat(executable, &st) == 0) {
-		strlcpy(path, executable, length);
+		strscpy(path, executable, length);
 		return 0;
 	}
 	for (ptr = getenv("PATH"); ptr && *ptr; ptr = strchr(ptr, ':')) {
 		char buf[PATH_MAX], *buf_ptr;
 		if (*ptr == ':') ptr++;
-		STRLCPY(buf, ptr);
+		STRSCPY(buf, ptr);
 		buf_ptr = strchr(buf, ':');
 		if (!buf_ptr) buf_ptr = buf + strnlen(V(buf));
 		*(buf_ptr++) = '/';
-		strlcpy(buf_ptr, executable, sizeof(buf) - (buf_ptr - buf));
+		strscpy(buf_ptr, executable, sizeof(buf) - (buf_ptr - buf));
 		if (stat(buf, &st) == 0) {
-			strlcpy(path, buf, length);
+			strscpy(path, buf, length);
 			return 0;
 		}
 	}

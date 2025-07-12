@@ -21,7 +21,7 @@
 #include "page.h"
 #include "gemini.h"
 #include "request.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "memory.h"
 #define PARSER_INTERNAL
@@ -137,7 +137,7 @@ int parse_request(struct parser *parser, struct request *request) {
 	if (gemtext && (ret = vread(parser->in, V(request->page.title))))
 		goto fail;
 	if (!gemtext || !request->page.title[0])
-		STRLCPY(request->page.title, request->url);
+		STRSCPY(request->page.title, request->url);
 fail:
 	pthread_mutex_unlock(&parser->mutex);
 	return ret;

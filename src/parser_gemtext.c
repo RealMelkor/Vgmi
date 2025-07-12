@@ -18,7 +18,7 @@
 #include "termbox.h"
 #include "wcwidth.h"
 #include "error.h"
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "utf8.h"
 

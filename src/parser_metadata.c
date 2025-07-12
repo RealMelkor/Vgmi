@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
-#include "strlcpy.h"
+#include "strscpy.h"
 #include "strnstr.h"
 #include "macro.h"
 #include "page.h"
