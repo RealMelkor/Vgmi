@@ -102,7 +102,7 @@ void client_draw(struct client* client) {
 				current--;
 				if (client->width < current * 4) continue;
 			}
-			strcpy(buf, req ? req->page.title : "about:blank");
+			STRSCPY(buf, req ? req->page.title : "about:blank");
 			i = j = 0;
 			while (buf[i] && (size_t)i < sizeof(buf)) {
 				uint32_t c;

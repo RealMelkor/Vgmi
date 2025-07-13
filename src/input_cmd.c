@@ -206,11 +206,35 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 	case TB_KEY_ARROW_LEFT:
 		if (client->cursor <= prefix) break;
 		client->cursor = utf8_previous(client->cmd, client->cursor);
+		if (!(ev.mod & TB_MOD_CTRL)) break;
+		while (client->cursor > prefix &&
+				client->cmd[client->cursor] == ' ') {
+			client->cursor = utf8_previous(
+					client->cmd, client->cursor);
+		}
+		while (client->cursor > prefix) {
+			client->cursor = utf8_previous(
+					client->cmd, client->cursor);
+			if (client->cmd[client->cursor] == ' ') {
+				client->cursor++;
+				break;
+			}
+		}
 		break;
 	case TB_KEY_ARROW_RIGHT:
 		if (!client->cmd[client->cursor]) break;
 		client->cursor +=
 			utf8_char_length(client->cmd[client->cursor]);
+		if (!(ev.mod & TB_MOD_CTRL)) break;
+		while ((size_t)client->cursor < sizeof(client->cmd) &&
+				client->cmd[client->cursor] == ' ') {
+			client->cursor++;
+		}
+		while (client->cursor < sizeof(client->cmd)) {
+			client->cursor +=
+				utf8_char_length(client->cmd[client->cursor]);
+			if (client->cmd[client->cursor] == ' ') break;
+		}
 		break;
 	case TB_KEY_TAB:
 		if (!client->tabcompletion) {
