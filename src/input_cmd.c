@@ -20,6 +20,11 @@
 #include "parser.h"
 #include "input.h"
 
+static int seperator(char c) {
+	return !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+			|| (c >= '0' && c <= '9')) && c >= 0;
+}
+
 static void tabcompletion(struct client *client, char *in)  {
 	size_t i, j, len;
 	ASSERT(LENGTH(commands) < LENGTH(client->matches));
@@ -208,18 +213,16 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 		client->cursor = utf8_previous(client->cmd, client->cursor);
 		if (!(ev.mod & TB_MOD_CTRL)) break;
 		while (client->cursor > prefix &&
-				client->cmd[client->cursor] == ' ') {
+				seperator(client->cmd[client->cursor])) {
 			client->cursor = utf8_previous(
 					client->cmd, client->cursor);
 		}
-		while (client->cursor > prefix) {
+		while (client->cursor > prefix &&
+				!seperator(client->cmd[client->cursor])) {
 			client->cursor = utf8_previous(
 					client->cmd, client->cursor);
-			if (client->cmd[client->cursor] == ' ') {
-				client->cursor++;
-				break;
-			}
 		}
+		if (client->cursor > prefix) client->cursor++;
 		break;
 	case TB_KEY_ARROW_RIGHT:
 		if (!client->cmd[client->cursor]) break;
@@ -227,14 +230,21 @@ int client_input_cmdline(struct client *client, struct tb_event ev) {
 			utf8_char_length(client->cmd[client->cursor]);
 		if (!(ev.mod & TB_MOD_CTRL)) break;
 		while ((size_t)client->cursor < sizeof(client->cmd) &&
-				client->cmd[client->cursor] == ' ') {
+				client->cmd[client->cursor] &&
+				seperator(client->cmd[client->cursor])) {
 			client->cursor++;
 		}
-		while (client->cursor < sizeof(client->cmd)) {
+		while ((size_t)client->cursor < sizeof(client->cmd) &&
+				!seperator(client->cmd[client->cursor])) {
 			client->cursor +=
 				utf8_char_length(client->cmd[client->cursor]);
-			if (client->cmd[client->cursor] == ' ') break;
 		}
+		break;
+	case TB_KEY_CTRL_A:
+		client->cursor = prefix;
+		break;
+	case TB_KEY_CTRL_E:
+		client->cursor = utf8_len(V(client->cmd));
 		break;
 	case TB_KEY_TAB:
 		if (!client->tabcompletion) {
