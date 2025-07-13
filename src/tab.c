@@ -284,8 +284,9 @@ void tab_free(struct tab *tab) {
 	pthread_mutex_lock(tab->mutex);
 	while (req) {
 		struct request *next = req->next;
+		request_cancel(req);
 		if (req->thread) {
-			pthread_join((pthread_t)req->thread, NULL);
+			pthread_cancel((pthread_t)req->thread);
 		}
 		request_free(req);
 		req = next;

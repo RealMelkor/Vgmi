@@ -85,7 +85,6 @@ failed:
 }
 
 int request_cancel(struct request *request) {
-	/* TODO: mutex lock */
 	switch (request->state) {
 	case STATE_ONGOING:
 		request->state = STATE_CANCELED;
@@ -94,7 +93,6 @@ int request_cancel(struct request *request) {
 	case STATE_CANCELED:
 		break;
 	case STATE_COMPLETED:
-		/*request->state = STATE_ENDED;*/
 		break;
 	default:
 		return -1;

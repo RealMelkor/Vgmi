@@ -1740,10 +1740,10 @@ static int load_terminfo(void) {
 		return TB_ERR;
 	}
 
-	/* If TERMINFO is set, try that directory and stop */
+	/* If TERMINFO is set, try that directory first */
 	terminfo = getenv("TERMINFO");
 	if (terminfo) {
-		return load_terminfo_from_path(terminfo, term);
+		if_ok_return(rv, load_terminfo_from_path(terminfo, term));
 	}
 
 	/* Next try ~/.terminfo */
@@ -1855,7 +1855,7 @@ static int read_terminfo_path(const char *path) {
 }
 
 static int get_terminfo_int16(int offset, int16_t *val) {
-	if (offset < 0 || offset >= (int)global.nterminfo) {
+	if (offset < 0 || offset + sizeof(int16_t) > global.nterminfo) {
 		*val = -1;
 		return TB_ERR;
 	}
