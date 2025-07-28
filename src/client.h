@@ -34,6 +34,7 @@ struct client {
 	int error;
 	int (*motion)(struct client*, int, int);
 	struct tab *tab;
+	struct tab *hold;
 	/* tab completion */
 	int matches[32];
 	int tabcompletion;

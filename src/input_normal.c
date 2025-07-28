@@ -34,7 +34,7 @@ void client_reset_mode(struct client *client) {
 	tb_hide_cursor();
 }
 
-static void move_tab_left(struct client *client) {
+void move_tab_left(struct client *client) {
 	struct tab *current, *prev;
 	if (!client->tab || !HAS_TABS(client) || !client->tab->prev) return;
 
@@ -49,7 +49,7 @@ static void move_tab_left(struct client *client) {
 	if (current->prev) current->prev->next = current;
 }
 
-static void move_tab_right(struct client *client) {
+void move_tab_right(struct client *client) {
 	struct tab *current, *next;
 	if (!client->tab || !HAS_TABS(client) || !client->tab->next) return;
 

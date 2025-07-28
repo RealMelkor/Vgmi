@@ -81,6 +81,18 @@ void click_link(struct client *client, struct tb_event ev, int newtab) {
 	return;
 }
 
+static int tab_width(struct client *client) {
+	int count, width;
+	struct tab *start, *tab;
+	for (tab = client->tab; tab->prev; tab = tab->prev) ;
+	count = 0;
+	for (start = tab; start; start = start->next) count++;
+	width = (client->width - count * 2) / count;
+	if (width > TAB_WIDTH) return TAB_WIDTH;
+	if (width < 1) return 1;
+	return width + 2;
+}
+
 int client_input_mouse(struct client *client, struct tb_event ev) {
 	if (ev.type != TB_EVENT_MOUSE) return 0;
 	switch (ev.key) {
@@ -88,14 +100,46 @@ int client_input_mouse(struct client *client, struct tb_event ev) {
 	case TB_KEY_MOUSE_RIGHT:
 	case TB_KEY_MOUSE_MIDDLE:
 	case TB_KEY_MOUSE_RELEASE:
-		if (ev.mod & TB_MOD_MOTION) break;
+		if (ev.mod & TB_MOD_MOTION) {
+			struct tab *tab;
+			int x, width, next, from, to;
+			if (!client->hold) break;
+			if (client->hold != client->tab) {
+				client->hold = NULL;
+				break;
+			}
+			width = tab_width(client);
+			to = from = x = next = 0;
+			for (tab = client->tab; tab->prev; tab = tab->prev)
+				from++;
+			for (; tab && tab->next; tab = tab->next) {
+				if (x <= ev.x && x + width >= ev.x) {
+					break;
+				}
+				x += width;
+				to++;
+			}
+			for (; from > to; from--)
+				move_tab_left(client);
+			if (from == to) break;
+			for (; to > from; to--)
+				move_tab_right(client);
+			break;
+		}
+		if (ev.key == TB_KEY_MOUSE_RELEASE) {
+			client->hold = NULL;
+		}
 		if (ev.y == client->height - 2) {
 			click_url(client, ev);
-			return 0;
+			break;
 		}
-		if (ev.y == 0 && HAS_TABS(client)) {
-			return click_tab(client, ev,
+		if (ev.key != TB_KEY_MOUSE_RELEASE &&
+				ev.y == 0 && HAS_TABS(client)) {
+			int ret = click_tab(client, ev,
 					ev.key == TB_KEY_MOUSE_MIDDLE);
+			if (ret) return ret;
+			client->hold = client->tab;
+			break;
 		}
 		click_link(client, ev, ev.key == TB_KEY_MOUSE_MIDDLE);
 		break;
