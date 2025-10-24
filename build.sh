@@ -81,8 +81,8 @@ then
 fi
 
 # Termbox2 2.5.0
-h="9024627dd7c22dc2d0185b703ee9afb20b1dde91a2bed9ff73b5ca0be77c792d"
-check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/refs/heads/master/termbox2.h"
+h="b40eb22acee787b143b1ce5fd0510809e87413697d9f53af9476a8bb59149a98"
+check_hash $h "https://raw.githubusercontent.com/termbox/termbox2/ed68bcc27ef4389c6f32b8229fbf234242d23a6a/termbox2.h"
 cp termbox2.h ../include/termbox.h
 
 # stb_image 2.30
@@ -93,15 +93,7 @@ cp stb_image.h ../include/
 cd ../
 if [ "$(uname)" = "SunOS" ] ;
 then
-	sed -i -e "/CC/s/^#//" GNUmakefile
-	sed -i -e "/LDFLAGS/s/^#//" GNUmakefile
-	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
 	gmake
 	exit
-fi
-if [ "$(uname)" = "Darwin" ] ;
-then
-	sed -i -e "/LDFLAGS/s/^#//" GNUmakefile
-	sed -i -e "/CFLAGS/s/^#//" GNUmakefile
 fi
 make

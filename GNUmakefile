@@ -7,17 +7,21 @@ CC = cc
 CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
 LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -lanl -ldl -lpthread
 # MUSL
-#CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
-#LDFLAGS = -s -static -L./lib -ltls -lssl -lcrypto -lm -lpthread
-# MacOS
-#CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
-#LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread -ldl
-# Illumos
-#CC = gcc
-#CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include
-#LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lpthread -lm -lsocket
+CFLAGS = -O2 -Wall -Wpedantic -Wextra -Wformat-truncation=0 -I./include -D__MUSL__
+LDFLAGS = -s -static -L./lib -ltls -lssl -lcrypto -lm -lpthread
 
-FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME
+OS := $(shell uname -s)
+ifeq ($(OS),SunOS) # Solaris, Illumos
+	CFLAGS=-I./include -Wall -Wextra -pedantic -O2 -Wformat-truncation=0
+	LDFLAGS=-s -L./lib -L/usr/local/lib -lm -ltls -lssl -lcrypto -lpthread -lsocket
+	CC=gcc
+endif
+ifeq ($(OS),Darwin) # MacOS
+	CFLAGS = -O2 -Wall -Wpedantic -Wextra -I./include
+	LDFLAGS = -s -L./lib -ltls -lssl -lcrypto -lm -lpthread
+endif
+
+FLAGS = -DTERMINAL_IMG_VIEWER -DHIDE_HOME #-DDISABLE_XDG
 
 SRC = $(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}

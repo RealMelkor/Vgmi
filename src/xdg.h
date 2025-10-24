@@ -8,5 +8,6 @@ extern char download_path[1024];
 int xdg_path(char* path, size_t len);
 void xdg_close(void);
 int xdg_init(void);
+int xdg_request(const char* str);
 
 #endif

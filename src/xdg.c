@@ -26,7 +26,7 @@ const char startby[] = "XDG_DOWNLOAD_DIR=\"$HOME";
 int xdg_pipe[2] = {-1, -1};
 int xdg_open(const char*);
 
-int xdg_request(char* str) {
+int xdg_request(const char* str) {
         int len = strnlen(str, 1024)+1;
         return write(xdg_pipe[1], str, len) != len;
 }
@@ -101,8 +101,10 @@ void xdg_close(void) {
         if (xdg_pipe[1] > -1)
                 close(xdg_pipe[1]);
 }
-
-#endif
+#else
+int xdg_request(const char* ptr) {
+        return !ptr;
+}
 #endif
 
 #define SB_IGNORE
@@ -150,3 +152,4 @@ int xdg_path(char* path, size_t len) {
 	close(fd);
 	return found;
 }
+#endif

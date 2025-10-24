@@ -27,6 +27,7 @@
 #include "str.h"
 #include "url.h"
 #include "util.h"
+#include "xdg.h"
 
 #define MAX_CACHE 10
 #define TIMEOUT 8
@@ -965,7 +966,9 @@ struct gmi_tab* gmi_newtab_url(const char* url) {
 		case PROTO_HTTP:
 		case PROTO_HTTPS:
 		case PROTO_GOPHER:
+#ifndef DISABLE_XDG
 			xdg_request(url);
+#endif
 			/* fallthrough */
 		default:
 			return client.tab;
@@ -1688,8 +1691,8 @@ int gmi_postdownload(struct gmi_tab* tab, int fd, const char* path) {
 #else
 	close(fd);
 #endif
-#ifndef DISABLE_XDG
 	int fail = 0;
+#ifndef DISABLE_XDG
 	if (client.xdg) {
 		tab->request.ask = 2;
 		snprintf(tab->request.info,
