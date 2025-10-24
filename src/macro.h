@@ -2,6 +2,10 @@
  * ISC License
  * Copyright (c) 2024 RMF <rawmonk@rmf-dev.com>
  */
+#ifdef __APPLE__
+#undef strlcpy
+#undef snprintf
+#endif
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}
 #define STRSCPY(X, Y) strscpy((X), (Y), sizeof(X))
