@@ -18,6 +18,7 @@
 #include "error.h"
 #include "parser.h"
 #include "xdg.h"
+#include "proc.h"
 
 static int need_argument(struct client * client,
 			const char *field, size_t len, char *error) {
@@ -257,7 +258,7 @@ int command_download(struct client *client, const char* args, size_t len) {
 }
 
 int command_exec(struct client *client, const char* args, size_t len) {
-	char buf[PATH_MAX * 4], download_dir[PATH_MAX], name[256];
+	char download_dir[PATH_MAX], name[256];
 	int err;
 	if (no_argument(client, args, len)) return 0;
 	client->error = 0;
@@ -266,6 +267,7 @@ int command_exec(struct client *client, const char* args, size_t len) {
 	if (client->error != ERROR_INFO) return 0;
 	client->error = 0;
 	if (config.enableSandbox || !config.launcherTerminal) {
+		char buf[PATH_MAX * 4];
 		snprintf(V(buf), "download://%s", name);
 		xdg_request(buf);
 		return 0;
@@ -275,10 +277,8 @@ int command_exec(struct client *client, const char* args, size_t len) {
 		error_string(err, V(client->cmd));
 		return 0;
 	}
-	snprintf(V(buf), "\"%s\" %s/\"%s\"",
-			config.launcher, download_dir, name);
 	tb_shutdown();
-	err = system(buf);
+	err = spawn(config.launcher, 1, 0, download_dir, name, NULL);
 	unlinkat(download_fd, name, 0);
 	client_init_termbox();
 	if (err == -1) return -1;
