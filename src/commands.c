@@ -18,6 +18,7 @@
 #include "error.h"
 #include "parser.h"
 #include "xdg.h"
+#include "proc.h"
 
 static int need_argument(struct client * client,
 			const char *field, size_t len, char *error) {
@@ -267,10 +268,9 @@ int command_exec(struct client *client, const char* args, size_t len) {
 		error_string(err, V(client->cmd));
 		return 0;
 	}
-	snprintf(V(buf), "\"%s\" %s/\"%s\"",
-			config.launcher, download_dir, name);
+	snprintf(V(buf), "%s/\"%s\"", download_dir, name);
 	tb_shutdown();
-	system(buf);
+	spawn(config.launcher, 1, 0, buf);
 	unlinkat(download_fd, name, 0);
 	client_init_termbox();
 	return 0;

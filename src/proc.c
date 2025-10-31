@@ -7,6 +7,9 @@
 #include <syscall.h>
 #endif
 #include <stdio.h>
+#include <stdarg.h>
+#include <sys/wait.h>
+#include <spawn.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -14,6 +17,47 @@
 #include "proc.h"
 
 char **argv_ptr = NULL;
+
+extern char **environ;
+
+int spawn(char *program, int wait, int closefds, ...) {
+
+	int err, n, i;
+	pid_t pid;
+	char **argv;
+	posix_spawn_file_actions_t action;
+	va_list args;
+
+	posix_spawn_file_actions_init(&action);
+	if (closefds) {
+		posix_spawn_file_actions_addclose(&action, STDOUT_FILENO);
+		posix_spawn_file_actions_addclose(&action, STDIN_FILENO);
+		posix_spawn_file_actions_addclose(&action, STDERR_FILENO);
+	}
+
+	va_start(args, closefds);
+	for (n = 0; va_arg(args, char*); n++) ;
+	va_end(args);
+
+	argv = malloc(sizeof(char*) * (n + 2));
+	if (!argv) return -1;
+	argv[0] = program;
+
+	va_start(args, closefds);
+	for (i = 0; i < n; i++)
+		argv[1 + i] = va_arg(args, char*);
+	va_end(args);
+
+	argv[1 + i] = NULL;
+
+	err = posix_spawnp(&pid, argv[0], &action, NULL, argv, environ);
+
+	free(argv);
+
+	if (!err && wait) waitpid(pid, NULL, 0);
+
+	return err;
+}
 
 void proc_argv(char **argv) {
 	argv_ptr = argv;
