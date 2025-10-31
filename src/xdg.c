@@ -112,10 +112,14 @@ int xdg_request(const char* ptr) {
 int xdg_open(const char* str) {
         if (!client.xdg) return 0;
 	char buf[4096];
-	snprintf(buf, sizeof(buf), "xdg-open %s>/dev/null 2>&1", str);
+	strlcpy(buf, str, sizeof(buf));
 	if (fork() == 0) {
 		setsid();
-		char* argv[] = {"/bin/sh", "-c", buf, NULL};
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+		open("/dev/null", O_RDONLY);
+		open("/dev/null", O_RDONLY);
+		char* argv[] = {"xdg-open", buf, NULL};
 		execvp(argv[0], argv);
 		exit(0);
 	}
