@@ -5,6 +5,7 @@
 #ifdef __APPLE__
 #undef strlcpy
 #undef snprintf
+#undef memcpy
 #endif
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}
