@@ -1485,12 +1485,15 @@ static int cap_trie_add(const char *cap, uint16_t key, uint8_t mod) {
 		}
 		if (!next) {
 			/* We need to add a new child to node */
+			void *ptr;
 			node->nchildren += 1;
-			node->children = tb_realloc(node->children,
+			ptr = tb_realloc(node->children,
 					sizeof(*node) * node->nchildren);
-			if (!node->children) {
+			if (!ptr) {
+				node->nchildren -= 1;
 				return TB_ERR_MEM;
 			}
+			node->children = ptr;
 			next = &node->children[node->nchildren - 1];
 			memset(next, 0, sizeof(*next));
 			next->c = c;

@@ -60,7 +60,6 @@ static int nextHeader(int header) {
 	}
 }
 
-/* TODO: verify that writecell and writeto return 0 */
 int gemtext_parse_link(int in, size_t *pos, size_t length, int *links,
 			struct termwriter *termwriter, uint32_t *ch) {
 

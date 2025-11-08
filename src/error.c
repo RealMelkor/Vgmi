@@ -99,6 +99,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_SOCKET_CREATION:
 		strscpy(out, "Failed to create socket", len);
 		break;
+	case ERROR_PATH_TOO_LONG:
+		strlcpy(out, "Path too long", len);
+		break;
 	default:
 		snprintf(out, len, "Unknown error (%d)", error);
 		return -1;

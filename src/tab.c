@@ -37,7 +37,11 @@ struct tab *tab_new(void) {
 		free(tab);
 		return NULL;
 	}
-	pthread_mutex_init(tab->mutex, NULL);
+	if (pthread_mutex_init(tab->mutex, NULL)) {
+		free(tab->mutex);
+		free(tab);
+		return NULL;
+	}
 	return tab;
 }
 
@@ -118,6 +122,13 @@ restart:
 	}
 	redirect = 0;
 	ctx = secure_new();
+	if (!ctx) {
+		char error[1024];
+		error_string(ERROR_MEMORY_FAILURE, V(error));
+		snprintf(V(tab->error), "%s: %s", error, request.url);
+		tab->failure = 1;
+		return 0;
+	}
 	failure = request_process(&request, ctx, args->url);
 	pthread_mutex_lock(tab->mutex);
 	confirm = 1;
@@ -223,7 +234,9 @@ int tab_request(struct tab* tab, const char *url) {
 		free(args);
 		return ERROR_PTHREAD;
 	}
-	pthread_create(&args->thread, &tattr, tab_request_thread, args);
+	if (pthread_create(&args->thread, &tattr, tab_request_thread, args)) {
+		return ERROR_ERRNO;
+	}
 	args->request->thread = (void*)args->thread;
 	return 0;
 }
@@ -310,6 +323,9 @@ struct tab *tab_close(struct tab *tab) {
 	} else if (prev) {
 		ret = prev;
 	} else ret = NULL;
-	pthread_create((pthread_t*)&tab->thread, NULL, tab_free_thread, tab);
+	if (pthread_create((pthread_t*)&tab->thread,
+				NULL, tab_free_thread, tab)) {
+		return NULL;
+	}
 	return ret;
 }

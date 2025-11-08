@@ -114,11 +114,12 @@ void* __malloc(size_t size, const char* file, int line, const char* func) {
 void* __calloc(size_t num, size_t size, const char* file,
 	       int line, const char* func) {
 	void* ptr = calloc(num, size);
-	if(ptr) {
+	if (ptr) {
 		allocationCount++;
 		allocation = realloc(allocation,
 				     sizeof(struct __allocation) *
 				     allocationCount);
+		if (!allocation) return exit(-1);
 		allocation[allocationCount-1].ptr = ptr;
 		allocation[allocationCount-1].line = line;
 		allocation[allocationCount-1].size = size;
@@ -136,6 +137,7 @@ void* __realloc(void* ptr, size_t size, const char* file,
 	void* _ptr;
 	if (ptr == NULL) return __malloc(size, file, line, func);
 	_ptr = realloc(ptr, size);
+	if (!_ptr) return exit(-1);
 	if(_ptr != ptr) {
 		uint32_t i = 0;
 		for(i = 0; i != allocationCount &&

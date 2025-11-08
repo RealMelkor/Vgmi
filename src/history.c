@@ -153,9 +153,11 @@ int history_add(const char *url, const char *title) {
 
 void history_free(void) {
 	struct history_entry *next;
+	pthread_mutex_lock(&history_mutex);
 	while (history) {
 		next = history->next;
 		free(history);
 		history = next;
 	}
+	pthread_mutex_unlock(&history_mutex);
 }

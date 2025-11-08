@@ -77,7 +77,7 @@ int servername_from_url(const char *url, char* out, size_t len) {
 	port = strchr(start, ':');
 	end = strchr(start, '/');
 	if (!end || (port && port < end)) end = port;
-	if (!end) end = start + strlen(url);
+	if (!end) end = start + strnlen(url, MAX_URL);
 
 	if ((size_t)(end - start) >= len) return ERROR_BUFFER_OVERFLOW;
 
@@ -228,13 +228,19 @@ int url_convert(const char *url, char *out, size_t length) {
 			continue;
 		}
 		for (k = 0; k < len; k++) {
+			int ret;
 			if (i + 3 > length) break;
 			out[i++] = '%';
 			if (j > MAX_URL) {
 				out[i] = 0;
 				return -1;
 			}
-			i += snprintf(&out[i], length - i, "%02X", url[j++]);
+			ret = snprintf(&out[i], length - i, "%02X", url[j++]);
+			if (ret < 1) {
+				out[i] = 0;
+				return -1;
+			}
+			i += ret;
 		}
 	}
 	out[length - 1] = 0;

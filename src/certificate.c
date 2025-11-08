@@ -13,6 +13,7 @@
 #include "storage.h"
 #include "strscpy.h"
 #include "config.h"
+#include "error.h"
 
 int certificate_getpath(const char *host, char *crt, size_t crt_len,
 				char *key, size_t key_len) {
@@ -50,7 +51,9 @@ int certificate_create(char *host, char *error, int errlen) {
 #endif
 
 #ifdef __linux__
-	if (getrandom(&id, sizeof(id), GRND_RANDOM) == -1) goto failed;
+	ret = getrandom(&id, sizeof(id), GRND_RANDOM);
+	if (ret < 0) return ERROR_ERRNO;
+	if (ret != sizeof(id)) return ERROR_RANDOM;
 #else
 	arc4random_buf(&id, sizeof(id));
 #endif

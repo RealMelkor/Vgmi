@@ -42,8 +42,7 @@ int command_quit(struct client *client, const char* ptr, size_t len) {
 
 int command_close(struct client *client, const char* ptr, size_t len) {
 	if (no_argument(client, ptr, len)) return 0;
-	client_closetab(client);
-	return !client->tab;
+	return client_closetab(client);
 }
 
 int command_reload(struct client *client, const char* ptr, size_t len) {
@@ -200,6 +199,7 @@ int command_download(struct client *client, const char* args, size_t len) {
 	char name[MAX_CMDLINE - 128], *ptr;
 	char buf[MAX_URL];
 	int i;
+	size_t bytes;
 
 	req = tab_completed(client->tab);
 	if (!req) {
@@ -247,9 +247,14 @@ int command_download(struct client *client, const char* args, size_t len) {
 		error_string(ERROR_ERRNO, V(client->cmd));
 		return 0;
 	}
-	fwrite(&req->data[req->page.offset], 1,
+	bytes = fwrite(&req->data[req->page.offset], 1,
 			req->length - req->page.offset, f);
 	fclose(f);
+	if (bytes != req->length - req->page.offset) {
+		client->error = 1;
+		error_string(ERROR_ERRNO, V(client->cmd));
+		return 0;
+	}
 
 	client->error = ERROR_INFO;
 	snprintf(V(client->cmd), "File downloaded : %s", name);

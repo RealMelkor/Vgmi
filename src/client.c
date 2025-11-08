@@ -158,7 +158,7 @@ int client_init(struct client* client) {
 		error_string(ret, V(error));
 		printf("Reseting downloads path: %s\n", error);
 		*config.downloadsPath = '\0';
-		config_save();
+		if ((ret = config_save())) return ret;
 		if ((ret = storage_init_download())) return ret;
 	}
 	if ((ret = parser_request_create())) return ret;
@@ -179,9 +179,9 @@ int client_init(struct client* client) {
 			printf("Unable to initialize landlock: %s\n",
 					strerror(errno));
 			config.enableLandlock = 0;
-			config_save();
+			if ((ret = config_save())) return ret;
 			printf("Disabling landlock\n");
-			proc_fork(NULL, NULL, NULL);
+			if ((ret = proc_fork(NULL, NULL, NULL))) return ret;
 			exit(0);
 		}
 #endif

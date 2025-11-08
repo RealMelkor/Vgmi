@@ -177,18 +177,26 @@ int storage_download_exist(const char *name) {
 int storage_read(const char *name, char *out, size_t length,
 			size_t *length_out) {
 	int fd;
-	size_t file_length;
+	off_t file_length;
 
 	fd = openat(storage_fd, name, O_RDONLY, 0);
 	if (fd < 0) return ERROR_STORAGE_ACCESS;
 
 	file_length = lseek(fd, 0, SEEK_END);
-	lseek(fd, 0, SEEK_SET);
+	if (file_length == -1 || lseek(fd, 0, SEEK_SET) == -1) {
+		close(fd);
+		return ERROR_ERRNO;
+	}
 
-	if (length < file_length) return ERROR_BUFFER_OVERFLOW;
+	if (length < (size_t)file_length) {
+		close(fd);
+		return ERROR_BUFFER_OVERFLOW;
+	}
 
-	if (read(fd, out, file_length) != (ssize_t)file_length)
+	if (read(fd, out, file_length) != file_length) {
+		close(fd);
 		return ERROR_STORAGE_ACCESS;
+	}
 	*length_out = file_length;
 
 	close(fd);

@@ -197,7 +197,7 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 }
 
 int parser_create(struct parser *parser, int type) {
-	pthread_mutex_init(&parser->mutex, NULL);
+	if (pthread_mutex_init(&parser->mutex, NULL)) return ERROR_ERRNO;
 	switch (type) {
 	case PARSER_GEMTEXT:
 		return proc_fork("--page", &parser->in, &parser->out);
