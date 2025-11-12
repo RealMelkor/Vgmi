@@ -224,6 +224,8 @@ int sandbox_init(void) {
 						LANDLOCK_ACCESS_FS_READ_FILE);
 		ret |= landlock_unveil_path(fd, "/etc/resolv.conf",
 						LANDLOCK_ACCESS_FS_READ_FILE);
+                ret |= landlock_unveil_path(fd, "/proc/stat",
+                                                LANDLOCK_ACCESS_FS_READ_FILE);
 		if (ret) return ERROR_LANDLOCK_FAILURE;
 
 		if (landlock_apply(fd)) return ERROR_LANDLOCK_FAILURE;

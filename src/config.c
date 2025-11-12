@@ -94,6 +94,7 @@ int config_load(void) {
 	FILE *f;
 	char buf[1024];
 	int i, in_str, in_comment;
+	struct field field = {0};
 	srand(time(NULL));
 	config_default();
 	if (!(f = storage_fopen(CONFIG_FILE, "r")))
@@ -101,7 +102,6 @@ int config_load(void) {
 
 	in_comment = in_str = i = 0;
 	for (;;) {
-		struct field field = {0};
 		int ch = fgetc(f);
 		if (ch == EOF || ch == '\n') {
 			int ivalue;
