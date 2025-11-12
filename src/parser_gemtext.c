@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <math.h>
 #include "macro.h"
 #include "client.h"
 #define PAGE_INTERNAL

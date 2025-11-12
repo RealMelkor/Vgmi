@@ -85,8 +85,8 @@ if [ "$(uname)" != 'OpenBSD' ]; then
 	mkdir -p 'lib'
 	cd "$build_dir"
 
-	ssl_version='4.1.0'
-	expected_hash='0f71c16bd34bdaaccdcb96a5d94a4921bfb612ec6e0eba7a80d8854eefd8bb61'
+	ssl_version='4.2.1'
+	expected_hash='6d5c2f58583588ea791f4c8645004071d00dfa554a5bf788a006ca1eb5abd70b'
 	remote_dir='https://ftp.openbsd.org/pub/OpenBSD/LibreSSL'
 	lib="libressl-${ssl_version}"
 	archive="${lib}.tar.gz"

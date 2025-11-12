@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <errno.h>
+#include <unistd.h>
 #include "macro.h"
 #include "error.h"
 #include "config.h"
@@ -180,7 +181,8 @@ int client_init(struct client* client) {
 					strerror(errno));
 			config.enableLandlock = 0;
 			if ((ret = config_save())) return ret;
-			printf("Disabling landlock\n");
+			printf("[WARNING] Disabling landlock\n");
+			sleep(2);
 			if ((ret = proc_fork(NULL, NULL, NULL))) return ret;
 			exit(0);
 		}

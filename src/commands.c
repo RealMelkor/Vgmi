@@ -271,12 +271,18 @@ int command_exec(struct client *client, const char* args, size_t len) {
 	if (command_download(client, name, 1)) return -1;
 	if (client->error != ERROR_INFO) return 0;
 	client->error = 0;
+#ifndef DISABLE_XDG
 	if (config.enableSandbox || !config.launcherTerminal) {
 		char buf[PATH_MAX * 4];
 		snprintf(V(buf), "download://%s", name);
 		xdg_request(buf);
 		return 0;
 	}
+#else
+	if (config.enableSandbox || !config.launcherTerminal) {
+		return 0;
+	}
+#endif
 	if ((err = storage_download_path(V(download_dir)))) {
 		client->error = 1;
 		error_string(err, V(client->cmd));

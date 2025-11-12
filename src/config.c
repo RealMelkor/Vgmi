@@ -45,6 +45,7 @@ void config_default(void) {
 	STRSCPY(config.downloadsPath, "");
 	STRSCPY(config.proxyHttp, "");
 	STRSCPY(config.launcher, "xdg-open");
+	STRSCPY(config.startupHomePage, "about:newtab");
 }
 
 static int set_field(struct field field, int v, char *str) {

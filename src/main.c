@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 	
 	struct client client = {0};
 	int ret;
-	const char *url = "about:newtab";
+	const char *url = NULL;
 
 #if defined(__linux__) && !defined(DEBUG)
 	if (prctl(PR_SET_DUMPABLE, 0) && argc < 2) {
@@ -87,6 +87,8 @@ int main(int argc, char *argv[]) {
 		printf("Initialisation failure: %s\n", error);
 		return -1;
 	}
+
+	if (!url) url = config.startupHomePage;
 
 	client.tab = tab_new();
 	tab_request(client.tab, url);

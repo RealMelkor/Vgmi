@@ -89,9 +89,9 @@ int secure_init(struct secure *secure, const char *hostname) {
 					V(cert_path), V(key_path));
 			if (ret < 0) return ERROR_PATH_TOO_LONG;
 			if ((ret = storage_read(cert_path, V(cert), &cert_len)))
-				return ret;
+				return 0;
 			if ((ret = storage_read(key_path, V(key), &key_len)))
-				return ret;
+				return 0;
 			tls_config_set_keypair_mem(secure->config,
 					(unsigned char*)cert, cert_len,
 					(unsigned char*)key, key_len);

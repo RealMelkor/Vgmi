@@ -27,6 +27,7 @@ struct config {
 	char		downloadsPath[CONFIG_STRING_LENGTH];
 	char		proxyHttp[CONFIG_STRING_LENGTH];
 	char		launcher[CONFIG_STRING_LENGTH];
+	char		startupHomePage[CONFIG_STRING_LENGTH];
 };
 extern struct config config;
 
@@ -69,6 +70,7 @@ static struct field fields[] = {
 	{"proxy.http", VALUE_STRING, &config.proxyHttp, 0},
 	{"launcher.executable", VALUE_STRING, &config.launcher, 0},
 	{"launcher.terminal", VALUE_INT, &config.launcherTerminal, 0},
+	{"startup.homepage", VALUE_STRING, &config.startupHomePage, 0},
 };
 #endif
 
