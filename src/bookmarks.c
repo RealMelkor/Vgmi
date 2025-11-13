@@ -52,14 +52,14 @@ int bookmark_load(void) {
 			}
 			len = utf8_unicode_length(ch);
 			if (space) {
-				if (len + j > sizeof(bookmark.name)) {
-					bookmark.name[j] = 0;
+				if (len + j >= sizeof(bookmark.name)) {
+					bookmark.url[0] = 0;
 					break;
 				}
 				utf8_unicode_to_char(&bookmark.name[j], ch);
 			} else {
-				if (len + j > sizeof(bookmark.url)) {
-					bookmark.url[j] = 0;
+				if (len + j >= sizeof(bookmark.url)) {
+					bookmark.url[0] = 0;
 					break;
 				}
 				utf8_unicode_to_char(&bookmark.url[j], ch);

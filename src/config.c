@@ -136,6 +136,10 @@ int config_load(void) {
 			continue;
 		}
 		if ((unsigned)i >= sizeof(buf)) {
+			while ((ch = fgetc(f)) != EOF) {
+				if (ch == '\n') break;
+			}
+			if (ch == EOF) break;
 			i = 0;
 			continue;
 		}

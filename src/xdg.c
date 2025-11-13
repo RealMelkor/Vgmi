@@ -93,7 +93,7 @@ int xdg_proc(int in, int out) {
 	i = byte = 0;
 	if (vwrite(out, P(byte))) return -1;
 	while (1) {
-		if (i >= sizeof(buf)) i = 0;
+		if (i >= sizeof(buf)) return -1;
 		if (read(in, P(byte)) != 1) break;
 		if (byte != '\n') {
 			buf[i++] = byte;

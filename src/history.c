@@ -136,7 +136,7 @@ int history_add(const char *url, const char *title) {
 		history_load(HISTORY);
 	}
 	history_length++;
-	entry = malloc(sizeof(*entry));
+	entry = malloc(sizeof(struct history_entry));
 	if (!entry) return ERROR_MEMORY_FAILURE;
 	url_hide_query(title, V(entry->title));
 	if (strstr(url, "gemini://") == url) {

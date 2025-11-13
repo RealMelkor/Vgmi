@@ -40,7 +40,7 @@ static int _read(int fd, void *ptr, int length) {
 	for (i = 0; i < length;) {
 		int bytes;
 		if (!poll(&pfd, 1, 3000)) return -1;
-		bytes = read(fd, &data[i], length);
+		bytes = read(fd, &data[i], length - i);
 		if (bytes < 1) return -1;
 		i += bytes;
 	}

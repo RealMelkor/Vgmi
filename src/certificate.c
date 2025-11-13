@@ -72,7 +72,7 @@ int certificate_create(char *host, char *error, int errlen) {
 		goto failed;
 
 	if (X509_set_issuer_name(x509, name) != 1) goto failed;
-	if (X509_sign(x509, pkey, EVP_sha1()) == 0) goto failed;
+	if (X509_sign(x509, pkey, EVP_sha256()) == 0) goto failed;
 
 	if (certificate_getpath(host, crt, sizeof(crt),
 				key, sizeof(key)) == -1)
