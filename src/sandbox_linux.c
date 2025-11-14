@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include "macro.h"
 #include "sandbox.h"
 #include "storage.h"
@@ -117,6 +118,7 @@ struct sock_filter filter[] = {
 	SC_ALLOW(unlink),
 #endif
 	SC_ALLOW(unlinkat),
+	SC_ALLOW(tgkill),
 	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
 };
 
@@ -210,6 +212,7 @@ int sandbox_init(void) {
 	if ((ret = storage_download_path(V(download_path)))) return ret;
 
 #ifdef HAS_LANDLOCK
+	dlopen("libgcc_s.so.1", RTLD_NOW|RTLD_GLOBAL);
 	if (config.enableLandlock) {
 		/* restrict filesystem access */
 		fd = landlock_init();
