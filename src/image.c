@@ -52,7 +52,7 @@ static int __read(int fd, void *ptr, int length) {
 	char *data = ptr;
 	for (i = 0; i < length;) {
 		int bytes;
-		bytes = read(fd, &data[i], length);
+		bytes = read(fd, &data[i], length - i);
 		if (bytes < 1) return -1;
 		i += bytes;
 	}

@@ -53,7 +53,7 @@ void page_search(struct page *page, const char *search) {
 int page_selection_line(struct page page) {
 	size_t y, x;
 	unsigned int selected = page.selected;
-	if (selected < 1 && selected >= page.occurrences) return 0;
+	if (selected < 1 || selected >= page.occurrences) return 0;
 	for (y = 0; y < page.length; y++) {
 		for (x = 0; x < page.lines[y].length; x++) {
 			if (page.lines[y].cells[x].selected == selected)

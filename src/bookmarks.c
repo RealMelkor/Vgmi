@@ -67,9 +67,8 @@ int bookmark_load(void) {
 			j += len;
 		}
 		if (*bookmark.url) {
-			bookmark_length++;
 			ptr = realloc(bookmarks,
-					sizeof(bookmark) * bookmark_length);
+				sizeof(bookmark) * (bookmark_length + 1));
 			if (!ptr) {
 				free(bookmarks);
 				bookmarks = NULL;
@@ -77,7 +76,8 @@ int bookmark_load(void) {
 				return ERROR_MEMORY_FAILURE; 
 			}
 			bookmarks = ptr;
-			bookmarks[bookmark_length - 1] = bookmark;
+			bookmarks[bookmark_length] = bookmark;
+			bookmark_length++;
 		}
 		if (!eof && ch != '\n') {
 			int ch = 0;

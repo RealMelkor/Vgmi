@@ -4,6 +4,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <fcntl.h>
@@ -32,7 +33,7 @@ int certificate_create(char *host, char *error, int errlen) {
 	char key[1024];
 	char crt[1024];
 	FILE* f = NULL;
-	int fd, id, ret = 1;
+	int fd, id, ret = ERROR_ERRNO;
 
 	X509_NAME *name;
 #ifdef USE_OPENSSL
@@ -52,8 +53,12 @@ int certificate_create(char *host, char *error, int errlen) {
 
 #ifdef __linux__
 	ret = getrandom(&id, sizeof(id), GRND_RANDOM);
-	if (ret < 0) return ERROR_ERRNO;
-	if (ret != sizeof(id)) return ERROR_RANDOM;
+	if (ret < 0) goto failed;
+	if (ret != sizeof(id)) {
+		ret = ERROR_RANDOM;
+		goto failed;
+	}
+	ret = ERROR_ERRNO;
 #else
 	arc4random_buf(&id, sizeof(id));
 #endif
@@ -90,6 +95,7 @@ int certificate_create(char *host, char *error, int errlen) {
 	if (!f) {
 		snprintf(error, errlen, "Failed to write to %s : %s",
 			 key, strerror(errno));
+		close(fd);
 		goto skip_error;
 	}
 	if (PEM_write_PrivateKey(f, pkey, NULL, NULL, 0, NULL, NULL) != 1)

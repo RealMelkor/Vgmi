@@ -46,6 +46,7 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 		} else {
 			size_t j;
 			for (j = n; j < i; j++) {
+				if (pos >= outlen) return -1;
 				out[pos] = part[j];
 				pos++;
 			}
@@ -53,12 +54,14 @@ int idn_to_ascii(const char* domain, size_t dlen, char* out, size_t outlen) {
 		unicode = 0;
 		n = i + 1;
 		if (*ptr == '.') {
+			if (pos >= outlen) return -1;
 			out[pos] = '.';
 			pos++;
 			ptr++;
 		}
 
 		if (!*ptr) {
+			if (pos >= outlen) return -1;
 			out[pos] = '\0';
 			break;
 		}
@@ -229,7 +232,7 @@ int url_convert(const char *url, char *out, size_t length) {
 		}
 		for (k = 0; k < len; k++) {
 			int ret;
-			if (i + 3 > length) break;
+			if (i + 4 > length) break;
 			out[i++] = '%';
 			if (j > MAX_URL) {
 				out[i] = 0;

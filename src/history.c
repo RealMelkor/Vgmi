@@ -142,6 +142,7 @@ int history_add(const char *url, const char *title) {
 	if (strstr(url, "gemini://") == url) {
 		url_hide_query(url, V(entry->url));
 	} else {
+		STRSCPY(entry->url, url);
 		STRSCPY(entry->title, title);
 	}
 	pthread_mutex_lock(&history_mutex);

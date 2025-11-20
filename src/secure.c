@@ -53,6 +53,8 @@ static const char *_tls_config_error(struct tls_config *config) {
 
 int secure_init(struct secure *secure, const char *hostname) {
 
+	secure->socket = -1;
+
 	if (!secure_initialized) {
 		if (tls_init()) {
 			STRSCPY(error_tls, strerror(errno));
@@ -175,6 +177,10 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 	ptr = NULL;
 	i = len = allocated = 0;
 	while (len < config.maximumBodyLength) {
+		if (allocated >= SIZE_MAX - sizeof(buf)) {
+			free(ptr);
+			return ERROR_RESPONSE_TOO_LARGE;
+		}
 		if (len + sizeof(buf) > allocated) {
 			char *tmp;
 			allocated += sizeof(buf);
@@ -211,7 +217,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 
 int secure_free(struct secure *secure) {
 	if (secure->ctx) {
-		close(secure->socket);
+		if (secure->socket < 0) close(secure->socket);
 		tls_close(secure->ctx);
 	}
 	tls_config_free(secure->config);

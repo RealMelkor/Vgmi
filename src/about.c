@@ -79,12 +79,11 @@ void *dyn_strcat(char *dst, size_t *dst_length,
 	size_t sum;
 	void *ptr;
 	if (src_len > SIZE_MAX - *dst_length) return NULL;
-	sum = (*dst_length = strnlen(dst, *dst_length)) + src_len;
+	sum = (*dst_length = dst ? strnlen(dst, *dst_length) : 0) + src_len;
 	ptr = realloc(dst, sum + 1);
 	if (!ptr) return NULL;
 	dst = ptr;
-	strscpy(&dst[*dst_length], src, src_len);
-	*dst_length = strnlen(dst, sum);
+	*dst_length += strscpy(&dst[*dst_length], src, src_len);
 	return dst;
 }
 

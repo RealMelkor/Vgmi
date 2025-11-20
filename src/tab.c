@@ -231,12 +231,17 @@ int tab_request(struct tab* tab, const char *url) {
 		return ERROR_MEMORY_FAILURE;
 	}
 	if (pthread_attr_init(&tattr)) {
+		args->request->state = STATE_FAILED;
 		free(args);
 		return ERROR_PTHREAD;
 	}
 	if (pthread_create(&args->thread, &tattr, tab_request_thread, args)) {
+		pthread_attr_destroy(&tattr);
+		args->request->state = STATE_FAILED;
+		free(args);
 		return ERROR_ERRNO;
 	}
+	pthread_attr_destroy(&tattr);
 	args->request->thread = (void*)args->thread;
 	return 0;
 }
@@ -313,6 +318,7 @@ void tab_free(struct tab *tab) {
 
 struct tab *tab_close(struct tab *tab) {
 	struct tab *next, *prev, *ret;
+	pthread_attr_t attr = {0};
 	if (!tab) return NULL;
 	next = tab->next;
 	prev = tab->prev;
@@ -323,9 +329,12 @@ struct tab *tab_close(struct tab *tab) {
 	} else if (prev) {
 		ret = prev;
 	} else ret = NULL;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	if (pthread_create((pthread_t*)&tab->thread,
-				NULL, tab_free_thread, tab)) {
-		return NULL;
+				&attr, tab_free_thread, tab)) {
+		ret = NULL;
 	}
+	pthread_attr_destroy(&attr);
 	return ret;
 }

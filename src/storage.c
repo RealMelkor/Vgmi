@@ -42,7 +42,7 @@ static int storage_mkdir(const char *path) {
 
 	if (stat(path, &st) == 0) return 0;
 
-	i = STRSCPY(path_copy, path);
+	i = strscpy(path_copy, path, sizeof(path_copy) - 1);
 	path_copy[i] = '/';
 	path_copy[i + 1] = 0;
 	for (ptr = path_copy; ptr && *ptr; ptr = strchr(ptr, '/')) {
@@ -138,6 +138,7 @@ static FILE* _fopen(const char *name, const char *mode, int dir, int secure) {
 
 	int fd;
 	int flags;
+	FILE *f;
 
 	if (strchr(mode, 'w'))
 		flags = O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC;
@@ -150,7 +151,10 @@ static FILE* _fopen(const char *name, const char *mode, int dir, int secure) {
 	fd = openat(dir, name, flags, secure ? 0600 : 0644);
 	if (fd < 0) return NULL;
 
-	return fdopen(fd, mode);
+	f = fdopen(fd, mode);
+	if (!f) close(fd);
+
+	return f;
 }
 
 FILE* storage_fopen(const char *name, const char *mode) {
@@ -241,7 +245,7 @@ int storage_find(const char* executable, char *path, size_t length) {
 		if (*ptr == ':') ptr++;
 		STRSCPY(buf, ptr);
 		buf_ptr = strchr(buf, ':');
-		if (!buf_ptr) buf_ptr = buf + strnlen(V(buf));
+		if (!buf_ptr) buf_ptr = buf + strnlen(buf, sizeof(buf) - 2);
 		*(buf_ptr++) = '/';
 		strscpy(buf_ptr, executable, sizeof(buf) - (buf_ptr - buf));
 		if (stat(buf, &st) == 0) {
