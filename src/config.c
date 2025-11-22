@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "strnstr.h"
@@ -20,8 +21,9 @@
 #define CONFIG_FILE "config.conf"
 
 struct config config = {0};
+pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void config_default(void) {
+static void config_default(void) {
 	memset(&config, 0, sizeof(config));
 	config.certificateLifespan = 3600 * 24 * 365 * 2; /* 2 years */
 	config.certificateBits = 2048;
@@ -48,6 +50,32 @@ void config_default(void) {
 	STRSCPY(config.startupHomePage, "about:newtab");
 }
 
+static int config_correction(void) {
+	size_t i;
+	for (i = 0; i < LENGTH(fields); i++) {
+		if (!STRCMP(fields[i].name, "request.maxdisplay")) {
+			unsigned int *value =  fields[i].ptr;
+			if (*value < 4096) *value = 4096;
+		}
+		if (!STRCMP(fields[i].name, "search.url")) {
+			char *value = fields[i].ptr;
+			char *ptr = strnstr(value, "%s", CONFIG_STRING_LENGTH);
+			char *second = NULL;
+			if (ptr) {
+				second = strnstr(ptr + 1, "%s",
+					CONFIG_STRING_LENGTH - (ptr - value));
+			}
+			if (!ptr || second) {
+				strscpy(fields[i].ptr, DEFAULT_SEARCH_URL,
+						CONFIG_STRING_LENGTH);
+			}
+		}
+	}
+	return 0;
+}
+
+
+
 static int set_field(struct field field, int v, char *str) {
 	unsigned int i = 0;
 	for (i = 0; i < LENGTH(fields); i++) {
@@ -70,6 +98,7 @@ static int set_field(struct field field, int v, char *str) {
 }
 
 int config_set_field(int id, const char *value) {
+	pthread_mutex_lock(&config_mutex);
 	if (id < 0 || (unsigned)id >= LENGTH(fields))
 		return ERROR_INVALID_ARGUMENT;
 	switch (fields[id].type) {
@@ -88,6 +117,7 @@ int config_set_field(int id, const char *value) {
 		return ERROR_INVALID_ARGUMENT;
 	}
 	config_correction();
+	pthread_mutex_unlock(&config_mutex);
 	return 0;
 }
 
@@ -174,26 +204,26 @@ int config_save(void) {
 	return 0;
 }
 
-int config_correction(void) {
+int config_get_int(void* ptr) {
+	int i;
+	pthread_mutex_lock(&config_mutex);
+	i = *(int*)ptr;
+	pthread_mutex_unlock(&config_mutex);
+	return i;
+}
+
+unsigned int config_get_uint(void* ptr) {
+	unsigned int i;
+	pthread_mutex_lock(&config_mutex);
+	i = *(unsigned int*)ptr;
+	pthread_mutex_unlock(&config_mutex);
+	return i;
+}
+
+int config_get_str(void* ptr, char* out) {
 	size_t i;
-	for (i = 0; i < LENGTH(fields); i++) {
-		if (!STRCMP(fields[i].name, "request.maxdisplay")) {
-			unsigned int *value =  fields[i].ptr;
-			if (*value < 4096) *value = 4096;
-		}
-		if (!STRCMP(fields[i].name, "search.url")) {
-			char *value = fields[i].ptr;
-			char *ptr = strnstr(value, "%s", CONFIG_STRING_LENGTH);
-			char *second = NULL;
-			if (ptr) {
-				second = strnstr(ptr + 1, "%s",
-					CONFIG_STRING_LENGTH - (ptr - value));
-			}
-			if (!ptr || second) {
-				strscpy(fields[i].ptr, DEFAULT_SEARCH_URL,
-						CONFIG_STRING_LENGTH);
-			}
-		}
-	}
-	return 0;
+	pthread_mutex_lock(&config_mutex);
+	i = strlcpy(out, ptr, CONFIG_STRING_LENGTH);
+	pthread_mutex_unlock(&config_mutex);
+	return i;
 }

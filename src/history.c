@@ -128,6 +128,7 @@ int history_add(const char *url, const char *title) {
 	int limit;
 
 	if (HISTORY_DISABLED) return 0;
+	pthread_mutex_lock(&history_mutex);
 	limit = config.maximumHistorySize + config.maximumHistoryCache;
 	if (history_length > limit) {
 		/* reload history to prevents overloading memory */
@@ -137,7 +138,10 @@ int history_add(const char *url, const char *title) {
 	}
 	history_length++;
 	entry = malloc(sizeof(struct history_entry));
-	if (!entry) return ERROR_MEMORY_FAILURE;
+	if (!entry) {
+		pthread_mutex_unlock(&history_mutex);
+		return ERROR_MEMORY_FAILURE;
+	}
 	url_hide_query(title, V(entry->title));
 	if (strstr(url, "gemini://") == url) {
 		url_hide_query(url, V(entry->url));
@@ -145,7 +149,6 @@ int history_add(const char *url, const char *title) {
 		STRSCPY(entry->url, url);
 		STRSCPY(entry->title, title);
 	}
-	pthread_mutex_lock(&history_mutex);
 	entry->next = history;
 	history = entry;
 	pthread_mutex_unlock(&history_mutex);

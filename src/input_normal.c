@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "utf8.h"
@@ -290,13 +291,16 @@ bottom:
 prev:
 		if (!client || !client->tab || !client->tab->request) break;
 		{
-			struct request *req = client->tab->view ?
+			struct request *req;
+			pthread_mutex_lock(client->tab->mutex);
+			req = client->tab->view ?
 				client->tab->view->next :
 				client->tab->request->next;
 			while (req && req->state != STATE_COMPLETED) {
 				req = req->next;
 			}
 			if (req) client->tab->view = req;
+			pthread_mutex_unlock(client->tab->mutex);
 		}
 		break;
 	case 'l':
@@ -305,6 +309,7 @@ next:
 		if (!client->tab->view) break;
 		{
 			struct request *req, *prev;
+			pthread_mutex_lock(client->tab->mutex);
 			prev = NULL;
 			req = client->tab->request->next;
 			while (req && req != client->tab->view) {
@@ -313,6 +318,7 @@ next:
 				req = req->next;
 			}
 			client->tab->view = prev;
+			pthread_mutex_unlock(client->tab->mutex);
 		}
 		break;
 	case 'y':

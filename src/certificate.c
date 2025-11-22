@@ -113,6 +113,7 @@ int certificate_create(char *host, char *error, int errlen) {
 
 	if (!f) {
 		snprintf(error, errlen, "Failed to write to %s", crt);
+		close(fd);
 		goto skip_error;
 	}
 	if (PEM_write_X509(f, x509) != 1)

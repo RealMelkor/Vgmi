@@ -217,7 +217,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 
 int secure_free(struct secure *secure) {
 	if (secure->ctx) {
-		if (secure->socket < 0) close(secure->socket);
+		if (secure->socket >= 0) close(secure->socket);
 		tls_close(secure->ctx);
 	}
 	tls_config_free(secure->config);

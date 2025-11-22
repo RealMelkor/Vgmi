@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "error.h"
@@ -31,6 +32,7 @@ int about_bookmarks(char **out, size_t *length_out) {
 	if (!(tmp = dyn_strcat(data, &length, V(title)))) goto fail;
 	data = tmp;
 
+	pthread_mutex_lock(&bookmark_mutex);
 	for (i = 0; i < bookmark_length; i++) {
 
 		char buf[sizeof(bookmarks[i]) + 512] = {0};
@@ -42,6 +44,7 @@ int about_bookmarks(char **out, size_t *length_out) {
 			goto fail;
 		data = tmp;
 	}
+	pthread_mutex_unlock(&bookmark_mutex);
 
 	*out = data;
 	*length_out = length;

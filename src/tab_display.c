@@ -142,8 +142,10 @@ void tab_display(struct tab *tab, struct client *client) {
 
 	switch (tab->request->state) {
 	case STATE_COMPLETED:
+		pthread_mutex_lock(tab->mutex);
 		tab_display_request(tab->view ?
 				tab->view : tab->request, rect);
+		pthread_mutex_unlock(tab->mutex);
 		break;
 	case STATE_FAILED:
 		tab_display_error(tab);

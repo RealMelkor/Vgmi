@@ -77,4 +77,6 @@ static struct field fields[] = {
 int config_load(void);
 int config_save(void);
 int config_set_field(int id, const char *value);
-int config_correction(void);
+int config_get_int(void*);
+int config_get_str(void*, char*);
+unsigned int config_get_uint(void* ptr);

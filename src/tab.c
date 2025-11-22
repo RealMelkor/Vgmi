@@ -29,15 +29,26 @@ struct request_thread {
 	char url[MAX_URL];
 };
 
+static pthread_mutex_t *init_mutex(void) {
+	pthread_mutex_t *mutex = malloc(sizeof(pthread_mutex_t));
+	if (!mutex) return NULL;
+	if (pthread_mutex_init(mutex, NULL)) {
+		free(mutex);
+		return NULL;
+	}
+	return mutex;
+}
+
 struct tab *tab_new(void) {
 	struct tab *tab = calloc(1, sizeof(struct tab));
 	if (!tab) return NULL;
-	tab->mutex = malloc(sizeof(pthread_mutex_t));
+	tab->mutex = init_mutex();
 	if (!tab->mutex) {
 		free(tab);
 		return NULL;
 	}
-	if (pthread_mutex_init(tab->mutex, NULL)) {
+	tab->mutex_error = init_mutex();
+	if (!tab->mutex_error) {
 		free(tab->mutex);
 		free(tab);
 		return NULL;
@@ -109,10 +120,8 @@ void* tab_request_thread(void *ptr) {
 
 	iterations = 0;
 restart:
-	if (iterations > config.maximumRedirects) {
-		request.error = ERROR_TOO_MANY_REDIRECT;
-		error_string(request.error, V(tab->error));
-		tab->failure = 1;
+	if (iterations > config_get_int(&config.maximumRedirects)) {
+		tab_set_error_string(tab, ERROR_TOO_MANY_REDIRECT);
 		request.next = req->next;
 		request.status = -1;
 		request.state = STATE_FAILED;
@@ -123,10 +132,10 @@ restart:
 	redirect = 0;
 	ctx = secure_new();
 	if (!ctx) {
-		char error[1024];
+		char error[256], buf[2048];
 		error_string(ERROR_MEMORY_FAILURE, V(error));
-		snprintf(V(tab->error), "%s: %s", error, request.url);
-		tab->failure = 1;
+		snprintf(V(buf), "%s: %s", error, request.url);
+		tab_set_error(tab, buf, 1);
 		return 0;
 	}
 	failure = request_process(&request, ctx, args->url);
@@ -144,28 +153,27 @@ restart:
 		req->state = STATE_CANCELED;
 	} else if (failure) {
 		{
-			char error[1024];
+			char error[256], buf[2048];
 			error_string(request.error, V(error));
-			snprintf(V(tab->error), "%s: %s", error, request.url);
+			snprintf(V(buf), "%s: %s", error, request.url);
+			tab_set_error(tab, buf, 1);
 		}
-		tab->failure = 1;
 	} else if (gemini_isredirect(request.status)) {
 		redirect = 1;
 		STRSCPY(destination, request.meta);
 		confirm = 0;
 	} else if (request.status == -1) {
 		request.error = ERROR_INVALID_DATA;
-		error_string(request.error, V(tab->error));
-		tab->failure = 1;
+		tab_set_error_string(tab, ERROR_INVALID_DATA);
 		request.state = STATE_FAILED;
 	} else if (gemini_iserror(request.status)) {
 		{
-			char status[1024] = {0};
+			char status[128] = {0}, buf[2048];
 			gemini_status_string(request.status, V(status));
-			snprintf(V(tab->error), "%s (%d : %s)", request.meta,
+			snprintf(V(buf), "%s (%d : %s)", request.meta,
 					request.status, status);
+			tab_set_error(tab, buf, 1);
 		}
-		tab->failure = 1;
 		request.state = STATE_FAILED;
 	}
 	if (confirm) {
@@ -178,14 +186,15 @@ restart:
 	secure_free(ctx);
 	if (redirect) {
 		int protocol, proxy;
+		char buf[CONFIG_STRING_LENGTH];
+		config_get_str(config.proxyHttp, buf);
 		protocol = protocol_from_url(destination);
-		proxy = *config.proxyHttp && (protocol == PROTOCOL_HTTPS ||
+		proxy = *buf && (protocol == PROTOCOL_HTTPS ||
 				protocol == PROTOCOL_HTTP);
 		if (protocol != PROTOCOL_NONE && !proxy &&
 					protocol != PROTOCOL_GEMINI) {
 			request.error = ERROR_UNSUPPORTED_PROTOCOL;
-			error_string(request.error, V(tab->error));
-			tab->failure = 1;
+			tab_set_error_string(tab, request.error);
 			request.state = STATE_FAILED;
 		} else {
 			request_follow(&request, destination, V(args->url));
@@ -305,6 +314,7 @@ void tab_free(struct tab *tab) {
 		request_cancel(req);
 		if (req->thread) {
 			pthread_cancel((pthread_t)req->thread);
+			pthread_join((pthread_t)req->thread, NULL);
 		}
 		request_free(req);
 		req = next;
@@ -312,7 +322,10 @@ void tab_free(struct tab *tab) {
 	tab->request = NULL;
 	pthread_mutex_unlock(tab->mutex);
 	pthread_mutex_destroy(tab->mutex);
+	pthread_mutex_unlock(tab->mutex_error);
+	pthread_mutex_destroy(tab->mutex_error);
 	free(tab->mutex);
+	free(tab->mutex_error);
 	free(tab);
 }
 
@@ -337,4 +350,24 @@ struct tab *tab_close(struct tab *tab) {
 	}
 	pthread_attr_destroy(&attr);
 	return ret;
+}
+
+void tab_get_error(struct tab* tab, char* out, size_t len) {
+	pthread_mutex_lock(tab->mutex_error);
+	strscpy(out, tab->error, len);
+	pthread_mutex_unlock(tab->mutex_error);
+}
+
+void tab_set_error(struct tab* tab, char* error, int code) {
+	pthread_mutex_lock(tab->mutex_error);
+	STRSCPY(tab->error, error);
+	tab->failure = code;
+	pthread_mutex_unlock(tab->mutex_error);
+}
+
+void tab_set_error_string(struct tab* tab, int error) {
+	pthread_mutex_lock(tab->mutex_error);
+	error_string(error, V(tab->error));
+	tab->failure = 1;
+	pthread_mutex_unlock(tab->mutex_error);
 }

@@ -7,6 +7,7 @@ struct tab {
 	struct request *request;
 	struct request *view;
 	void *mutex;
+	void *mutex_error;
 	void *thread;
 	struct secure *secure;
 	char error[3072];
@@ -27,3 +28,6 @@ struct request *tab_completed(struct tab *tab);
 struct request *tab_input(struct tab *tab);
 struct tab *tab_close(struct tab *tab);
 void tab_free(struct tab*);
+void tab_get_error(struct tab*, char*, size_t);
+void tab_set_error(struct tab*, char*, int);
+void tab_set_error_string(struct tab*, int);

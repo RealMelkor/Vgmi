@@ -14,3 +14,4 @@ struct bookmark {
 
 extern struct bookmark *bookmarks;
 extern size_t bookmark_length;
+extern pthread_mutex_t bookmark_mutex;

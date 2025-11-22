@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "strscpy.h"
 #include "macro.h"
 #include "error.h"
@@ -16,6 +17,7 @@
 #define FILENAME "bookmarks.txt"
 struct bookmark *bookmarks = NULL;
 size_t bookmark_length = 0;
+pthread_mutex_t bookmark_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int bookmark_load(void) {
 
@@ -106,22 +108,31 @@ int bookmark_rewrite(void) {
 }
 
 int bookmark_add(const char *url, const char *name) {
-
-	void *ptr = realloc(bookmarks,
+	void *ptr;
+	pthread_mutex_lock(&bookmark_mutex);
+	ptr = realloc(bookmarks,
 			(bookmark_length + 1) * sizeof(struct bookmark));
-	if (!ptr) return ERROR_MEMORY_FAILURE;
+	if (!ptr) {
+		pthread_mutex_unlock(&bookmark_mutex);
+		return ERROR_MEMORY_FAILURE;
+	}
 	bookmarks = ptr;
 	STRSCPY(bookmarks[bookmark_length].url, url);
 	STRSCPY(bookmarks[bookmark_length].name, name);
 	bookmark_length++;
-
+	pthread_mutex_unlock(&bookmark_mutex);
 	return 0;
 }
 
 int bookmark_remove(size_t id) {
 	size_t i;
-	if (id >= bookmark_length) return -1;
+	pthread_mutex_lock(&bookmark_mutex);
+	if (id >= bookmark_length) {
+		pthread_mutex_unlock(&bookmark_mutex);
+		return -1;
+	}
 	bookmark_length--;
 	for (i = id; i < bookmark_length; i++) bookmarks[i] = bookmarks[i + 1];
+	pthread_mutex_unlock(&bookmark_mutex);
 	return 0;
 }
