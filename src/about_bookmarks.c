@@ -40,8 +40,10 @@ int about_bookmarks(char **out, size_t *length_out) {
 
 		len = snprintf(V(buf), "=>%s %s\n=>/%ld Delete\n\n",
 				bookmarks[i].url, bookmarks[i].name, i) + 1;
-		if (!(tmp = dyn_strcat(data, &length, buf, len)))
+		if (!(tmp = dyn_strcat(data, &length, buf, len))) {
+			pthread_mutex_unlock(&bookmark_mutex);
 			goto fail;
+		}
 		data = tmp;
 	}
 	pthread_mutex_unlock(&bookmark_mutex);

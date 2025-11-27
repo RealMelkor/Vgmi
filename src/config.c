@@ -52,10 +52,12 @@ static void config_default(void) {
 
 static int config_correction(void) {
 	size_t i;
-	for (i = 0; i < LENGTH(fields); i++) {
+	int found = 0;
+	for (i = 0; i < LENGTH(fields) && found < 2; i++) {
 		if (!STRCMP(fields[i].name, "request.maxdisplay")) {
 			unsigned int *value =  fields[i].ptr;
 			if (*value < 4096) *value = 4096;
+			found++;
 		}
 		if (!STRCMP(fields[i].name, "search.url")) {
 			char *value = fields[i].ptr;
@@ -69,12 +71,11 @@ static int config_correction(void) {
 				strscpy(fields[i].ptr, DEFAULT_SEARCH_URL,
 						CONFIG_STRING_LENGTH);
 			}
+			found++;
 		}
 	}
 	return 0;
 }
-
-
 
 static int set_field(struct field field, int v, char *str) {
 	unsigned int i = 0;
@@ -98,15 +99,18 @@ static int set_field(struct field field, int v, char *str) {
 }
 
 int config_set_field(int id, const char *value) {
-	pthread_mutex_lock(&config_mutex);
+	int ret = 0;
 	if (id < 0 || (unsigned)id >= LENGTH(fields))
 		return ERROR_INVALID_ARGUMENT;
+	pthread_mutex_lock(&config_mutex);
 	switch (fields[id].type) {
 	case VALUE_INT:
 		{
 			int ivalue = atoi(value);
-			if (!ivalue && strcmp(value, "0"))
-				return ERROR_INVALID_ARGUMENT;
+			if (!ivalue && strcmp(value, "0")) {
+				ret = ERROR_INVALID_ARGUMENT;
+				break;
+			}
 			*(int*)fields[id].ptr = ivalue;
 		}
 		break;
@@ -114,11 +118,12 @@ int config_set_field(int id, const char *value) {
 		strscpy(fields[id].ptr, value, CONFIG_STRING_LENGTH);
 		break;
 	default:
-		return ERROR_INVALID_ARGUMENT;
+		ret = ERROR_INVALID_ARGUMENT;
+		break;
 	}
-	config_correction();
+	if (!ret) config_correction();
 	pthread_mutex_unlock(&config_mutex);
-	return 0;
+	return ret;
 }
 
 int config_load(void) {
@@ -224,6 +229,14 @@ int config_get_str(void* ptr, char* out) {
 	size_t i;
 	pthread_mutex_lock(&config_mutex);
 	i = strlcpy(out, ptr, CONFIG_STRING_LENGTH);
+	pthread_mutex_unlock(&config_mutex);
+	return i;
+}
+
+int config_set_str(void* ptr, char* in) {
+	size_t i;
+	pthread_mutex_lock(&config_mutex);
+	i = strlcpy(ptr, in, CONFIG_STRING_LENGTH);
 	pthread_mutex_unlock(&config_mutex);
 	return i;
 }

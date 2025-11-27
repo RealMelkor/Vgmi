@@ -79,6 +79,9 @@ int error_string(int error, char *out, size_t len) {
 	case ERROR_CERTIFICATE_MISMATCH:
 		strscpy(out, "The server certificate changed", len);
 		break;
+	case ERROR_CERTIFICATE_EXPIRED:
+		strscpy(out, "The server certificate expired", len);
+		break;
 	case ERROR_STORAGE_ACCESS:
 		snprintf(out, len, "Failed to access disk storage (%s)",
 				strerror(errno));

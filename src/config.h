@@ -1,6 +1,6 @@
 /*
  * ISC License
- * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
+ * Copyright (c) 2025 RMF <rawmonk@rmf-dev.com>
  */
 #define CONFIG_STRING_LENGTH 1024
 struct config {
@@ -8,6 +8,7 @@ struct config {
 	unsigned int	maximumDisplayLength;
 	int		certificateLifespan;
 	int		certificateBits;
+	int		rejectExpired;
 	int		maximumRedirects;
 	int		maximumCachedPages;
 	int		maximumHistorySize;
@@ -63,6 +64,7 @@ static struct field fields[] = {
 	{"request.maxdisplay", VALUE_INT, &config.maximumDisplayLength, 0},
 	{"request.maxredirects", VALUE_INT, &config.maximumRedirects, 0},
 	{"request.cachedpages", VALUE_INT, &config.maximumCachedPages, 0},
+	{"request.rejectexpired", VALUE_INT, &config.rejectExpired, 0},
 	{"history.maxentries", VALUE_INT, &config.maximumHistorySize, 0},
 	{"history.maxcache", VALUE_INT, &config.maximumHistoryCache, 0},
 	{"search.url", VALUE_STRING, &config.searchEngineURL, 0},
@@ -79,4 +81,5 @@ int config_save(void);
 int config_set_field(int id, const char *value);
 int config_get_int(void*);
 int config_get_str(void*, char*);
+int config_set_str(void*, char*);
 unsigned int config_get_uint(void* ptr);

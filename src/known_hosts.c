@@ -13,6 +13,7 @@
 #define KNOWN_HOSTS_INTERNAL
 #include "known_hosts.h"
 #include "storage.h"
+#include "config.h"
 #include "error.h"
 
 #define FILENAME "known_hosts"
@@ -151,17 +152,16 @@ int known_hosts_verify(const char *host, const char *hash,
 			return ret;
 		return known_hosts_write(host, hash, start, end);
 	}
-	if (ptr->end < now) {
-		if (start > now) return ERROR_CERTIFICATE_AHEAD;
+	if (start > now) return ERROR_CERTIFICATE_AHEAD;
+	if (strcmp(ptr->hash, hash)) {
+		if (ptr->end > now) return ERROR_CERTIFICATE_MISMATCH;
 		/* old certificate expired, accept new certificate */
 		STRSCPY(ptr->hash, hash);
 		ptr->start = start;
 		ptr->end = end;
 		return known_hosts_rewrite();
 	}
-	if (strcmp(ptr->hash, hash))
-		return ERROR_CERTIFICATE_MISMATCH;
-	if (ptr->end < now)
+	if (ptr->end < now && config_get_int(&config.rejectExpired))
 		return ERROR_CERTIFICATE_EXPIRED;
 	return 0;
 }

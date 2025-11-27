@@ -27,7 +27,7 @@ struct request;
 int request_process(struct request *request, struct secure *secure,
 			const char *url) {
 
-	char buf[MAX_URL + 8];
+	char buf[MAX_URL + 8], proxy_buf[CONFIG_STRING_LENGTH];
 	int ret, proxy;
 	size_t length;
 
@@ -51,7 +51,8 @@ int request_process(struct request *request, struct secure *secure,
 		return 0;
 	}
 #endif
-	proxy = *config.proxyHttp && (request->protocol == PROTOCOL_HTTPS ||
+	config_get_str(config.proxyHttp, proxy_buf);
+	proxy = *proxy_buf && (request->protocol == PROTOCOL_HTTPS ||
 				request->protocol == PROTOCOL_HTTP);
 	if (request->protocol != PROTOCOL_GEMINI && !proxy) {
 		ret = ERROR_UNSUPPORTED_PROTOCOL;
@@ -60,7 +61,7 @@ int request_process(struct request *request, struct secure *secure,
 	if (request->protocol != PROTOCOL_GEMINI) {
 		char domain[MAX_HOST] = {0};
 		int port;
-		url_domain_port(config.proxyHttp, domain, &port);
+		url_domain_port(proxy_buf, domain, &port);
 		STRSCPY(request->name, domain);
 		request->port = port;
 	}

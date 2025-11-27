@@ -184,8 +184,10 @@ int parse_page(struct parser *parser, struct request *request, int width) {
 	length = request->length - request->page.offset;
 	if (vwrite(parser->out, P(length)) ||
 			vwrite(parser->out, P(width)) ||
-			vwrite(parser->out, P(request->page.mime)))
+			vwrite(parser->out, P(request->page.mime))) {
+		pthread_mutex_unlock(&parser->mutex);
 		return ERROR_ERRNO;
+	}
 
 	request->page.width = width;
 	ret = page_update(parser->in, parser->out,

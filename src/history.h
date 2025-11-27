@@ -9,6 +9,7 @@ struct history_entry {
 	struct history_entry *next;
 };
 extern struct history_entry *history;
+extern pthread_mutex_t history_mutex;
 #endif
 void history_init(void);
 int history_save(void);

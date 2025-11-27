@@ -39,10 +39,12 @@ int about_known_hosts(char **out, size_t *length_out) {
 			struct tm *tm;
 
 			tm = localtime(&ptr->start);
-			strftime(V(from), "%Y/%m/%d %H:%M:%S", tm);
+			if (!tm) STRSCPY(from, "<invalid>");
+			else strftime(V(from), "%Y/%m/%d %H:%M:%S", tm);
 
 			tm = localtime(&ptr->end);
-			strftime(V(to), "%Y/%m/%d %H:%M:%S", tm);
+			if (!tm) STRSCPY(from, "<invalid>");
+			else strftime(V(to), "%Y/%m/%d %H:%M:%S", tm);
 
 			len = snprintf(V(buf),
 				"* %s\n> Hash: %s\n"

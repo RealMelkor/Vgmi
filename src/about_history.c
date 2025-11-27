@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "error.h"
@@ -32,17 +33,23 @@ int about_history(char **out, size_t *length_out) {
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;
 	if (!(data = dyn_strcat(data, &length, V(title)))) goto fail;
-	if (!config.enableHistory) {
+	if (!config_get_int(&config.enableHistory)) {
 		const char str[] = "History is disabled\n";
 		if (!(data = dyn_strcat(data, &length, V(str)))) goto fail;
 	}
 
+	pthread_mutex_lock(&history_mutex);
 	for (entry = history; entry; entry = entry->next) {
 		char buf[sizeof(*entry)];
-		int len = snprintf(V(buf), "=>%s %s\n", entry->url, entry->title) + 1;
-		if (!(data = dyn_strcat(data, &length, buf, len))) goto fail;
+		int len = snprintf(V(buf), "=>%s %s\n",
+				entry->url, entry->title) + 1;
+		if (!(data = dyn_strcat(data, &length, buf, len))) {
+			pthread_mutex_lock(&history_mutex);
+			goto fail;
+		}
 		if (i++ == MAXIMUM_LIST_LENGTH) break;
 	}
+	pthread_mutex_unlock(&history_mutex);
 
 	*out = data;
 	*length_out = length;

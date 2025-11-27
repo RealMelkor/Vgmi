@@ -15,7 +15,6 @@
 #ifdef __linux__
 #include <linux/limits.h>
 #endif
-#include <errno.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "storage.h"
@@ -100,13 +99,15 @@ int storage_path(char *out, size_t length) {
 int storage_download_path(char *out, size_t length) {
 
 	FILE *f;
+	char path[CONFIG_STRING_LENGTH];
 
 	if (length > PATH_MAX) length = PATH_MAX;
 
-	if (*config.downloadsPath == '/') {
-		strscpy(out, config.downloadsPath, length);
+	config_get_str(config.downloadsPath, path);
+	if (*path == '/') {
+		strscpy(out, path, length);
 		return 0;
-	} else *config.downloadsPath = '\0';
+	}
 
 	f = popen("xdg-user-dir DOWNLOAD 2>&1", "r");
 	if (f) {
@@ -207,7 +208,7 @@ int storage_read(const char *name, char *out, size_t length,
 	return 0;
 }
 
-int storage_init_path(int *fd, int download) {
+static int storage_init_path(int *fd, int download) {
 	char path[PATH_MAX];
 	int ret;
 	if (download) {
@@ -261,10 +262,13 @@ int storage_clear_tmp(void) {
 	int ret, fd;
 	struct dirent *entry;
 
-	if (download_fd < 0 && ((ret = storage_init_path(&download_fd, 1))))
+	if (download_fd < 0 && (ret = storage_init_download()))
 		return ret;
 	if ((fd = dup(download_fd)) == -1) return ERROR_ERRNO;
-	if (!(dir = fdopendir(fd))) return ERROR_ERRNO;
+	if (!(dir = fdopendir(fd))) {
+		close(fd);
+		return ERROR_ERRNO;
+	}
 	rewinddir(dir);
 	while ((entry = readdir(dir))) {
 		if (!memcmp(entry->d_name, V(".tmp_vgmi_exec_") - 1))

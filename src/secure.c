@@ -172,11 +172,13 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 
 	char buf[1024], *ptr;
 	size_t len, allocated;
+	unsigned int max;
 	int i;
 
 	ptr = NULL;
+	max = config_get_uint(&config.maximumBodyLength);
 	i = len = allocated = 0;
-	while (len < config.maximumBodyLength) {
+	while (len < max) {
 		if (allocated >= SIZE_MAX - sizeof(buf)) {
 			free(ptr);
 			return ERROR_RESPONSE_TOO_LARGE;
@@ -197,7 +199,7 @@ int secure_read(struct secure *secure, char **data, size_t *length) {
 		memcpy(&ptr[len], buf, i);
 		len += i;
 	}
-	if (len >= config.maximumBodyLength) {
+	if (len >= max) {
 		free(ptr);
 		return ERROR_RESPONSE_TOO_LARGE;
 	}

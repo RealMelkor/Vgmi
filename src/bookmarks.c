@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <pthread.h>
 #include "strscpy.h"
 #include "macro.h"
@@ -110,6 +111,8 @@ int bookmark_rewrite(void) {
 int bookmark_add(const char *url, const char *name) {
 	void *ptr;
 	pthread_mutex_lock(&bookmark_mutex);
+	if (bookmark_length > SIZE_MAX / sizeof(struct bookmark) - 1)
+		return ERROR_INTEGER_OVERFLOW;
 	ptr = realloc(bookmarks,
 			(bookmark_length + 1) * sizeof(struct bookmark));
 	if (!ptr) {
@@ -125,14 +128,17 @@ int bookmark_add(const char *url, const char *name) {
 }
 
 int bookmark_remove(size_t id) {
-	size_t i;
 	pthread_mutex_lock(&bookmark_mutex);
 	if (id >= bookmark_length) {
 		pthread_mutex_unlock(&bookmark_mutex);
 		return -1;
 	}
 	bookmark_length--;
-	for (i = id; i < bookmark_length; i++) bookmarks[i] = bookmarks[i + 1];
+	if (id < bookmark_length) {
+		memmove(&bookmarks[id], &bookmarks[id + 1],
+			(bookmark_length - id) * sizeof(struct bookmark));
+
+	}
 	pthread_mutex_unlock(&bookmark_mutex);
 	return 0;
 }

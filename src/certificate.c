@@ -44,9 +44,18 @@ int certificate_create(char *host, char *error, int errlen) {
 	RSA *rsa = RSA_new();
 	BIGNUM *bne = BN_new();
 	X509 *x509 = X509_new();
-	if (BN_set_word(bne, 65537) != 1) goto failed;
-	if (RSA_generate_key_ex(rsa, config.certificateBits, bne, NULL) != 1)
+	if (!(pkey && rsa && bne && x509)) {
+		RSA_free(rsa);
 		goto failed;
+	}
+	if (BN_set_word(bne, 65537) != 1) {
+		RSA_free(rsa);
+		goto failed;
+	}
+	if (RSA_generate_key_ex(rsa, config.certificateBits, bne, NULL) != 1) {
+		RSA_free(rsa);
+		goto failed;
+	}
 
 	EVP_PKEY_assign_RSA(pkey, rsa);
 #endif

@@ -3,9 +3,6 @@
  * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
 #include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdint.h>
 #include <pthread.h>
 #include "termbox.h"
@@ -99,8 +96,10 @@ void tab_display_gemtext(struct request *req, struct rect rect) {
 void tab_display_error(struct tab *tab) {
 	if (!tab) return;
 	if (!tab_completed(tab)) {
+		pthread_mutex_lock(tab->mutex_error);
 		tb_print(2, 1 + (tab->next || tab->prev),
 				TB_RED, TB_DEFAULT, tab->error);
+		pthread_mutex_unlock(tab->mutex_error);
 	} else {
 		tab->request->state = STATE_ENDED;
 		tb_refresh();
@@ -134,11 +133,13 @@ void tab_display(struct tab *tab, struct client *client) {
 	req = tab_completed(tab);
 	if (req) tab_display_request(req, rect);
 
+	pthread_mutex_lock(tab->mutex_error);
 	if (client->mode != MODE_CMDLINE && tab->failure) {
 		tab->failure = 0;
 		client->error = 1;
 		STRSCPY(client->cmd, tab->error);
 	}
+	pthread_mutex_unlock(tab->mutex_error);
 
 	switch (tab->request->state) {
 	case STATE_COMPLETED:

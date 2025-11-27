@@ -64,6 +64,9 @@ int page_update(int in, int out, const char *data, size_t length,
 	page->length = 0;
 	page->lines = NULL;
 
+	if ((size_t)page->width > SIZE_MAX / sizeof(struct page_cell) - 1)
+		return ERROR_INTEGER_OVERFLOW;
+
 	line.cells =
 		malloc((page->width + 1) * sizeof(struct page_cell));
 	if (!line.cells) return ERROR_MEMORY_FAILURE;

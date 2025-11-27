@@ -45,7 +45,10 @@ int about_certificates(char **out, size_t *length_out) {
 	struct dirent *entry;
 
 	if ((fd = dup(storage_fd)) == -1) return ERROR_ERRNO;
-	if (!(dir = fdopendir(fd))) return ERROR_ERRNO;
+	if (!(dir = fdopendir(fd))) {
+		close(fd);
+		return ERROR_ERRNO;
+	}
 	rewinddir(dir);
 
 	if (!(data = dyn_strcat(NULL, &length, V(header)))) goto fail;

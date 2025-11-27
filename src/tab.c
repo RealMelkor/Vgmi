@@ -82,7 +82,8 @@ void tab_clean_requests(struct tab *tab) {
 	found = 0;
 	for (request = tab->request; request; request = request->next) {
 		if (request->state == STATE_COMPLETED) {
-			if (found++ > config.maximumCachedPages)
+			int max = config_get_int(&config.maximumCachedPages);
+			if (found++ > max)
 				request->state = STATE_ENDED;
 		}
 	}
@@ -103,6 +104,14 @@ void tab_clean_requests(struct tab *tab) {
 		} else prev = request;
 	}
 	pthread_mutex_unlock(tab->mutex);
+}
+
+static void tab_set_error_url(struct tab *tab, int error_code,
+					const char *url) {
+	char error[256], buf[2048];
+	error_string(error_code, V(error));
+	snprintf(V(buf), "%s: %s", error, url);
+	tab_set_error(tab, buf, 1);
 }
 
 void* tab_request_thread(void *ptr) {
@@ -132,10 +141,7 @@ restart:
 	redirect = 0;
 	ctx = secure_new();
 	if (!ctx) {
-		char error[256], buf[2048];
-		error_string(ERROR_MEMORY_FAILURE, V(error));
-		snprintf(V(buf), "%s: %s", error, request.url);
-		tab_set_error(tab, buf, 1);
+		tab_set_error_url(tab, ERROR_MEMORY_FAILURE, request.url);
 		return 0;
 	}
 	failure = request_process(&request, ctx, args->url);
@@ -152,12 +158,7 @@ restart:
 		confirm = 0;
 		req->state = STATE_CANCELED;
 	} else if (failure) {
-		{
-			char error[256], buf[2048];
-			error_string(request.error, V(error));
-			snprintf(V(buf), "%s: %s", error, request.url);
-			tab_set_error(tab, buf, 1);
-		}
+		tab_set_error_url(tab, failure, request.url);
 	} else if (gemini_isredirect(request.status)) {
 		redirect = 1;
 		STRSCPY(destination, request.meta);
