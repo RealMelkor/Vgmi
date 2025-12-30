@@ -2,6 +2,8 @@
  * ISC License
  * Copyright (c) 2023 RMF <rawmonk@rmf-dev.com>
  */
+#include <pthread.h>
+
 int bookmark_load(void);
 int bookmark_rewrite(void);
 int bookmark_add(const char *url, const char *name);
