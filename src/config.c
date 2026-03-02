@@ -32,6 +32,7 @@ static void config_default(void) {
 	config.enableSandbox = 1;
 #ifdef __linux__
 	config.enableLandlock = 1;
+	STRSCPY(config.allowedPorts, "1965");
 #endif
 	config.enableImage = 1;
 	config.enableHistory = 1;
@@ -75,6 +76,14 @@ static int config_correction(void) {
 		}
 	}
 	return 0;
+}
+
+static int get_field_type(struct field field) {
+	unsigned int i = 0;
+	for (i = 0; i < LENGTH(fields); i++) {
+		if (!STRCMP(fields[i].name, field.name)) return fields[i].type;
+	}
+	return -1;
 }
 
 static int set_field(struct field field, int v, char *str) {
@@ -140,16 +149,18 @@ int config_load(void) {
 	for (;;) {
 		int ch = fgetc(f);
 		if (ch == EOF || ch == '\n') {
-			int ivalue;
 			buf[i] = 0;
 			in_comment = in_str = i = 0;
-			ivalue = atoi(buf);
-			if (ivalue || !STRCMP(buf, "0")) {
-				field.type = VALUE_INT;
-				set_field(field, ivalue, NULL);
-			} else {
-				field.type = VALUE_STRING;
+			field.type = get_field_type(field);
+			switch (field.type) {
+			case VALUE_INT:
+				set_field(field, atoi(buf), NULL);
+				break;
+			case VALUE_STRING:
 				set_field(field, 0, buf);
+				break;
+			default:
+				return ERROR_INVALID_ARGUMENT;
 			}
 			field.name[0] = 0;
 			if (ch == EOF) break;

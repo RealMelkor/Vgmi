@@ -19,6 +19,7 @@ struct config {
 	int		enableSandbox;
 #ifdef __linux__
 	int		enableLandlock;
+	char		allowedPorts[CONFIG_STRING_LENGTH];
 #endif
 	int		enableImage;
 	int		enableHexViewer;
@@ -53,8 +54,9 @@ static struct field fields[] = {
 	{"image.scratchpad", VALUE_INT, &config.imageParserScratchPad, 1},
 #endif
 	{"sandbox.enabled", VALUE_INT, &config.enableSandbox, 1},
-#ifdef __linux
+#ifdef __linux__
 	{"sandbox.landlock.enabled", VALUE_INT, &config.enableLandlock, 1},
+	{"sandbox.landlock.allowports", VALUE_STRING, &config.allowedPorts, 1},
 #endif
 	{"xdg.enabled", VALUE_INT, &config.enableXdg, 1},
 	{"history.enabled", VALUE_INT, &config.enableHistory, 0},

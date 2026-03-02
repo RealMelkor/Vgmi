@@ -31,6 +31,7 @@ void *img_malloc(size_t size) {
 	for (i = 0; i < allocations_count; i++) {
 		if (allocations[i].taken) continue;
 		if (allocations[i].length > size) {
+			allocations[i].taken = 1;
 			return allocations[i].ptr;
 		}
 	}
@@ -71,12 +72,12 @@ void img_free(void *ptr) {
 		allocations_count--;
 		allocations[allocations_count].taken = 0;
 		for (i = allocations_count - 1; i >= 0; i--) {
-			if (allocations[i].taken) {
-				allocations_count = i;
-				img_memory_ptr = allocations[i].ptr;
-				found = 1;
-				break;
-			}
+			if (!allocations[i].taken) continue;
+			allocations_count = i + 1;
+			img_memory_ptr =
+				allocations[i].ptr + allocations[i].length;
+			found = 1;
+			break;
 		}
 		if (!found) img_memory_ptr = img_memory;
 		return;

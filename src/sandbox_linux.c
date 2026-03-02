@@ -9,6 +9,7 @@
 #include <sys/resource.h>
 #include <sys/prctl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
@@ -20,6 +21,7 @@
 #include "error.h"
 #include "dns.h"
 #include "config.h"
+#include "strscpy.h"
 
 #ifdef ENABLE_SECCOMP_FILTER
 #include <linux/filter.h>
@@ -169,12 +171,32 @@ int landlock_unveil_path(int landlock_fd, const char* path, int perms) {
 	return landlock_unveil(landlock_fd, fd, perms);
 }
 
+int landlock_allow_port(int landlock_fd, unsigned short port) {
+	struct landlock_net_port_attr attr;
+	attr.allowed_access = LANDLOCK_ACCESS_NET_CONNECT_TCP;
+	attr.port = port;
+	return landlock_add_rule(landlock_fd, LANDLOCK_RULE_NET_PORT, &attr, 0);
+}
+
 int landlock_init(void) {
 	struct landlock_ruleset_attr attr = {0};
-	attr.handled_access_fs =	LANDLOCK_ACCESS_FS_READ_FILE |
-					LANDLOCK_ACCESS_FS_READ_DIR |
-					LANDLOCK_ACCESS_FS_WRITE_FILE |
-					LANDLOCK_ACCESS_FS_MAKE_REG;
+	attr.handled_access_net =       LANDLOCK_ACCESS_NET_BIND_TCP |
+					(*config.allowedPorts ?
+					 LANDLOCK_ACCESS_NET_CONNECT_TCP : 0);
+        attr.handled_access_fs =        LANDLOCK_ACCESS_FS_READ_DIR |
+                                        LANDLOCK_ACCESS_FS_READ_FILE |
+                                        LANDLOCK_ACCESS_FS_WRITE_FILE |
+                                        LANDLOCK_ACCESS_FS_REFER |
+                                        LANDLOCK_ACCESS_FS_IOCTL_DEV |
+                                        LANDLOCK_ACCESS_FS_EXECUTE |
+                                        LANDLOCK_ACCESS_FS_TRUNCATE |
+                                        LANDLOCK_ACCESS_FS_MAKE_BLOCK |
+                                        LANDLOCK_ACCESS_FS_MAKE_CHAR |
+                                        LANDLOCK_ACCESS_FS_MAKE_DIR |
+                                        LANDLOCK_ACCESS_FS_MAKE_FIFO |
+                                        LANDLOCK_ACCESS_FS_MAKE_SOCK |
+                                        LANDLOCK_ACCESS_FS_MAKE_SYM |
+                                        LANDLOCK_ACCESS_FS_MAKE_REG;
 	return landlock_create_ruleset(&attr, sizeof(attr), 0);
 }
 
@@ -220,6 +242,7 @@ int sandbox_init(void) {
 		ret = landlock_unveil_path(fd, path,
 						LANDLOCK_ACCESS_FS_READ_FILE |
 						LANDLOCK_ACCESS_FS_WRITE_FILE |
+						LANDLOCK_ACCESS_FS_TRUNCATE |
 						LANDLOCK_ACCESS_FS_MAKE_REG);
 		ret |= landlock_unveil_path(fd, download_path,
 						LANDLOCK_ACCESS_FS_WRITE_FILE |
@@ -231,6 +254,22 @@ int sandbox_init(void) {
 		/* required by some security hardening compiler flags */
 		ret |= landlock_unveil_path(fd, "/proc/stat",
 						LANDLOCK_ACCESS_FS_READ_FILE);
+
+		if (*config.allowedPorts) {
+			char buf[sizeof(config.allowedPorts)];
+			char *ptr, *start, *end = buf + sizeof(buf) - 1;
+			STRSCPY(buf, config.allowedPorts);
+			for (start = ptr = buf; ptr < end && *ptr; ptr++) {
+				int port;
+				if (*(ptr + 1) && *(ptr + 1) != ',') continue;
+				*(++ptr) = '\0';
+				port = atoi(start);
+				start = ptr + 1;
+				if (!port) continue;
+				ret |= landlock_allow_port(fd, port);
+				if (ret) break;
+			}
+		}
 
 		if (ret) return ERROR_LANDLOCK_FAILURE;
 
