@@ -120,7 +120,7 @@ int parse_request(struct parser *parser, struct request *request) {
 		}
 
 		length++;
-		if ((ret = readonly(url, length, &ptr))) break;
+		if ((ret = readonly(url, length, &ptr))) goto fail;
 
 		tmp = realloc(request->page.links,
 			sizeof(char*) * (request->page.links_count + 1));

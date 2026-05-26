@@ -289,7 +289,7 @@ int command_exec(struct client *client, const char* args, size_t len) {
 		return 0;
 	}
 	tb_shutdown();
-	err = spawn(config.launcher, 1, 0, download_dir, name, NULL);
+	err = spawn(config.launcher, 1, 0, download_dir, name, (char*)NULL);
 	unlinkat(download_fd, name, 0);
 	client_init_termbox();
 	if (err == -1) return -1;

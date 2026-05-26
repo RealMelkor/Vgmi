@@ -236,6 +236,7 @@ int sandbox_init(void) {
 #ifdef HAS_LANDLOCK
 	dlopen("libgcc_s.so.1", RTLD_NOW|RTLD_GLOBAL);
 	if (config.enableLandlock) {
+		char resolv[PATH_MAX] = {0};
 		/* restrict filesystem access */
 		fd = landlock_init();
 		if (fd < 0) return ERROR_LANDLOCK_FAILURE;
@@ -249,8 +250,11 @@ int sandbox_init(void) {
 						LANDLOCK_ACCESS_FS_MAKE_REG);
 		ret |= landlock_unveil_path(fd, "/etc/hosts",
 						LANDLOCK_ACCESS_FS_READ_FILE);
-		ret |= landlock_unveil_path(fd, "/etc/resolv.conf",
-						LANDLOCK_ACCESS_FS_READ_FILE);
+
+		if (realpath("/etc/resolv.conf", resolv) == resolv) {
+			ret |= landlock_unveil_path(fd, resolv,
+					LANDLOCK_ACCESS_FS_READ_FILE);
+		}
 		/* required by some security hardening compiler flags */
 		ret |= landlock_unveil_path(fd, "/proc/stat",
 						LANDLOCK_ACCESS_FS_READ_FILE);

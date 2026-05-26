@@ -43,7 +43,7 @@ int about_known_hosts(char **out, size_t *length_out) {
 			else strftime(V(from), "%Y/%m/%d %H:%M:%S", tm);
 
 			tm = localtime(&ptr->end);
-			if (!tm) STRSCPY(from, "<invalid>");
+			if (!tm) STRSCPY(to, "<invalid>");
 			else strftime(V(to), "%Y/%m/%d %H:%M:%S", tm);
 
 			len = snprintf(V(buf),

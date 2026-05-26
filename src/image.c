@@ -94,7 +94,10 @@ void image_parser(int in, int out) {
 	sandbox_isolate();
 
 	byte = 0;
-	if (vwrite(out, &byte, 1)) return;
+	if (vwrite(out, &byte, 1)) {
+		free(data);
+		return;
+	}
 
 	while (1) {
 

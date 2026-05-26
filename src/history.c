@@ -136,8 +136,10 @@ int history_add(const char *url, const char *title) {
 		history_free();
 		history_load(HISTORY);
 	}
-	if (history_length >= INT_MAX)
+	if (history_length >= INT_MAX) {
+		pthread_mutex_unlock(&history_mutex);
 		return ERROR_INTEGER_OVERFLOW;
+	}
 	history_length++;
 	entry = malloc(sizeof(struct history_entry));
 	if (!entry) {

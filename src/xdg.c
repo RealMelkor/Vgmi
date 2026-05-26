@@ -58,7 +58,8 @@ static int open_download(const char *input) {
 		return ERROR_INVALID_ARGUMENT;
 
 	snprintf(V(path), "%s/%s", download_dir, buf);
-	ret = spawn(config.launcher, 1, !config.launcherTerminal, path, NULL);
+	ret = spawn(config.launcher, 1,
+			!config.launcherTerminal, path, (char*)NULL);
 	if (ret == -1) return ERROR_ERRNO;
 	return 0;
 }
@@ -74,7 +75,8 @@ int xdg_exec(char *line, size_t len) {
 	if (!strcmp(allowed_protocols[i], download_prefix)) {
 		return open_download(line);
 	}
-	ret = spawn(config.launcher, 1, !config.launcherTerminal, line, NULL);
+	ret = spawn(config.launcher, 1, !config.launcherTerminal,
+			line, (char*)NULL);
 	if (ret == -1) return -1;
 	return 0;
 }

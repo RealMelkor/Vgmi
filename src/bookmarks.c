@@ -111,8 +111,10 @@ int bookmark_rewrite(void) {
 int bookmark_add(const char *url, const char *name) {
 	void *ptr;
 	pthread_mutex_lock(&bookmark_mutex);
-	if (bookmark_length > SIZE_MAX / sizeof(struct bookmark) - 1)
+	if (bookmark_length > SIZE_MAX / sizeof(struct bookmark) - 1) {
+		pthread_mutex_unlock(&bookmark_mutex);
 		return ERROR_INTEGER_OVERFLOW;
+	}
 	ptr = realloc(bookmarks,
 			(bookmark_length + 1) * sizeof(struct bookmark));
 	if (!ptr) {

@@ -256,7 +256,7 @@ int url_is_absolute(const char *url) {
 }
 
 int url_domain_port(const char *in, char *domain, int *port) {
-	char *ptr = strrchr(in, ':');
+	const char *ptr = strrchr(in, ':');
 	if (!ptr) {
 		strscpy(domain, in, MAX_HOST);
 		*port = 1965;

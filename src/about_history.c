@@ -44,7 +44,7 @@ int about_history(char **out, size_t *length_out) {
 		int len = snprintf(V(buf), "=>%s %s\n",
 				entry->url, entry->title) + 1;
 		if (!(data = dyn_strcat(data, &length, buf, len))) {
-			pthread_mutex_lock(&history_mutex);
+			pthread_mutex_unlock(&history_mutex);
 			goto fail;
 		}
 		if (i++ == MAXIMUM_LIST_LENGTH) break;

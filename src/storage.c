@@ -208,10 +208,10 @@ int storage_read(const char *name, char *out, size_t length,
 	return 0;
 }
 
-static int storage_init_path(int *fd, int download) {
+static int storage_init_path(int *fd, int is_download) {
 	char path[PATH_MAX];
 	int ret;
-	if (download) {
+	if (is_download) {
 		if (storage_path(V(path))) return ERROR_STORAGE_ACCESS;
 	} else if (storage_download_path(V(path))) return ERROR_STORAGE_ACCESS;
 	if ((ret = storage_mkdir(path))) return ret;
