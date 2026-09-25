@@ -178,6 +178,10 @@ int landlock_allow_port(int landlock_fd, unsigned short port) {
 	return landlock_add_rule(landlock_fd, LANDLOCK_RULE_NET_PORT, &attr, 0);
 }
 
+#ifndef LANDLOCK_ACCESS_FS_IOCTL_DEV
+#define LANDLOCK_ACCESS_FS_IOCTL_DEV 0
+#endif
+
 int landlock_init(void) {
 	struct landlock_ruleset_attr attr = {0};
 	attr.handled_access_net =       LANDLOCK_ACCESS_NET_BIND_TCP |

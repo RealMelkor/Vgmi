@@ -7,6 +7,10 @@
 #undef snprintf
 #undef memcpy
 #endif
+#include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #include "memcheck.h"
 #define ASSERT(X) switch(0){case 0:case (X):;}
 #define STRSCPY(X, Y) strscpy((X), (Y), sizeof(X))
@@ -18,9 +22,6 @@
 #define MAX_URL 1024
 #define MAX_HOST 1024
 #define LENGTH(X) (sizeof(X) / sizeof(*X))
-#ifndef PATH_MAX
-#define PATH_MAX 1024
-#endif
 #ifndef NO_SANDBOX
 #ifdef __linux__
 #define STATIC_ALLOC

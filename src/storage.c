@@ -12,19 +12,12 @@
 #include <pwd.h>
 #include <fcntl.h>
 #include <dirent.h>
-#ifdef __linux__
-#include <linux/limits.h>
-#endif
 #include "macro.h"
 #include "strscpy.h"
 #include "storage.h"
 #include "error.h"
 #include "utf8.h"
 #include "config.h"
-
-#ifndef PATH_MAX
-#define PATH_MAX 1024
-#endif
 
 #define CONFIG_FOLDER "vgmi"
 #define DOWNLOAD_PATH "Downloads"

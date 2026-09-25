@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <pthread.h>
-#include <limits.h>
 #include "macro.h"
 #include "strscpy.h"
 #include "error.h"
