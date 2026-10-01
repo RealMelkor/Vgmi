@@ -4,6 +4,7 @@
  */
 #if defined (__linux__) && !defined (DISABLE_SANDBOX)
 #include <linux/seccomp.h>
+#include <linux/audit.h>
 #define _DEFAULT_SOURCE
 #include <sys/syscall.h>
 #include <sys/resource.h>
@@ -23,6 +24,24 @@
 #include "config.h"
 #include "strscpy.h"
 
+#if defined(__x86_64__) && !defined(__ILP32__)
+#define SC_ARCH AUDIT_ARCH_X86_64
+#elif defined(__i386__)
+#define SC_ARCH AUDIT_ARCH_I386
+#elif defined(__aarch64__) && !defined(__AARCH64EB__)
+#define SC_ARCH AUDIT_ARCH_AARCH64
+#elif defined(__arm__) && !defined(__ARMEB__)
+#define SC_ARCH AUDIT_ARCH_ARM
+#elif defined(__riscv) && __riscv_xlen == 64 && defined(AUDIT_ARCH_RISCV64)
+#define SC_ARCH AUDIT_ARCH_RISCV64
+#elif defined(__powerpc64__) && defined(__LITTLE_ENDIAN__)
+#define SC_ARCH AUDIT_ARCH_PPC64LE
+#elif defined(__powerpc64__)
+#define SC_ARCH AUDIT_ARCH_PPC64
+#elif defined(__s390x__)
+#define SC_ARCH AUDIT_ARCH_S390X
+#endif
+
 #ifdef ENABLE_SECCOMP_FILTER
 #include <linux/filter.h>
 #include <stddef.h>
@@ -34,6 +53,10 @@
 struct sock_filter filter[] = {
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 		 (offsetof(struct seccomp_data, arch))),
+#ifdef SC_ARCH
+	BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SC_ARCH, 1, 0),
+	BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL),
+#endif
 	BPF_STMT(BPF_LD | BPF_W | BPF_ABS,
 		 (offsetof(struct seccomp_data, nr))),
         SC_ALLOW(readv),
